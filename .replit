@@ -1,0 +1,39 @@
+# ReplPress Environment Configuration
+modules = ["nodejs-22", "typescript-default", "postgresql-16"]
+
+# The primary command to start the development environment
+run = "npm run dev"
+
+# Configure the Replit Guest/Visitor experience
+entrypoint = "src/app/page.tsx"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
+
+[languages.typescript]
+pattern = "**/*.{ts,tsx}"
+
+[languages.typescript.languageServer]
+start = "typescript-language-server --stdio"
+
+# This ensures the Replit Agent knows how to preview the site
+[webserver]
+port = 3000
+
+# Custom Buttons for the Sidebar (Helper actions for the user)
+[[hints]]
+text = "Run Database Sync"
+command = "npm run db:push"
+
+[[hints]]
+text = "Open Database Studio"
+command = "npm run db:studio"
+
+# Environment specific settings
+[env]
+NODE_ENV = "development"
+NEXT_TELEMETRY_DISABLED = "1"
