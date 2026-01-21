@@ -1,45 +1,54 @@
-# ReplPress: Implementation Guide
+# ReplPress: Implementation Guide (2026 Edition)
 
-This guide contains the exact prompts and sequence required to build ReplPress using the Replit Agent. 
-
-## Pre-Requisites
-1. Open the **PostgreSQL** tool in the Replit sidebar and click "Attach Database."
-2. Ensure `AGENT.md`, `package.json`, and `replpress.config.json` are in the root directory.
+This guide contains the exact sequence and code blueprints for building ReplPress. Use these prompts in order.
 
 ---
 
-## Sprint 1: The Core Engine
-**Goal:** Initialize the environment, database, and the Hook system.
+## 0. The Master Initialization
+**Run this first to align the Agent with the project vision.**
 
-**Prompt to give the Agent:**Read AGENT.md and package.json. First, install the dependencies. Then, create the Drizzle schema in src/lib/db/schema.ts using the provided blueprint. Crucially, create src/lib/db/index.ts to initialize the database connection using the pg driver and the DATABASE_URL environment variable. Finally, implement the HookManager in src/lib/hooks.ts and verify the database connection is active.
+> "I am building **ReplPress**, an AI-native, rebuildable CMS. I have provided `AGENT.md`, `package.json`, `replpress.config.json`, and `src/lib/db/schema.ts`. 
+> 1. Read all files to understand the Hook System and modular architecture.
+> 2. Install dependencies.
+> 3. Create `src/lib/db/index.ts` to connect to Replit PostgreSQL and run `db:push`.
+> 4. Implement the `HookManager` in `src/lib/hooks.ts`. 
+> Confirm once the core engine is ready."
 
 ---
 
-## Sprint 2: The Theme System
-**Goal:** Create the dynamic loader that allows ReplPress to swap looks.
+## Sprint 1: The Core Logic & Config Utilities
+**Goal:** Create the bridge between the JSON config and the app.
 
-**Prompt to give the Agent:**
-> "Create a 'Default' theme in `/themes/default` with a basic Layout, Header, and Footer using Tailwind CSS. Then, create `src/lib/theme-loader.tsx`. This utility should read `activeTheme` from `replpress.config.json` and dynamically import the correct theme components. Update the main `src/app/layout.tsx` to use this loader."
+> "Create `src/lib/config.ts` with `getConfig()` and `updateConfig()` functions to read/write to `replpress.config.json`. Ensure these are usable in both Server Components and Server Actions."
+
+---
+
+## Sprint 2: The Dynamic Theme System
+**Goal:** Build the system that swaps the site's look.
+
+> "Create a 'Default' theme in `/themes/default`. It should have:
+> - `Layout.tsx`: Uses `hooks.applyFilters('theme_head_tags')` and `hooks.doAction('theme_footer')`.
+> - `views/HomeView.tsx`: A blog feed layout.
+> Then, create a dynamic loader in `src/app/page.tsx` that imports the correct View based on `activeTheme` in the config."
 
 ---
 
 ## Sprint 3: The Admin Dashboard (CRUD)
-**Goal:** Build the interface to manage content.
+**Goal:** Create the content management interface.
 
-**Prompt to give the Agent:**
-> "Build a modern Admin Dashboard at `/admin`. It must use Replit Auth to verify the user. Use shadcn/ui components to create a 'Posts' management table (Create, Read, Update, Delete). Ensure the 'New Post' editor allows for Markdown input and saves directly to the PostgreSQL database via a Server Action."
-
----
-
-## Sprint 4: The Plugin System
-**Goal:** Enable modularity without touching core code.
-
-**Prompt to give the Agent:**
-> "Create a plugin loader that scans the `/plugins` directory on startup. Create a sample plugin called 'hello-world' that uses a hook to append '' to the HTML head. Add a 'Plugins' page to the Admin Dashboard that lets me toggle plugins on and off by updating `replpress.config.json`."
+> "Build the Admin Dashboard at `/admin`. 
+> 1. Use Replit Auth for security.
+> 2. Create a 'Posts' page with a table to View/Edit/Delete posts.
+> 3. Build a 'New Post' editor using a Server Action to save to the `posts` table in PostgreSQL.
+> 4. Use shadcn/ui for a clean, professional look."
 
 ---
 
-## Maintenance & Rebuilding
-If the project structure feels messy or a feature breaks:
-1. Ask the Agent: "Verify my project structure against `AGENT.md`. Are there any files out of place?"
-2. To reset the DB: "Run the `db:push` script to ensure the Postgres schema matches my Drizzle files."
+## Sprint 4: The Plugin System & Reference Examples
+**Goal:** Enable modularity. Use the following code as a reference for the first two plugins.
+
+### Plugin Reference 1: Hello World
+**Path:** `/plugins/hello-world/index.ts`
+```typescript
+import { hooks } from "../../src/lib/hooks";
+hooks.addFilter('theme_footer_text', () => "Built with ❤️ on ReplPress");
