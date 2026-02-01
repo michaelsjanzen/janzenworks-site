@@ -1,10 +1,10 @@
-# 🚀 ReplPress
+# ReplPress
 **The Rebuildable, AI-Native CMS for Replit.**
 
-ReplPress is a modern, modular Content Management System (CMS) designed from the ground up to be built, maintained, and extended by the **Replit Agent**. It brings the extensibility of WordPress (Themes & Plugins) to the modern TypeScript/React stack.
+ReplPress is a modern, modular Content Management System (CMS) designed from the ground up to be built, maintained, and extended by the **Replit Agent**. It brings the extensibility similar to other open source CMS platforms (Themes & Plugins) to the modern TypeScript/React stack.
 
-## ✨ Why ReplPress?
-Standard WordPress is a heavy LAMP stack monolith. **ReplPress** is built for the 2026 developer ecosystem:
+## Why ReplPress?
+Unlike some solutions **ReplPress** is built for the 2026 developer ecosystem:
 - **Agent-First:** Structured specifically so AI agents can add features without breaking core logic.
 - **Zero-Config Hosting:** Runs natively on Replit with PostgreSQL and Replit Auth.
 - **Modern Stack:** Next.js (App Router), Drizzle ORM, and Tailwind CSS.
