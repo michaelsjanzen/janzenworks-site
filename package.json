@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "setup": "npx tsx scripts/setup.ts",
-    "db:push": "drizzle-kit push",
+    "db:push": "drizzle-kit push --force",
     "db:migrate": "npx tsx scripts/migrate-001-design-config-upsert.ts && npx tsx scripts/migrate-002-posts-indexes.ts",
     "db:studio": "drizzle-kit studio",
     "env:check": "npx tsx scripts/env-check.ts",
