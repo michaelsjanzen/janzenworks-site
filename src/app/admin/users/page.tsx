@@ -105,7 +105,7 @@ export default async function UsersPage({ searchParams }: Props) {
                   <td className="px-4 py-3 text-zinc-500">{user.email}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      user.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-zinc-100 text-zinc-600"
+                      user.role === "admin" ? "bg-amber-100 text-amber-700" : "bg-zinc-100 text-zinc-600"
                     }`}>
                       {user.role}
                     </span>
