@@ -1023,7 +1023,7 @@ export default function PostForm({
           />
         </div>
 
-        {/* Generate All Metadata */}
+        {/* Generate All AEO Metadata */}
         {aiEnabled && (
           <div className="bg-white border border-zinc-200 rounded-lg px-6 py-4 flex items-center justify-between gap-4">
             <div>
@@ -1039,7 +1039,7 @@ export default function PostForm({
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              {pendingAction === "generate-all" ? "Generating…" : "Generate All"}
+              {pendingAction === "generate-all" ? "Generating…" : "Generate All AEO Metadata"}
             </button>
           </div>
         )}
