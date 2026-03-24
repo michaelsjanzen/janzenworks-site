@@ -6,6 +6,7 @@
  * Does NOT require drizzle-kit or a TTY. Works in Replit, CI, Docker, etc.
  *
  * Called by: npm run db:init
+ * Also imported by: scripts/replit-init.ts
  */
 import { existsSync } from "fs";
 import { config } from "dotenv";
@@ -14,8 +15,8 @@ if (existsSync(".env.local")) config({ path: ".env.local" });
 import { db } from "../src/lib/db";
 import { sql } from "drizzle-orm";
 
-async function createSchema() {
-  console.log("Creating database schema...");
+export async function createSchema() {
+  console.log("  Creating database tables...");
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "admin_users" (
@@ -224,11 +225,15 @@ async function createSchema() {
     )
   `);
 
-  console.log("Schema ready — all tables created (or already existed).");
-  process.exit(0);
+  console.log("  Database schema ready.");
 }
 
-createSchema().catch(err => {
-  console.error("Schema creation failed:", err);
-  process.exit(1);
-});
+// Standalone runner (npm run db:create)
+if (process.argv[1]?.endsWith("create-schema.ts") || process.argv[1]?.endsWith("create-schema.js")) {
+  createSchema()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error("Schema creation failed:", err);
+      process.exit(1);
+    });
+}

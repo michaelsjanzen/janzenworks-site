@@ -16,7 +16,8 @@
     "db:migrate": "npx tsx scripts/migrate-001-design-config-upsert.ts && npx tsx scripts/migrate-002-posts-indexes.ts && npx tsx scripts/migrate-003-ai-usage.ts",
     "db:studio": "drizzle-kit studio",
     "env:check": "npx tsx scripts/env-check.ts",
-    "predev": "npx tsx scripts/env-check.ts",
+    "replit:init": "npx tsx scripts/replit-init.ts",
+    "predev": "npx tsx scripts/replit-init.ts",
     "prepare": "husky || true"
   },
   "dependencies": {
