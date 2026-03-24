@@ -112,7 +112,6 @@ const ACTION_LABELS: Record<string, string> = {
   "headline-variants": "Headline Variants",
   "topic-report": "Topic Focus Report",
   "reading-level": "Reading Level",
-  "brief": "Content Brief",
 };
 
 const ACTION_INSTRUCTIONS: Record<string, string> = {
@@ -121,7 +120,6 @@ const ACTION_INSTRUCTIONS: Record<string, string> = {
   "headline-variants": "Use one of these as your H1 or article title to improve click-through rates. The curiosity variant works well for social; the utility variant performs better in search.",
   "topic-report": "A low score means your content is too broad or unfocused. Narrow the angle, add more depth on the main topic, or break it into multiple posts.",
   "reading-level": "Most blog content targets grade 7–9. Adjust your sentence length and vocabulary to match your audience. Use shorter sentences and active voice to simplify.",
-  "brief": "Use this as your writing roadmap before drafting. Accept the suggested title and excerpt into the fields above, then follow the outline as your structure.",
 };
 
 const SOCIAL_PLATFORMS: { id: string; label: string; limit: number }[] = [
@@ -208,9 +206,6 @@ export default function PostForm({
   const [moreAiPending, setMoreAiPending] = useState(false);
   const [moreAiResults, setMoreAiResults] = useState<Record<string, string>>({});
   const [runAllPending, setRunAllPending] = useState<Set<string>>(new Set());
-  const [briefFormOpen, setBriefFormOpen] = useState(false);
-  const [briefAudience, setBriefAudience] = useState("");
-  const [briefKeywords, setBriefKeywords] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [appliedKey, setAppliedKey] = useState<string | null>(null);
   const [socialPlatform, setSocialPlatform] = useState<string | null>(null);
@@ -402,22 +397,6 @@ export default function PostForm({
     const result = await callAi(type);
     setMoreAiPending(false);
     if (result) setMoreAiResults(prev => ({ ...prev, [type]: result }));
-  }
-
-  async function runBrief() {
-    setMoreAiPending(true);
-    setBriefFormOpen(false);
-    try {
-      const res = await fetch("/api/ai/suggest", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "brief", postTitle: title, audience: briefAudience, keywords: briefKeywords }),
-      });
-      const data = (await res.json()) as { result?: string; error?: string };
-      if (!res.ok) { setAiError(data.error ?? "AI request failed"); }
-      else if (data.result) { setMoreAiResults(prev => ({ ...prev, brief: data.result! })); }
-    } catch { setAiError("Network error — please try again."); }
-    setMoreAiPending(false);
   }
 
   const RUN_ALL_TOOLS = [
@@ -630,69 +609,6 @@ export default function PostForm({
             <p className="text-sm text-zinc-600">Grade {rl.gradeLevel} equivalent</p>
             <p className="text-sm text-zinc-600">{rl.note}</p>
             {rl.fit && <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${fitColor}`}>{rl.fit}</span>}
-          </div>
-        );
-      } else if (action === "brief") {
-        const brief = parseJson<{
-          suggestedTitle: string; angle: string; targetAudience: string;
-          recommendedWordCount: number; outline: string[]; keyPoints: string[];
-          anglesToAvoid: string[]; suggestedExcerpt: string;
-        }>(result);
-        content = (
-          <div className="space-y-4 text-sm">
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Suggested Title</p>
-              <p className="text-zinc-800 font-medium mb-1.5">{brief.suggestedTitle}</p>
-              <button type="button" onClick={() => applyTitle(brief.suggestedTitle, "brief-title")} className="text-xs text-zinc-700 hover:text-zinc-900 font-medium underline">
-                {appliedKey === "brief-title" ? "Applied ✓" : "Use as title"}
-              </button>
-            </div>
-            {[
-              { label: "Angle", value: brief.angle },
-              { label: "Target Audience", value: brief.targetAudience },
-              { label: "Recommended Word Count", value: `${brief.recommendedWordCount.toLocaleString()} words` },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">{label}</p>
-                <p className="text-zinc-700">{value}</p>
-              </div>
-            ))}
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Outline</p>
-              <ul className="space-y-0.5 mb-2">
-                {brief.outline.map((s, i) => (
-                  <li key={i} className="text-zinc-700 text-xs flex gap-1.5">
-                    <span className="text-zinc-300 shrink-0 font-mono">{i + 1}.</span>{s}
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                onClick={() => { insertOutline(brief.outline); markApplied("brief-outline"); }}
-                className="text-xs text-zinc-700 hover:text-zinc-900 font-medium underline"
-              >
-                {appliedKey === "brief-outline" ? "Inserted ✓" : "Insert outline into editor"}
-              </button>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Key Points</p>
-              <ul className="space-y-0.5">{brief.keyPoints.map((p, i) => <li key={i} className="text-zinc-700 text-xs flex gap-1.5"><span className="text-zinc-300 shrink-0">•</span>{p}</li>)}</ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Angles to Avoid</p>
-              <ul className="space-y-0.5">{brief.anglesToAvoid.map((a, i) => <li key={i} className="text-zinc-700 text-xs flex gap-1.5"><span className="text-red-300 shrink-0">✕</span>{a}</li>)}</ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Suggested Excerpt</p>
-              <p className="text-zinc-600 italic text-xs mb-1.5">{brief.suggestedExcerpt}</p>
-              <button
-                type="button"
-                onClick={() => { setExcerpt(brief.suggestedExcerpt); markApplied("brief-excerpt"); }}
-                className="text-xs text-zinc-700 hover:text-zinc-900 font-medium underline"
-              >
-                {appliedKey === "brief-excerpt" ? "Applied ✓" : "Use as excerpt"}
-              </button>
-            </div>
           </div>
         );
       } else {
@@ -1197,36 +1113,6 @@ export default function PostForm({
                   ) : "Run all"}
                 </button>
               </div>
-            </div>
-
-            {/* Content Brief */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-1.5">
-                <SectionLabel>Content Brief</SectionLabel>
-                <button
-                  type="button"
-                  disabled={moreAiPending || runAllPending.size > 0}
-                  onClick={() => setBriefFormOpen(o => !o)}
-                  className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 disabled:opacity-40 transition-colors"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Generate
-                </button>
-              </div>
-              <p className="text-xs text-zinc-600 mb-3">{ACTION_INSTRUCTIONS["brief"]}</p>
-              {briefFormOpen && (
-                <div className="space-y-2 mb-4">
-                  <input type="text" placeholder="Target audience (optional)" value={briefAudience} onChange={e => setBriefAudience(e.target.value)} className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm" />
-                  <input type="text" placeholder="Keywords, comma-separated (optional)" value={briefKeywords} onChange={e => setBriefKeywords(e.target.value)} className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm" />
-                  <div className="flex gap-2">
-                    <button type="button" onClick={runBrief} disabled={moreAiPending} className="text-xs px-3 py-1.5 rounded-lg bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] disabled:opacity-50 transition">Generate</button>
-                    <button type="button" onClick={() => setBriefFormOpen(false)} className="text-xs px-3 py-1.5 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition">Cancel</button>
-                  </div>
-                </div>
-              )}
-              {moreAiResults["brief"] && renderToolResult("brief", moreAiResults["brief"])}
             </div>
 
             {/* Meta Titles */}

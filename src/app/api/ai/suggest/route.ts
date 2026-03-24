@@ -9,7 +9,7 @@ import { getConfig } from "@/lib/config";
 import { checkAndIncrementAi } from "@/lib/rate-limit";
 
 type SuggestType = "excerpt" | "titles" | "categories" | "tags" | "aeo" | "keywords"
-  | "slug" | "meta-title" | "headline-variants" | "topic-report" | "reading-level" | "brief"
+  | "slug" | "meta-title" | "headline-variants" | "topic-report" | "reading-level"
   | "internal-links" | "tone-check" | "site-summary" | "site-faqs" | "refine-focus" | "social-post";
 
 function buildSystemPrompt(type: SuggestType, authorVoice: string, opts: { existingTags?: string[] } = {}): string {
@@ -56,19 +56,6 @@ Return ONLY valid JSON. No markdown fences, no explanation.`;
       return `You are an AEO expert. Given a site name and a sample of its published post titles, generate 4-6 frequently asked questions a visitor might ask about this site and its subject area. Each answer must be a complete, standalone sentence — no "See above" or "As mentioned". Return ONLY a JSON array: [{"q":"...","a":"..."}]. No markdown fences, no explanation outside the JSON.`;
     case "refine-focus":
       return `You are a content focus analyst. Identify up to 4 specific areas where the given blog post loses focus, goes off-topic, or dilutes the core message. For each issue, provide a concise actionable recommendation. Return ONLY a JSON array: [{"label":"brief issue title in 3-5 words","passage":"optional exact verbatim quote from the content, 20-100 characters","recommendation":"one actionable sentence"}]. If the post is well-focused, return []. No markdown fences, no explanation outside the JSON.`;
-    case "brief":
-      return `${voiceClause}You are an expert content strategist. Generate a structured content brief for a blog post. Return ONLY a JSON object with these exact fields:
-{
-  "suggestedTitle": "compelling working title",
-  "angle": "1-2 sentences: unique hook or perspective that differentiates this post",
-  "targetAudience": "specific description of the intended reader",
-  "recommendedWordCount": number (e.g. 1200),
-  "outline": ["H2: Section title", "H2: Section title", ...] (4-6 sections),
-  "keyPoints": ["specific point to cover", ...] (4-6 items),
-  "anglesToAvoid": ["competing angle or cliché to avoid", ...] (2-3 items),
-  "suggestedExcerpt": "compelling 1-2 sentence excerpt under 160 characters"
-}
-No markdown fences, no explanation outside the JSON.`;
     case "social-post":
       // Platform prompt is built in the special-case handler below; this branch is never reached.
       return "";
@@ -111,8 +98,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
   const { content, postTitle, type, postId, audience, keywords, existingTags, platform, aeoMeta } = bodyResult.data;
-  // slug, brief, and social-post only need the title/meta; all other types require content
-  if (!type || (type !== "slug" && type !== "brief" && type !== "social-post" && !content)) {
+  // slug and social-post only need the title/meta; all other types require content
+  if (!type || (type !== "slug" && type !== "social-post" && !content)) {
     return NextResponse.json({ error: "content and type are required" }, { status: 400 });
   }
 
@@ -253,13 +240,7 @@ No markdown fences. No explanation outside the JSON. Only suggest posts that are
   const systemPrompt = buildSystemPrompt(type as SuggestType, authorVoice, { existingTags });
   const userPrompt = type === "slug"
     ? `Post title: "${postTitle ?? ""}"`
-    : type === "brief"
-      ? [
-          `Topic: "${postTitle ?? ""}"`,
-          audience ? `Target audience: "${audience}"` : "",
-          keywords ? `Keywords: "${keywords}"` : "",
-        ].filter(Boolean).join("\n")
-      : postTitle
+    : postTitle
         ? `Post title: "${postTitle}"\n\nPost content:\n${content}`
         : `Post content:\n${content}`;
 
