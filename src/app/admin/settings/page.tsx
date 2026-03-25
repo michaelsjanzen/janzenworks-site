@@ -40,6 +40,7 @@ export default async function SiteIdentityPage({ searchParams }: { searchParams:
     });
     revalidatePath("/", "layout");
     revalidatePath("/admin/settings");
+    revalidatePath("/admin");
     redirect("/admin/settings?toast=saved");
   }
 

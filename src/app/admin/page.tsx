@@ -152,7 +152,7 @@ export default async function AdminDashboard() {
       label: "Set your author voice",
       description: "Add a writing style description so AI suggestions match your tone.",
       done: anyAuthorVoice.length > 0,
-      href: "/admin/users",
+      href: "/admin/profile",
     },
     {
       label: "Customize your design",

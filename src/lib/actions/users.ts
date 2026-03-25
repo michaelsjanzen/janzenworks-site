@@ -171,6 +171,7 @@ export async function saveAuthorVoice(formData: FormData) {
 
   auditLog({ action: "user.update", userId: user.id, detail: "Updated Author's Voice" });
   revalidatePath("/admin/profile");
+  revalidatePath("/admin");
   redirect("/admin/profile?toast=saved");
 }
 
@@ -185,6 +186,7 @@ export async function saveUserAuthorVoice(targetId: string, formData: FormData) 
     .where(eq(adminUsers.id, targetId));
 
   revalidatePath(`/admin/users/${targetId}/edit`);
+  revalidatePath("/admin");
   redirect(`/admin/users/${targetId}/edit?toast=saved`);
 }
 
