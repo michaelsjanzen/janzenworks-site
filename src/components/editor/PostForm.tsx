@@ -137,7 +137,12 @@ function calcAeoHealth(aeo: AeoMetadata) {
   return { score, items };
 }
 
-function AeoHealthPanel({ aeo }: { aeo: AeoMetadata }) {
+function AeoHealthPanel({ aeo, aiEnabled, onGenerateAll, generating }: {
+  aeo: AeoMetadata;
+  aiEnabled: boolean;
+  onGenerateAll?: () => void;
+  generating?: boolean;
+}) {
   const { score, items } = calcAeoHealth(aeo);
   const grade    = score >= 90 ? "Excellent" : score >= 70 ? "Good" : score >= 40 ? "Fair" : "Poor";
   const barCls   = score >= 90 ? "bg-green-500" : score >= 70 ? "bg-blue-500" : score >= 40 ? "bg-amber-400" : "bg-red-400";
@@ -172,6 +177,26 @@ function AeoHealthPanel({ aeo }: { aeo: AeoMetadata }) {
           </li>
         ))}
       </ul>
+      {aiEnabled && onGenerateAll && (
+        <div className="mt-4 pt-3 border-t border-zinc-100">
+          <button
+            type="button"
+            onClick={onGenerateAll}
+            disabled={generating}
+            className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed transition-colors ${
+              generating
+                ? "btn-processing text-white border border-transparent"
+                : "bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40"
+            }`}
+          >
+            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            {generating ? "Generating…" : "Generate All AEO Metadata"}
+          </button>
+          <p className="text-[11px] text-zinc-400 mt-1.5 text-center leading-relaxed">Fills excerpt, slug, categories, tags, and AEO in one shot.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -937,7 +962,12 @@ export default function PostForm({
         {/* Right column — AEO health + images, sticky on desktop */}
         <div className="shrink-0 lg:flex-[1] lg:sticky lg:top-[52px] lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
 
-        <AeoHealthPanel aeo={aeoMeta} />
+        <AeoHealthPanel
+          aeo={aeoMeta}
+          aiEnabled={aiEnabled}
+          onGenerateAll={handleGenerateAll}
+          generating={pendingAction === "generate-all"}
+        />
 
         {/* Image panel card */}
         <div className="bg-white border border-zinc-200 rounded-lg p-3 flex flex-col gap-3">
@@ -1031,30 +1061,6 @@ export default function PostForm({
           />
         </div>
 
-        {/* Generate All AEO Metadata */}
-        {aiEnabled && (
-          <div className="bg-white border border-zinc-200 rounded-lg px-6 py-4 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-zinc-800">Generate all metadata</p>
-              <p className="text-xs text-zinc-400 mt-0.5">Fills excerpt, slug, categories, tags, and AEO in one shot.</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleGenerateAll}
-              disabled={!!pendingAction}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed shrink-0 transition-colors ${
-                pendingAction === "generate-all"
-                  ? "btn-processing text-white border border-transparent"
-                  : "bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40"
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              {pendingAction === "generate-all" ? "Generating…" : "Generate All AEO Metadata"}
-            </button>
-          </div>
-        )}
 
         {/* AI usage meter */}
         {aiEnabled && (() => {
