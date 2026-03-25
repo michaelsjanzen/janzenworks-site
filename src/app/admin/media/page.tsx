@@ -11,13 +11,23 @@ export default async function MediaPage() {
   const [allMedia, [{ total }], usedRows] = await Promise.all([
     db.select().from(media).orderBy(desc(media.createdAt)).limit(PAGE_SIZE),
     db.select({ total: sql<number>`count(*)::int` }).from(media),
-    // IDs referenced as a featured image OR embedded in any post's content body
+    // IDs in use: featured image, post content body, site config, or design tokens
     db.execute(sql`
       SELECT DISTINCT m.id
       FROM media m
-      INNER JOIN posts p
-        ON p.featured_image = m.id
-        OR p.content ILIKE '%' || m.url || '%'
+      WHERE EXISTS (
+        SELECT 1 FROM posts p
+        WHERE p.featured_image = m.id
+           OR p.content ILIKE '%' || m.url || '%'
+      )
+      OR EXISTS (
+        SELECT 1 FROM site_config sc
+        WHERE sc.config::text ILIKE '%' || m.url || '%'
+      )
+      OR EXISTS (
+        SELECT 1 FROM theme_design_configs tdc
+        WHERE tdc.config::text ILIKE '%' || m.url || '%'
+      )
     `),
   ]);
 
