@@ -194,6 +194,7 @@ export default function PostForm({
   const [titleSuggestions, setTitleSuggestions] = useState<string[] | null>(null);
   const [refineResult, setRefineResult] = useState<string | null>(null);
   const [refineFocusResult, setRefineFocusResult] = useState<Array<{ label: string; passage?: string; recommendation: string }> | null>(null);
+  const [dismissedIssues, setDismissedIssues] = useState<Set<number>>(new Set());
   const [toneItems, setToneItems] = useState<Array<{ quote: string; issue: string; suggestion: string }> | null>(null);
   const [catSuggestions, setCatSuggestions] = useState<string[] | null>(null);
   const [tagSuggestions, setTagSuggestions] = useState<string[] | null>(null);
@@ -291,6 +292,7 @@ export default function PostForm({
 
   async function handleRefineFocus() {
     setRefineFocusResult(null);
+    setDismissedIssues(new Set());
     setPendingAction("refine-focus");
     const result = await callAi("refine-focus");
     setPendingAction(null);
@@ -519,23 +521,15 @@ export default function PostForm({
             </div>
             <p className="text-sm text-zinc-600">{report.note}</p>
             {report.score < 5 && (
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleSuggestTitles}
-                  disabled={!!pendingAction}
-                  className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Suggest Titles
-                </button>
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={handleRefineFocus}
                   disabled={!!pendingAction}
-                  className={`inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border text-white disabled:cursor-not-allowed transition-colors ${
+                  className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all disabled:cursor-not-allowed ${
                     pendingAction === "refine-focus"
-                      ? "btn-processing border-transparent"
-                      : "bg-zinc-800 border-zinc-800 hover:bg-zinc-700 disabled:opacity-40"
+                      ? "btn-processing border-transparent text-white"
+                      : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
                   }`}
                 >
                   {pendingAction === "refine-focus" ? "Analyzing…" : "Refine Focus"}
@@ -579,26 +573,33 @@ export default function PostForm({
   function RunBtn({ tool, label }: { tool: string; label: string }) {
     const running = runAllPending.has(tool) || (moreAiPending && !runAllPending.size);
     const done = !!moreAiResults[tool];
+    const isSpinning = runAllPending.has(tool);
     return (
       <button
         type="button"
         disabled={moreAiPending || runAllPending.size > 0}
         onClick={() => runMoreAi(tool)}
-        className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all disabled:cursor-not-allowed
+          ${isSpinning
+            ? "bg-violet-600 border-violet-600 text-white"
+            : done
+              ? "bg-violet-50 border-violet-200 text-violet-500"
+              : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
+          }`}
       >
-        {runAllPending.has(tool) ? (
+        {isSpinning ? (
           <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
         ) : done ? (
-          <span className="text-green-500">✓</span>
+          <span>✓</span>
         ) : (
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         )}
-        {running && !runAllPending.has(tool) ? "Running…" : label}
+        {running && !isSpinning ? "Running…" : label}
       </button>
     );
   }
@@ -961,10 +962,10 @@ export default function PostForm({
               type="button"
               onClick={handleGenerateAll}
               disabled={!!pendingAction}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-medium disabled:cursor-not-allowed shrink-0 transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium disabled:cursor-not-allowed shrink-0 transition-colors ${
                 pendingAction === "generate-all"
-                  ? "btn-processing"
-                  : "bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40"
+                  ? "btn-processing text-white border border-transparent"
+                  : "bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40"
               }`}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1033,7 +1034,11 @@ export default function PostForm({
                   type="button"
                   disabled={runAllPending.size > 0}
                   onClick={handleRunAll}
-                  className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all disabled:cursor-not-allowed ${
+                    runAllPending.size > 0
+                      ? "bg-violet-600 border-violet-600 text-white"
+                      : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
+                  }`}
                 >
                   {runAllPending.size > 0 ? (
                     <>
@@ -1061,17 +1066,52 @@ export default function PostForm({
               )}
               {refineFocusResult && refineFocusResult.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  {refineFocusResult.map((issue, i) => (
-                    <div key={i} className="p-3 bg-amber-50 border-l-2 border-amber-400 rounded-r">
-                      <p className="text-xs font-semibold text-zinc-800">{issue.label}</p>
-                      {issue.passage && (
-                        <p className="text-xs text-zinc-500 italic mt-0.5">&ldquo;{issue.passage}&rdquo;</p>
-                      )}
-                      <p className="text-xs text-zinc-700 mt-1">{issue.recommendation}</p>
-                    </div>
-                  ))}
-                  <button type="button" onClick={() => setRefineFocusResult(null)} className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors">
-                    Dismiss
+                  {refineFocusResult.map((issue, i) => {
+                    if (dismissedIssues.has(i)) return null;
+                    return (
+                      <div key={i} className="p-3 bg-amber-50 border-l-2 border-amber-400 rounded-r">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-semibold text-zinc-800">{issue.label}</p>
+                          <button
+                            type="button"
+                            onClick={() => setDismissedIssues(prev => new Set([...prev, i]))}
+                            className="text-zinc-300 hover:text-zinc-500 transition-colors shrink-0 mt-0.5"
+                            title="Mark as done"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                        </div>
+                        {issue.passage && (
+                          <div className="flex items-start gap-2 mt-1">
+                            <p className="text-xs text-zinc-500 italic flex-1">&ldquo;{issue.passage}&rdquo;</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const found = editorRef.current?.scrollToText(issue.passage!);
+                                if (!found) navigator.clipboard.writeText(issue.passage!);
+                              }}
+                              className="text-xs text-violet-500 hover:text-violet-700 font-medium shrink-0 transition-colors"
+                              title="Find in editor"
+                            >
+                              Find
+                            </button>
+                          </div>
+                        )}
+                        <p className="text-xs text-zinc-700 mt-1.5 font-medium">Fix: {issue.recommendation}</p>
+                      </div>
+                    );
+                  })}
+                  {refineFocusResult.every((_, i) => dismissedIssues.has(i)) && (
+                    <p className="text-xs text-green-600 font-medium">All issues addressed.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setRefineFocusResult(null); setDismissedIssues(new Set()); }}
+                    className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                  >
+                    Dismiss all
                   </button>
                 </div>
               )}

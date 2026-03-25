@@ -11,6 +11,7 @@ export interface MarkdownEditorHandle {
   setContent: (value: string) => void;
   getContent: () => string;
   insertImage: (url: string, alt: string) => void;
+  scrollToText: (text: string) => boolean;
 }
 
 interface MediaItem { id: number; url: string; fileName: string; }
@@ -176,6 +177,20 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function Markdown
     insertImage(url: string, alt: string) {
       if (!editor) return;
       editor.chain().focus().setImage({ src: url, alt }).run();
+    },
+    scrollToText(text: string): boolean {
+      if (!editor || !text) return false;
+      let found = false;
+      editor.state.doc.descendants((node, pos) => {
+        if (found || !node.isText || !node.text) return;
+        const idx = node.text.indexOf(text);
+        if (idx === -1) return;
+        const from = pos + idx;
+        const to = from + text.length;
+        editor.chain().focus().setTextSelection({ from, to }).scrollIntoView().run();
+        found = true;
+      });
+      return found;
     },
   }));
 
