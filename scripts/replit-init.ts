@@ -99,6 +99,13 @@ async function main() {
     configured.push("NEXTAUTH_SECRET");
   }
 
+  if (!getVar("AI_ENCRYPTION_KEY", envMap)) {
+    const key = crypto.randomBytes(32).toString("hex");
+    envMap.set("AI_ENCRYPTION_KEY", key);
+    process.env.AI_ENCRYPTION_KEY = key;
+    configured.push("AI_ENCRYPTION_KEY");
+  }
+
   if (!getVar("NEXTAUTH_URL", envMap)) {
     // REPLIT_DEV_DOMAIN is the current env var; fall back to REPL_SLUG + REPL_OWNER
     const domain =

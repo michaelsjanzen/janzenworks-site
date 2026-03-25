@@ -195,6 +195,13 @@ Pugmill uses environment variables for all secrets. See `.env.example` for the f
 - **Local dev:** Copy `.env.example` → `.env.local` and fill in values
 - **Self-hosted / Other AI IDEs:** Use [Doppler](https://doppler.com) or [Infisical](https://infisical.com)
 
+#### Replit / Fresh Container Install Note
+If `npm install` fails with `ENOTEMPTY: directory not empty, rmdir 'node_modules/@swc/helpers/_'`, this is a known npm/SWC interoperability bug triggered by a partial prior install. Workaround:
+```bash
+npm install --prefer-offline
+```
+If that also fails, clear the stale directory first: `rm -rf node_modules/@swc/helpers` then retry `npm install`.
+
 #### First-Run Setup
 ```bash
 npm install             # husky || true — safe in CI/Replit/Docker

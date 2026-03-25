@@ -56,7 +56,9 @@ export default async function SiteIdentityPage({ searchParams }: { searchParams:
               {config.site.url}
             </p>
             <p className="text-xs text-zinc-400 mt-1">
-              Set via the <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> environment variable.
+              Set via the <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> environment variable — not editable here for security reasons.
+              Before going live with a custom domain, update <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> to your production URL (e.g. <code className="bg-zinc-100 px-1 rounded">https://yourdomain.com</code>).
+              Ask your AI agent to update it in your host&apos;s environment/secrets panel, or do it manually before you deploy.
             </p>
           </div>
           <MediaUrlPicker
