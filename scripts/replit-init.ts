@@ -10,10 +10,18 @@
  *   3. Auto-detects  NEXTAUTH_URL      (from REPLIT_DEV_DOMAIN / REPL_SLUG)
  *   4. Creates all database tables     (IF NOT EXISTS — never drops)
  *   5. Seeds admin user and default content (skipped if already present)
- *   6. Prints credentials clearly
+ *   6. Writes setup-credentials.json  (read by /admin/login, deleted on first sign-in)
+ *   7. Prints credentials clearly
+ *   8. Writes .replit-setup-complete  (sentinel — skips this script on future restarts)
  *
  * On non-Replit environments: exits immediately (no-op).
- * Run manually: npm run replit:init
+ * Run manually: npm run replit:init  (bypasses the sentinel)
+ *
+ * To force a re-run after initial setup: delete .replit-setup-complete, then
+ * run `npm run replit:init`.
+ *
+ * NOTE FOR AI AGENTS: Read AGENT.md at the project root before making changes.
+ * It contains architectural rules that apply to all automated work on this repo.
  */
 
 import crypto from "crypto";
@@ -31,8 +39,17 @@ if (!isReplit) {
   process.exit(0);
 }
 
-// ─── .env.local helpers ───────────────────────────────────────────────────────
+// ─── Sentinel: skip on subsequent restarts unless forced ─────────────────────
 const ROOT = process.cwd();
+const SENTINEL = path.join(ROOT, ".replit-setup-complete");
+const isForced = process.env.REPLIT_REINIT === "1";
+
+if (!isForced && existsSync(SENTINEL)) {
+  // Already set up — fast exit so `npm run dev` restarts stay snappy
+  process.exit(0);
+}
+
+// ─── .env.local helpers ───────────────────────────────────────────────────────
 const ENV_LOCAL = path.join(ROOT, ".env.local");
 
 function readEnvLocal(): Map<string, string> {
@@ -157,8 +174,13 @@ async function main() {
       const w2  = words[crypto.randomInt(words.length)];
       const num = crypto.randomInt(1000, 9999);
       password     = `${w1}-${w2}-${num}`;
-      passwordNote = "(auto-generated — save this now)";
+      passwordNote = "(auto-generated)";
     }
+
+    // ── Write credentials file BEFORE hashing — survives any later crash ──────
+    const CREDS_FILE = path.join(ROOT, "setup-credentials.json");
+    writeFileSync(CREDS_FILE, JSON.stringify({ email, password }, null, 2) + "\n");
+    console.log("  Credentials saved to setup-credentials.json (shown on login page, deleted after first sign-in)");
 
     const passwordHash = await bcrypt.default.hash(password, 12);
 
@@ -174,11 +196,13 @@ async function main() {
     const [admin] = await db.select().from(adminUsers).limit(1);
     await seedDefaultContent(admin.id);
 
-    // Print credentials
+    // ── Print credentials to console ─────────────────────────────────────────
+    // Fixed: Math.max(0, ...) prevents negative repeat count when strings are
+    // longer than the calculated box width (was crashing with "Invalid count").
     const maxLen = Math.max(email.length, password.length, 34);
     const w      = maxLen + 2;
     const line   = "─".repeat(w + 2);
-    const pad    = (s: string) => s + " ".repeat(w + 2 - s.length);
+    const pad    = (s: string) => s + " ".repeat(Math.max(0, w + 2 - s.length));
 
     console.log(`\n  ┌${line}┐`);
     console.log(`  │ ${pad("Admin credentials " + passwordNote)} │`);
@@ -187,8 +211,12 @@ async function main() {
     console.log(`  │ ${pad("  Password: " + password)} │`);
     console.log(`  │ ${pad("")} │`);
     console.log(`  │ ${pad("  Sign in at /admin/login")} │`);
+    console.log(`  │ ${pad("  Credentials also shown on the login page.")} │`);
     console.log(`  └${line}┘\n`);
   }
+
+  // ── Step 5: Write sentinel so future `npm run dev` restarts skip this ───────
+  writeFileSync(SENTINEL, new Date().toISOString() + "\n");
 
   console.log("Setup complete — starting server...\n");
   process.exit(0);

@@ -4,6 +4,8 @@ import { getAllPlugins } from "@/lib/plugin-registry";
 import { getUnreadCountsByPlugin } from "@/lib/notifications";
 import { loadPlugins } from "@/lib/plugin-loader";
 import AdminShell from "@/components/admin/AdminShell";
+import { existsSync, unlinkSync } from "fs";
+import path from "path";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -13,6 +15,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // and provides defence-in-depth if middleware is bypassed.
   if (!user) {
     return <>{children}</>;
+  }
+
+  // First-login cleanup: delete the setup-credentials.json file written by
+  // replit-init. Runs on every authenticated admin request but is a fast
+  // no-op once the file is gone.
+  try {
+    const credsFile = path.join(process.cwd(), "setup-credentials.json");
+    if (existsSync(credsFile)) unlinkSync(credsFile);
+  } catch {
+    // Non-fatal — file may already be deleted or filesystem may be read-only
   }
 
   const [config, badges] = await Promise.all([

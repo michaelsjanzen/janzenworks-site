@@ -13,10 +13,10 @@
     "db:push": "drizzle-kit push --force",
     "db:create": "npx tsx scripts/create-schema.ts",
     "db:init": "npm run db:create && npm run setup",
-    "db:migrate": "npx tsx scripts/migrate-001-design-config-upsert.ts && npx tsx scripts/migrate-002-posts-indexes.ts && npx tsx scripts/migrate-003-ai-usage.ts",
+    "db:migrate": "npx tsx scripts/migrate-001-design-config-upsert.ts && npx tsx scripts/migrate-002-featured-post.ts && npx tsx scripts/migrate-002-posts-indexes.ts && npx tsx scripts/migrate-003-ai-usage.ts",
     "db:studio": "drizzle-kit studio",
     "env:check": "npx tsx scripts/env-check.ts",
-    "replit:init": "npx tsx scripts/replit-init.ts",
+    "replit:init": "REPLIT_REINIT=1 npx tsx scripts/replit-init.ts",
     "predev": "npx tsx scripts/replit-init.ts",
     "prepare": "husky || true"
   },

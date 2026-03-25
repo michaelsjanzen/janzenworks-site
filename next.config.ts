@@ -55,6 +55,11 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "52mb",
     },
+    turbopack: {
+      // Explicitly set the project root to prevent Turbopack from misdetecting
+      // src/app as the workspace root (known Next.js 16 beta bug).
+      root: process.cwd(),
+    },
   },
 
   async headers() {

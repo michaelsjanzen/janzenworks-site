@@ -33,9 +33,10 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const selectedCategoryIds = currentCategories.map(pc => pc.categoryId);
   const selectedTagIds = currentTags.map(pt => pt.tagId);
 
-  const publishDate = post.publishedAt ?? new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  const defaultPublishAt = `${publishDate.getFullYear()}-${pad(publishDate.getMonth() + 1)}-${pad(publishDate.getDate())}T${pad(publishDate.getHours())}:${pad(publishDate.getMinutes())}`;
+  const defaultPublishAt = post.publishedAt
+    ? `${post.publishedAt.getFullYear()}-${pad(post.publishedAt.getMonth() + 1)}-${pad(post.publishedAt.getDate())}T${pad(post.publishedAt.getHours())}:${pad(post.publishedAt.getMinutes())}`
+    : "";
 
   const featuredMediaRecord = post.featuredImage
     ? allMedia.find(m => m.id === post.featuredImage) ?? null

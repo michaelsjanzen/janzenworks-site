@@ -70,6 +70,11 @@ web_modules/
 .env.*
 !.env.example
 
+# Pugmill first-run setup credentials (written by replit-init, deleted on first login)
+setup-credentials.json
+# Replit setup sentinel — skip replit-init on subsequent restarts (delete to re-run)
+.replit-setup-complete
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

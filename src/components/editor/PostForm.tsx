@@ -798,6 +798,11 @@ export default function PostForm({
                   onChange={e => setPublishAt(e.target.value)}
                   className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm bg-white text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400"
                 />
+                {isScheduled && (
+                  <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                    Scheduled publishing requires a cron job. Works automatically on Vercel — on other hosts, call <code className="bg-zinc-100 px-0.5 rounded">/api/cron/publish-scheduled</code> on a regular interval.
+                  </p>
+                )}
               )}
             </div>
           </div>

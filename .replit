@@ -20,7 +20,7 @@ pattern = "**/*.{ts,tsx}"
 start = "typescript-language-server --stdio"
 
 [webserver]
-port = 3000
+port = 5000
 
 # ─── Required Secrets ────────────────────────────────────────────────────────
 # DATABASE_URL is provided automatically by Replit's PostgreSQL integration.
@@ -49,3 +49,4 @@ command = "npm run db:studio"
 [env]
 NODE_ENV = "development"
 NEXT_TELEMETRY_DISABLED = "1"
+PORT = "5000"
