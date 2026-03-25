@@ -184,15 +184,17 @@ No markdown fences. No explanation outside the JSON. Only suggest posts that are
   if (type === "social-post") {
     const plat = (platform ?? "LinkedIn").trim();
 
-    const platformGuide: Record<string, string> = {
-      LinkedIn: "Write for LinkedIn. Professional tone, insight-forward, 2-4 short paragraphs. Max 3000 characters. No hashtag spam — 2-3 relevant hashtags max at the end.",
-      X:        "Write for X (formerly Twitter). Punchy and direct. One concise insight or hook — lead with the strongest line. Max 280 characters. No hashtags unless they add real value.",
-      Facebook: "Write for Facebook. Conversational and approachable. 2-3 short paragraphs with a question or call-to-action at the end. Max 500 characters.",
-      Substack: "Write for a Substack Notes post. Thoughtful and personal, like a note to readers. 2-4 paragraphs. Max 800 characters. No hashtags.",
+    const platformGuide: Record<string, { prompt: string; limit: number }> = {
+      LinkedIn: { limit: 3000, prompt: "Professional tone, insight-forward, 2-4 short paragraphs. No hashtag spam — 2-3 relevant hashtags max at the end." },
+      X:        { limit: 280,  prompt: "Punchy and direct. One concise insight or hook — lead with the strongest line. No hashtags unless they add real value." },
+      Facebook: { limit: 500,  prompt: "Conversational and approachable. 2-3 short paragraphs with a question or call-to-action at the end." },
+      Substack: { limit: 800,  prompt: "Thoughtful and personal, like a note to readers. 2-4 short paragraphs. No hashtags." },
     };
-    const guide = platformGuide[plat] ?? `Write a social post for ${plat}. Be engaging and concise.`;
+    const platConfig = platformGuide[plat];
+    const charLimit = platConfig?.limit ?? 500;
+    const platPrompt = platConfig?.prompt ?? "Be engaging and concise.";
 
-    const systemPrompt = `You are a social media copywriter. ${guide} Return ONLY the post text, ready to copy and paste. No commentary, no labels, no markdown formatting.`;
+    const systemPrompt = `You are a social media copywriter writing a post for ${plat}. ${platPrompt} HARD LIMIT: your response MUST be under ${charLimit} characters total — count carefully before responding. Return ONLY the post text, ready to copy and paste. No commentary, no labels, no markdown formatting.`;
 
     // Build user prompt — prefer AEO metadata over raw content
     let userPrompt = "";
