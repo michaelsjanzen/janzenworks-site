@@ -47,6 +47,5 @@ command = "npm run db:studio"
 
 # ─── Environment ──────────────────────────────────────────────────────────────
 [env]
-NODE_ENV = "development"
 NEXT_TELEMETRY_DISABLED = "1"
 PORT = "5000"
