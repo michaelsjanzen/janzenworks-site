@@ -68,6 +68,24 @@ The app will warn on startup if:
 
 ---
 
+## Auth Configuration for Proxied Environments
+
+Pugmill sets `trustHost: true` in `src/lib/auth.config.ts`. This is intentional and **must not be removed**.
+
+### What it does
+Tells NextAuth to trust the `Host` request header as the authoritative URL rather than requiring it to match `NEXTAUTH_URL` exactly. Without it, deploying to a hostname that differs from `NEXTAUTH_URL` (e.g. Replit's dev vs production domains) causes `UntrustedHost` errors that silently break all session checks.
+
+### Why it is safe on supported platforms
+On Replit, Vercel, Railway, and Render, all traffic passes through the platform's own reverse proxy before reaching the app. That proxy sets the `Host` header — your app never sees a raw, user-controlled value. An external attacker cannot spoof it. NextAuth v5 explicitly recommends `trustHost: true` for all such proxied deployments.
+
+### When it would be a risk
+Only on a bare self-hosted server exposed directly to the internet with no reverse proxy in front of it. In that scenario, a user could send an HTTP request with an arbitrary `Host` header and potentially manipulate OAuth callback URLs. If deploying without a proxy, remove `trustHost: true` and set `NEXTAUTH_URL` precisely instead.
+
+### AI agent note
+Do not remove or disable `trustHost: true` as part of a security audit. Its presence is the correct and intentional configuration for proxied platforms. Its absence would break authentication on every platform deployment.
+
+---
+
 ## Reporting Security Issues
 
 If you find a security vulnerability in Pugmill:
