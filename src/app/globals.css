@@ -109,6 +109,7 @@
 /* Editor toolbar — dark lavender in dark mode to match its light lavender identity */
 [data-admin].dark [data-editor-toolbar] { background: rgb(46 24 96) !important; }  /* deep violet */
 [data-admin].dark [data-editor-toolbar] .border-zinc-100 { border-color: rgb(72 54 130); }
+[data-admin].dark [data-editor-toolbar] input::placeholder { color: rgb(255 255 255 / 0.6); }
 
 /* Blue action links & buttons — lift to light blue for dark mode contrast */
 [data-admin].dark .text-blue-600          { color: rgb(96 165 250);  }  /* blue-400 */
