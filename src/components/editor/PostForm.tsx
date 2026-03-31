@@ -715,6 +715,7 @@ export default function PostForm({
 
   return (
     <div
+      data-editor
       className={`-mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 sm:pt-6 transition-colors duration-500 ${isDirty ? "bg-amber-50" : "bg-zinc-50"}`}
       onChange={() => { if (!isDirty) setIsDirty(true); }}
     >
