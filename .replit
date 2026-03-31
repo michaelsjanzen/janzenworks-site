@@ -21,6 +21,7 @@ start = "typescript-language-server --stdio"
 
 [webserver]
 port = 5000
+initialURL = "/admin/login"
 
 # ─── Required Secrets ────────────────────────────────────────────────────────
 # DATABASE_URL is provided automatically by Replit's PostgreSQL integration.
@@ -49,3 +50,4 @@ command = "npm run db:studio"
 [env]
 NEXT_TELEMETRY_DISABLED = "1"
 PORT = "5000"
+HUSKY = "0"

@@ -37,7 +37,7 @@
     ]
   },
   "modules": {
-    "activePlugins": ["default-widgets", "contact-form"]
+    "activePlugins": ["default-widgets", "contact-form", "bot-analytics"]
   },
   "system": {
     "version": "0.1.0",
