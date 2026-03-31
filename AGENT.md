@@ -250,6 +250,30 @@ For **existing deployments** after a schema update:
 npm run db:migrate      # Run incremental migration scripts
 ```
 
+#### Deploying to Production
+
+Two steps are required before a production deployment works correctly:
+
+**1. Set `NEXTAUTH_URL` to the production domain.**
+
+Add it as an environment secret before deploying:
+
+```env
+NEXTAUTH_URL=https://your-domain.com
+```
+
+Without this, NextAuth redirects and OAuth callbacks will target the wrong host. Auto-detection from platform env vars (`REPLIT_DEV_DOMAIN`, etc.) resolves the dev domain, not the production domain — do not rely on it for a custom domain.
+
+**2. Run database migrations after deploying schema changes.**
+
+The production database is separate from dev. After any schema update (new columns, new tables), run migrations against the production database:
+
+```bash
+npm run db:migrate
+```
+
+On a brand-new production deploy, `npm run start` automatically runs `replit-init.ts` via the `prestart` hook — this creates the schema and seeds the admin account. Migrations are only needed when pulling updates to an existing production install.
+
 #### Generating a Strong NEXTAUTH_SECRET
 
 ```bash

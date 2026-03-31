@@ -121,6 +121,32 @@ The admin dashboard is at [http://localhost:3000/admin](http://localhost:3000/ad
 
 ---
 
+## Deploying to Production
+
+Two steps are required before a production deployment works correctly.
+
+### 1. Set `NEXTAUTH_URL` to your production domain
+
+Add it as an environment variable or secret before deploying:
+
+```env
+NEXTAUTH_URL=https://your-domain.com
+```
+
+Without this, NextAuth redirects and OAuth callbacks will target the wrong host. Do not rely on auto-detection for a custom domain.
+
+### 2. Run database migrations on existing installs
+
+The production database is separate from dev. After pulling updates that include schema changes, run:
+
+```bash
+npm run db:migrate
+```
+
+On a **fresh** production deploy, `npm run start` handles first-run setup automatically via the `prestart` hook — schema creation and admin account seeding happen before the server boots. Your admin credentials will appear in the deployment logs.
+
+---
+
 ## Project Structure
 
 ```
