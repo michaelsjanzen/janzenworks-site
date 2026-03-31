@@ -107,7 +107,7 @@
 }
 
 /* Editor toolbar — dark lavender in dark mode to match its light lavender identity */
-[data-admin].dark [data-editor-toolbar] { background: rgb(46 24 96) !important; }  /* deep violet */
+[data-admin].dark [data-editor-toolbar] { background: rgb(18 12 30) !important; }  /* near-black purple */
 [data-admin].dark [data-editor-toolbar] .border-zinc-100 { border-color: rgb(72 54 130); }
 [data-admin].dark [data-editor-toolbar] input::placeholder { color: rgb(255 255 255 / 0.6); }
 
