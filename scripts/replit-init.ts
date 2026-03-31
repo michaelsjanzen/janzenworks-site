@@ -148,7 +148,7 @@ async function main() {
   console.log("Running migrations...");
   const { execSync } = await import("child_process");
   try {
-    execSync("npx tsx scripts/run-migrations.ts", {
+    execSync("tsx scripts/run-migrations.ts", {
       stdio: "inherit",
       env: { ...process.env },
     });

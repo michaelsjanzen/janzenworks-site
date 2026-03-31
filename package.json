@@ -11,13 +11,13 @@
     "lint": "next lint",
     "setup": "npx tsx scripts/setup.ts",
     "db:push": "drizzle-kit push --force",
-    "db:create": "npx tsx scripts/create-schema.ts",
+    "db:create": "tsx scripts/create-schema.ts",
     "db:init": "npm run db:create && npm run setup",
-    "db:migrate": "npx tsx --env-file=.env.local scripts/run-migrations.ts",
+    "db:migrate": "tsx --env-file=.env.local scripts/run-migrations.ts",
     "db:studio": "drizzle-kit studio",
-    "env:check": "npx tsx scripts/env-check.ts",
-    "replit:init": "REPLIT_REINIT=1 npx tsx scripts/replit-init.ts",
-    "predev": "npx tsx scripts/replit-init.ts",
+    "env:check": "tsx scripts/env-check.ts",
+    "replit:init": "REPLIT_REINIT=1 tsx scripts/replit-init.ts",
+    "predev": "tsx scripts/replit-init.ts",
     "prepare": "husky 2>/dev/null || true"
   },
   "dependencies": {
@@ -70,6 +70,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.0",
+    "tsx": "^4.21.0",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.0"
   }
