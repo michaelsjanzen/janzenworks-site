@@ -3,6 +3,7 @@ import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { existsSync, readFileSync } from "fs";
 import path from "path";
+import { getCurrentUser } from "@/lib/get-current-user";
 
 function readSetupCredentials(): { email: string; password: string } | null {
   try {
@@ -24,6 +25,9 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
+  const existingUser = await getCurrentUser();
+  if (existingUser) redirect("/admin");
+
   const params = await searchParams;
   const error = params?.error;
   const setupCreds = readSetupCredentials();
