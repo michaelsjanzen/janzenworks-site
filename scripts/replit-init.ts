@@ -2,17 +2,20 @@
  * replit-init.ts
  *
  * First-run setup wizard for Replit deployments. Idempotent — safe to run
- * on every `npm run dev` (it skips steps that are already done).
+ * on every `npm run dev` or `npm run start`.
  *
  * What it does:
  *   1. Checks DATABASE_URL is available (provided by Replit's PostgreSQL module)
  *   2. Auto-generates NEXTAUTH_SECRET  (writes to .env.local)
- *   3. Auto-detects  NEXTAUTH_URL      (from REPLIT_DEV_DOMAIN / REPL_SLUG)
+ *   3. Dev:  auto-detects NEXTAUTH_URL from REPLIT_DEV_DOMAIN; prompts for PRODUCTION_URL
+ *      Prod: uses PRODUCTION_URL as NEXTAUTH_URL
  *   4. Creates all database tables     (IF NOT EXISTS — never drops)
- *   5. Seeds admin user and default content (skipped if already present)
- *   6. Writes setup-credentials.json  (read by /admin/login, deleted on first sign-in)
- *   7. Prints credentials clearly
- *   8. Writes .replit-setup-complete  (sentinel — skips this script on future restarts)
+ *   5. Dev / fresh prod: runs migrations
+ *      Existing prod install: skips migrations (run `npm run db:migrate` manually)
+ *   6. Seeds admin user and default content (skipped if already present)
+ *   7. Writes setup-credentials.json  (read by /admin/login, deleted on first sign-in)
+ *   8. Prints credentials clearly
+ *   9. Dev only: writes .replit-setup-complete (sentinel — skips this script on future restarts)
  *
  * On non-Replit environments: exits immediately (no-op).
  * Run manually: npm run replit:init  (bypasses the sentinel)
@@ -25,6 +28,7 @@
  */
 
 import crypto from "crypto";
+import readline from "readline";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 
@@ -39,13 +43,16 @@ if (!isReplit) {
   process.exit(0);
 }
 
-// ─── Sentinel: skip on subsequent restarts unless forced ─────────────────────
+/** True when running inside a Replit deployment (production container). */
+const isProd = process.env.REPLIT_DEPLOYMENT === "1";
+
+// ─── Sentinel: skip on subsequent dev restarts (not used in prod containers) ──
 const ROOT = process.cwd();
 const SENTINEL = path.join(ROOT, ".replit-setup-complete");
 const isForced = process.env.REPLIT_REINIT === "1";
 
-if (!isForced && existsSync(SENTINEL)) {
-  // Already set up — fast exit so `npm run dev` restarts stay snappy
+if (!isProd && !isForced && existsSync(SENTINEL)) {
+  // Already set up in dev — fast exit so `npm run dev` restarts stay snappy
   process.exit(0);
 }
 
@@ -74,9 +81,34 @@ function getVar(key: string, envMap: Map<string, string>): string | undefined {
   return process.env[key] || envMap.get(key);
 }
 
+/** Interactive prompt — only used in TTY (dev) contexts. */
+function prompt(question: string): Promise<string> {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(question, answer => { rl.close(); resolve(answer.trim()); });
+  });
+}
+
+/**
+ * DB-backed check for an existing install.
+ * Returns true if admin_users table exists AND has at least one row.
+ * Returns false if the table is missing (fresh install) or empty.
+ */
+async function checkExistingInstall(): Promise<boolean> {
+  try {
+    const { db } = await import("../src/lib/db");
+    const { adminUsers } = await import("../src/lib/db/schema");
+    const rows = await db.select().from(adminUsers).limit(1);
+    return rows.length > 0;
+  } catch {
+    // Table doesn't exist yet — this is a fresh install
+    return false;
+  }
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log("\nPugmill CMS — First Run Setup\n");
+  console.log(`\nPugmill CMS — ${isProd ? "Production" : "First Run"} Setup\n`);
 
   // ── Step 1: DATABASE_URL ────────────────────────────────────────────────────
   if (!process.env.DATABASE_URL) {
@@ -88,7 +120,7 @@ async function main() {
     process.exit(1);
   }
 
-  // ── Step 2: NEXTAUTH_SECRET and NEXTAUTH_URL ────────────────────────────────
+  // ── Step 2: NEXTAUTH_SECRET, AI_ENCRYPTION_KEY, and NEXTAUTH_URL ───────────
   const envMap = readEnvLocal();
   const configured: string[] = [];
 
@@ -106,25 +138,75 @@ async function main() {
     configured.push("AI_ENCRYPTION_KEY");
   }
 
-  if (!getVar("NEXTAUTH_URL", envMap)) {
-    // REPLIT_DEV_DOMAIN is the current env var; fall back to REPL_SLUG + REPL_OWNER
-    const domain =
-      process.env.REPLIT_DEV_DOMAIN ||
-      (process.env.REPL_SLUG && process.env.REPL_OWNER
-        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-        : null);
-
-    if (domain) {
-      const url = `https://${domain}`;
-      envMap.set("NEXTAUTH_URL", url);
+  if (isProd) {
+    // ── Production: use PRODUCTION_URL as the authoritative NEXTAUTH_URL ───
+    const productionUrl = getVar("PRODUCTION_URL", envMap);
+    if (productionUrl) {
+      const url = productionUrl.startsWith("https://") ? productionUrl : `https://${productionUrl}`;
       process.env.NEXTAUTH_URL = url;
-      configured.push("NEXTAUTH_URL");
-      console.log(`  App URL: ${url}`);
+      console.log(`  Production URL: ${url}`);
     } else {
-      console.log(
-        "  Warning: Could not detect app URL.\n" +
-        "  Set NEXTAUTH_URL manually in .env.local or as a Replit secret."
+      console.warn(
+        "  Warning: PRODUCTION_URL is not set.\n" +
+        "  OAuth callbacks and redirects will not work correctly.\n" +
+        "  Add PRODUCTION_URL=https://your-domain.com as a Replit secret.\n"
       );
+    }
+  } else {
+    // ── Dev: auto-detect NEXTAUTH_URL from Replit dev domain ───────────────
+    if (!getVar("NEXTAUTH_URL", envMap)) {
+      const domain =
+        process.env.REPLIT_DEV_DOMAIN ||
+        (process.env.REPL_SLUG && process.env.REPL_OWNER
+          ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+          : null);
+
+      if (domain) {
+        const url = `https://${domain}`;
+        envMap.set("NEXTAUTH_URL", url);
+        process.env.NEXTAUTH_URL = url;
+        configured.push("NEXTAUTH_URL");
+        console.log(`  Dev URL: ${url}`);
+      } else {
+        console.log(
+          "  Warning: Could not detect dev URL.\n" +
+          "  Set NEXTAUTH_URL manually in .env.local or as a Replit secret."
+        );
+      }
+    }
+
+    // ── Dev: prompt for PRODUCTION_URL if not already set ──────────────────
+    if (!getVar("PRODUCTION_URL", envMap)) {
+      const isTTY = process.stdin.isTTY;
+      if (isTTY) {
+        console.log(
+          "\n  Production URL setup\n" +
+          "  When you deploy this project, what domain will it live at?\n" +
+          "  This is used as NEXTAUTH_URL in production.\n" +
+          "  (Press Enter to skip and set it later as a Replit secret)\n"
+        );
+        const answer = await prompt("  Production URL (e.g. https://mysite.com): ");
+        if (answer) {
+          const url = answer.startsWith("https://") || answer.startsWith("http://")
+            ? answer
+            : `https://${answer}`;
+          envMap.set("PRODUCTION_URL", url);
+          process.env.PRODUCTION_URL = url;
+          configured.push("PRODUCTION_URL");
+          console.log(`  Saved. Also add PRODUCTION_URL=${url} as a Replit secret for production.\n`);
+        } else {
+          console.log(
+            "  Skipped. Remember to add PRODUCTION_URL=https://your-domain.com\n" +
+            "  as a Replit secret before deploying to production.\n"
+          );
+        }
+      } else {
+        // Non-interactive (CI, automated deploy)
+        console.log(
+          "  Note: PRODUCTION_URL is not set.\n" +
+          "  Add it as a Replit secret before deploying to production.\n"
+        );
+      }
     }
   }
 
@@ -138,23 +220,48 @@ async function main() {
   dotenvConfig({ path: ENV_LOCAL, override: false });
 
   // ── Step 3: Database schema ─────────────────────────────────────────────────
-  // create-schema handles a blank DB (CREATE TABLE IF NOT EXISTS).
-  // run-migrations.ts then brings any existing DB up to the latest schema,
-  // adding columns that were added after the initial install.
-  console.log("Database schema");
-  const { createSchema } = await import("./create-schema");
-  await createSchema();
+  if (isProd) {
+    // In production, use DB state to decide whether to run migrations.
+    // Fresh install (no admin yet): run full setup.
+    // Existing install: run createSchema only (IF NOT EXISTS — safe), skip migrations.
+    console.log("Database schema");
+    const { createSchema } = await import("./create-schema");
+    await createSchema();
 
-  console.log("Running migrations...");
-  const { execSync } = await import("child_process");
-  try {
-    execSync("tsx scripts/run-migrations.ts", {
-      stdio: "inherit",
-      env: { ...process.env },
-    });
-  } catch {
-    // Migration errors are logged by the runner; don't abort first-run setup
-    console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
+    const existingInstall = await checkExistingInstall();
+    if (!existingInstall) {
+      console.log("Fresh install detected — running migrations...");
+      const { execSync } = await import("child_process");
+      try {
+        execSync("tsx scripts/run-migrations.ts", {
+          stdio: "inherit",
+          env: { ...process.env },
+        });
+      } catch {
+        console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
+      }
+    } else {
+      console.log(
+        "  Existing install detected — skipping automatic migrations.\n" +
+        "  To apply pending schema changes, run: npm run db:migrate\n"
+      );
+    }
+  } else {
+    // Dev: always run createSchema + migrations (idempotent)
+    console.log("Database schema");
+    const { createSchema } = await import("./create-schema");
+    await createSchema();
+
+    console.log("Running migrations...");
+    const { execSync } = await import("child_process");
+    try {
+      execSync("tsx scripts/run-migrations.ts", {
+        stdio: "inherit",
+        env: { ...process.env },
+      });
+    } catch {
+      console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
+    }
   }
 
   // ── Step 4: Admin user + default content ────────────────────────────────────
@@ -237,8 +344,10 @@ async function main() {
     console.log(`  └${line}┘\n`);
   }
 
-  // ── Step 5: Write sentinel so future `npm run dev` restarts skip this ───────
-  writeFileSync(SENTINEL, new Date().toISOString() + "\n");
+  // ── Step 5: Dev only — write sentinel so future restarts skip this ───────────
+  if (!isProd) {
+    writeFileSync(SENTINEL, new Date().toISOString() + "\n");
+  }
 
   console.log("Setup complete — starting server...\n");
   process.exit(0);
