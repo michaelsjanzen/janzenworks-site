@@ -314,7 +314,9 @@ export async function autosavePost(
       } as Partial<typeof posts.$inferInsert>)
       .where(eq(posts.id, id));
 
-    revalidatePath(`/admin/posts/${id}/edit`);
+    // No revalidatePath here — autosave is a silent background write.
+    // Revalidating the edit route would trigger a router refresh mid-keystroke,
+    // causing the AI input (and other fields) to lose focus.
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Autosave failed" };
