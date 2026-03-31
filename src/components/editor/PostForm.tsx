@@ -333,6 +333,105 @@ function extractAssociatedMedia(markdown: string, allMedia: MediaItem[]): MediaI
   return allMedia.filter(item => urls.has(item.url));
 }
 
+// Defined outside PostForm so React preserves component identity across re-renders.
+// Defining stateful components inside a parent function causes unmount/remount on every
+// parent re-render, which destroys controlled input state and loses focus.
+
+function RunBtn({ tool, label, moreAiPending, moreAiResults, agentRunning, runMoreAi }: {
+  tool: string;
+  label: string;
+  moreAiPending: string | null;
+  moreAiResults: Record<string, string>;
+  agentRunning: boolean;
+  runMoreAi: (tool: string) => void;
+}) {
+  const isSpinning = moreAiPending === tool;
+  const done = !!moreAiResults[tool];
+  return (
+    <button
+      type="button"
+      disabled={!!moreAiPending || agentRunning}
+      onClick={() => runMoreAi(tool)}
+      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed
+        ${isSpinning
+          ? "btn-processing border-transparent text-white cursor-wait"
+          : done
+            ? "bg-violet-50 border-violet-200 text-violet-500"
+            : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
+        }`}
+    >
+      {done ? (
+        <span className="w-2.5 h-2.5 flex items-center justify-center shrink-0">✓</span>
+      ) : (
+        <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      )}
+      {isSpinning ? "Working…" : label}
+    </button>
+  );
+}
+
+function AiDocumentActions({ handleAssist, pendingAction, assistFeedback, setAssistFeedback,
+  handleToneCheck, handleReadingLevel, moreAiPending, moreAiResults, agentRunning, runMoreAi }: {
+  handleAssist: (instruction: string) => void;
+  pendingAction: string | null;
+  assistFeedback: string | null;
+  setAssistFeedback: (v: string | null) => void;
+  handleToneCheck: () => void;
+  handleReadingLevel: () => void;
+  moreAiPending: string | null;
+  moreAiResults: Record<string, string>;
+  agentRunning: boolean;
+  runMoreAi: (tool: string) => void;
+}) {
+  const [instruction, setInstruction] = useState("");
+
+  function submit() {
+    const val = instruction.trim();
+    if (!val) return;
+    handleAssist(val);
+    setInstruction("");
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-1.5">
+        <input
+          type="text"
+          value={instruction}
+          onChange={e => { setInstruction(e.target.value); if (assistFeedback) setAssistFeedback(null); }}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+          disabled={!!pendingAction}
+          placeholder="Ask the AI — rewrite, suggest excerpt, check tone, simplify…"
+          className="flex-1 min-w-0 border border-zinc-200 rounded-full px-3 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 placeholder:text-zinc-400 disabled:opacity-50"
+        />
+        <AiBtn
+          label="Ask"
+          pending={!!pendingAction}
+          activeKey={pendingAction}
+          myKey="assist"
+          onClick={submit}
+        />
+      </div>
+      {assistFeedback && (
+        <div className="flex items-start gap-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-500">
+          <span className="shrink-0 mt-px">ℹ</span>
+          <span className="flex-1">{assistFeedback}</span>
+          <button type="button" onClick={() => setAssistFeedback(null)} className="shrink-0 text-zinc-400 hover:text-zinc-600">✕</button>
+        </div>
+      )}
+      <div className="flex items-center gap-1 flex-wrap">
+        <AiBtn label="Tone check"    pending={!!pendingAction} activeKey={pendingAction} myKey="tone-check"    onClick={handleToneCheck} />
+        <AiBtn label="Reading level" pending={!!pendingAction} activeKey={pendingAction} myKey="reading-level" onClick={handleReadingLevel} />
+        <span className="w-px h-3 bg-zinc-200 mx-0.5 shrink-0" />
+        <RunBtn tool="topic-report"   label="Topic focus"     moreAiPending={moreAiPending} moreAiResults={moreAiResults} agentRunning={agentRunning} runMoreAi={runMoreAi} />
+        <RunBtn tool="internal-links" label="Internal links"  moreAiPending={moreAiPending} moreAiResults={moreAiResults} agentRunning={agentRunning} runMoreAi={runMoreAi} />
+      </div>
+    </div>
+  );
+}
+
 export default function PostForm({
   mode,
   postId,
@@ -613,81 +712,6 @@ export default function PostForm({
     );
   }
 
-  function RunBtn({ tool, label }: { tool: string; label: string }) {
-    const isSpinning = moreAiPending === tool;
-    const done = !!moreAiResults[tool];
-    return (
-      <button
-        type="button"
-        disabled={!!moreAiPending || agentRunning}
-        onClick={() => runMoreAi(tool)}
-        className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed
-          ${isSpinning
-            ? "btn-processing border-transparent text-white cursor-wait"
-            : done
-              ? "bg-violet-50 border-violet-200 text-violet-500"
-              : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
-          }`}
-      >
-        {done ? (
-          <span className="w-2.5 h-2.5 flex items-center justify-center shrink-0">✓</span>
-        ) : (
-          <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        )}
-        {isSpinning ? "Working…" : label}
-      </button>
-    );
-  }
-
-  function AiDocumentActions() {
-    const [instruction, setInstruction] = useState("");
-
-    function submit() {
-      const val = instruction.trim();
-      if (!val) return;
-      handleAssist(val);
-      setInstruction("");
-    }
-
-    return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5">
-          <input
-            type="text"
-            value={instruction}
-            onChange={e => { setInstruction(e.target.value); if (assistFeedback) setAssistFeedback(null); }}
-            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
-            disabled={!!pendingAction}
-            placeholder="Ask the AI — rewrite, suggest excerpt, check tone, simplify…"
-            className="flex-1 min-w-0 border border-zinc-200 rounded-full px-3 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 placeholder:text-zinc-400 disabled:opacity-50"
-          />
-          <AiBtn
-            label="Ask"
-            pending={!!pendingAction}
-            activeKey={pendingAction}
-            myKey="assist"
-            onClick={submit}
-          />
-        </div>
-        {assistFeedback && (
-          <div className="flex items-start gap-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-500">
-            <span className="shrink-0 mt-px">ℹ</span>
-            <span className="flex-1">{assistFeedback}</span>
-            <button type="button" onClick={() => setAssistFeedback(null)} className="shrink-0 text-zinc-400 hover:text-zinc-600">✕</button>
-          </div>
-        )}
-        <div className="flex items-center gap-1 flex-wrap">
-          <AiBtn label="Tone check"    pending={!!pendingAction} activeKey={pendingAction} myKey="tone-check"    onClick={handleToneCheck} />
-          <AiBtn label="Reading level" pending={!!pendingAction} activeKey={pendingAction} myKey="reading-level" onClick={handleReadingLevel} />
-          <span className="w-px h-3 bg-zinc-200 mx-0.5 shrink-0" />
-          <RunBtn tool="topic-report"   label="Topic focus" />
-          <RunBtn tool="internal-links" label="Internal links" />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -913,7 +937,18 @@ export default function PostForm({
           {/* Sticky toolbar — sticks below the fixed action bar (top-14 = 56px) */}
           <div className="sticky top-14 z-20 px-6 pt-5 pb-3 border-b border-zinc-100 rounded-t-lg" style={{ background: "#f5f0ff" }}>
             <SectionLabel>Content</SectionLabel>
-            {aiEnabled && <AiDocumentActions />}
+            {aiEnabled && <AiDocumentActions
+              handleAssist={handleAssist}
+              pendingAction={pendingAction}
+              assistFeedback={assistFeedback}
+              setAssistFeedback={setAssistFeedback}
+              handleToneCheck={handleToneCheck}
+              handleReadingLevel={handleReadingLevel}
+              moreAiPending={moreAiPending}
+              moreAiResults={moreAiResults}
+              agentRunning={agentRunning}
+              runMoreAi={runMoreAi}
+            />}
             {/* Toolbar portal target — MarkdownEditor portals its toolbar here */}
             <div id="md-toolbar-portal" />
           </div>
