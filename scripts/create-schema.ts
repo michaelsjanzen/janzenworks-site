@@ -80,21 +80,27 @@ export async function createSchema() {
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "posts" (
-      "id"            SERIAL        PRIMARY KEY,
-      "type"          VARCHAR(20)   NOT NULL DEFAULT 'post',
-      "title"         TEXT          NOT NULL,
-      "slug"          VARCHAR(255)  NOT NULL UNIQUE,
-      "content"       TEXT          NOT NULL,
-      "excerpt"       TEXT,
-      "featured_image" INTEGER      REFERENCES "media"("id"),
-      "published"     BOOLEAN       NOT NULL DEFAULT FALSE,
-      "featured"      BOOLEAN       NOT NULL DEFAULT FALSE,
-      "published_at"  TIMESTAMP,
-      "author_id"     TEXT          REFERENCES "admin_users"("id"),
-      "parent_id"     INTEGER,
-      "aeo_metadata"  JSONB,
-      "created_at"    TIMESTAMP     NOT NULL DEFAULT NOW(),
-      "updated_at"    TIMESTAMP     NOT NULL DEFAULT NOW()
+      "id"                   SERIAL        PRIMARY KEY,
+      "type"                 VARCHAR(20)   NOT NULL DEFAULT 'post',
+      "title"                TEXT          NOT NULL,
+      "slug"                 VARCHAR(255)  NOT NULL UNIQUE,
+      "content"              TEXT          NOT NULL,
+      "excerpt"              TEXT,
+      "featured_image"       INTEGER       REFERENCES "media"("id"),
+      "published"            BOOLEAN       NOT NULL DEFAULT FALSE,
+      "featured"             BOOLEAN       NOT NULL DEFAULT FALSE,
+      "published_at"         TIMESTAMP,
+      "author_id"            TEXT          REFERENCES "admin_users"("id"),
+      "parent_id"            INTEGER,
+      "aeo_metadata"         JSONB,
+      "seo_title"            TEXT,
+      "seo_meta_description" TEXT,
+      "robots_noindex"       BOOLEAN       NOT NULL DEFAULT FALSE,
+      "robots_nofollow"      BOOLEAN       NOT NULL DEFAULT FALSE,
+      "canonical_url"        TEXT,
+      "og_image_url"         TEXT,
+      "created_at"           TIMESTAMP     NOT NULL DEFAULT NOW(),
+      "updated_at"           TIMESTAMP     NOT NULL DEFAULT NOW()
     )
   `);
 
@@ -229,6 +235,48 @@ export async function createSchema() {
   // called automatically via loadPlugins() on first server startup.
   // They are intentionally omitted here to keep create-schema.ts focused
   // on core tables only and avoid schema drift between the two sources.
+
+  // ── Migration tracking table ──────────────────────────────────────────────
+  // Also owned by run-migrations.ts (CREATE IF NOT EXISTS there too).
+  // Creating it here ensures it exists before the pre-mark step below.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      filename   TEXT        PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  // ── Fresh-install optimisation: pre-mark all migrations as applied ─────────
+  // create-schema creates the full current schema in one shot, so all column-add
+  // migrations are redundant on a blank database.  By pre-marking them here,
+  // the subsequent run-migrations call becomes a no-op (instant [skip] per file)
+  // instead of spawning 8+ child processes, which was causing Replit's predev
+  // timeout on first boot.
+  //
+  // Safety: we only do this when schema_migrations is empty (i.e. run-migrations
+  // has never run before).  On existing installs schema_migrations already has
+  // entries, so this block is skipped and run-migrations handles the delta normally.
+  const { rows } = await db.execute(sql`SELECT COUNT(*)::int AS c FROM schema_migrations`);
+  const existingCount = (rows[0] as Record<string, number>).c;
+
+  if (existingCount === 0) {
+    const { readdirSync } = await import("fs");
+    const { resolve }     = await import("path");
+    const files = readdirSync(resolve(process.cwd(), "scripts"))
+      .filter((f: string) => /^migrate-\d+.*\.ts$/.test(f))
+      .sort();
+
+    for (const file of files) {
+      await db.execute(sql`
+        INSERT INTO schema_migrations (filename) VALUES (${file})
+        ON CONFLICT DO NOTHING
+      `);
+    }
+
+    if (files.length > 0) {
+      console.log(`  Pre-marked ${files.length} migration(s) as applied (fresh install — schema already current).`);
+    }
+  }
 
   console.log("  Database schema ready.");
 }

@@ -49,7 +49,7 @@ async function main() {
 
     console.log(`  [apply] ${file} ...`);
     try {
-      execSync(`npx tsx --env-file=.env.local scripts/${file}`, {
+      execSync(`tsx --env-file=.env.local scripts/${file}`, {
         stdio: "inherit",
         cwd: process.cwd(),
       });
