@@ -222,6 +222,12 @@ Pugmill uses environment variables for all secrets. See `.env.example` for the f
 
 The `.replit` `run` field and Replit's workflow system are two separate concepts. The `run = "npm run dev"` config starts the server, but the preview pane connects via the **workflow system**, which must be registered separately inside the Replit UI. A blank preview pane after a successful `npm run dev` is a platform-level configuration step -- not a code issue. Registering or re-running the workflow from the Replit interface connects it.
 
+#### npm Scripts and tsx
+
+`tsx` is a dev dependency invoked via npm scripts. npm automatically adds `node_modules/.bin` to `PATH` when running scripts, so `tsx` is always found when you use `npm run dev`, `npm run db:init`, etc.
+
+**Do not change scripts to use `npx tsx` or `./node_modules/.bin/tsx`** — it is unnecessary and adds noise. If `tsx` appears missing, the fix is `npm install`, then retry the npm command.
+
 #### Replit / Fresh Container Install Note
 
 If `npm install` fails with `ENOTEMPTY: directory not empty, rmdir 'node_modules/@swc/helpers/_'`, this is a known npm/SWC interoperability issue triggered by a partial prior install.
