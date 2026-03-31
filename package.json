@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start -p ${PORT:-5000} -H 0.0.0.0",
     "lint": "next lint",
-    "setup": "npx tsx scripts/setup.ts",
+    "setup": "tsx scripts/setup.ts",
     "db:push": "drizzle-kit push --force",
     "db:create": "tsx scripts/create-schema.ts",
     "db:init": "npm run db:create && npm run setup",

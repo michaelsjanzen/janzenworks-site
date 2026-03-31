@@ -26,6 +26,7 @@ describe("migration runner — file detection", () => {
   it("matches standard numbered migration files", () => {
     expect(isMigrationFile("migrate-001-design-config-upsert.ts")).toBe(true);
     expect(isMigrationFile("migrate-007-bot-analytics-v2.ts")).toBe(true);
+    expect(isMigrationFile("migrate-008-canonical-og-image.ts")).toBe(true);
   });
 
   it("matches files with just a number suffix", () => {
@@ -88,5 +89,22 @@ describe("migration runner — sort order", () => {
     expect(sortMigrations(["migrate-007-bot-analytics-v2.ts"])).toEqual([
       "migrate-007-bot-analytics-v2.ts",
     ]);
+  });
+
+  it("sorts all current migrations in the expected order", () => {
+    // Mirrors the actual scripts/ directory — update when new migrations are added.
+    const allMigrations = [
+      "migrate-001-design-config-upsert.ts",
+      "migrate-002-featured-post.ts",
+      "migrate-002-posts-indexes.ts",
+      "migrate-003-ai-usage.ts",
+      "migrate-004-seo-fields.ts",
+      "migrate-005-robots-meta.ts",
+      "migrate-006-plugin-tables.ts",
+      "migrate-007-bot-analytics-v2.ts",
+      "migrate-008-canonical-og-image.ts",
+    ];
+    // sortMigrations is stable — passing an already-sorted list must return it unchanged.
+    expect(sortMigrations([...allMigrations].reverse())).toEqual(allMigrations);
   });
 });
