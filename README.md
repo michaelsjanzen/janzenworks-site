@@ -2,7 +2,7 @@
 
 Pugmill CMS is a full-stack, rebuildable content management system for developers working with AI agents. It owns its own frontend -- a modern React/Next.js presentation layer that ships as part of the CMS, not as an afterthought. It includes an admin dashboard, a Markdown-first editor with Visual/Raw toggle, hierarchical content types, a public REST API for external consumption, and per-post AI Engine Optimization (AEO) metadata served via `llms.txt` endpoints.
 
-> **v0.1 Developer Preview.** Intended for developers working with AI agents in Claude Code, Cursor, Replit, or similar environments.
+> **v0.2.0 Public Beta.** Intended for developers working with AI agents in Claude Code, Cursor, Replit, or similar environments.
 
 ---
 
@@ -33,7 +33,8 @@ The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canoni
 | **Plugin System** | Plugins register lifecycle hooks (`content:render`, `post:after-save`, etc.) via `HookManager` |
 | **Theme System** | Design token system with draft/publish workflow; colors, fonts, and layout controls editable in Admin > Design |
 | **Storage Abstraction** | `LocalStorageProvider` (default) or `S3StorageProvider` (AWS S3, R2, DO Spaces, MinIO) |
-| **SEO & Discovery** | `generateMetadata()`, `sitemap.ts`, `/feed.xml` (RSS 2.0), Open Graph, Twitter Cards |
+| **SEO & Discovery** | `generateMetadata()`, XML sitemap, `/feed.xml` (RSS 2.0), Open Graph, Twitter Cards, per-post canonical URL and OG image overrides |
+| **Bot Analytics** | Tracks AI crawler and search spider visits to AEO endpoints (llms.txt, sitemap, robots.txt). Dashboard teaser with top bots, top spiders, and top content; full report at `/admin/bot-analytics`; AI-generated insights |
 | **AI Integration** | Connecting an AI provider (Admin > Settings > AI) adds: natural language Ask the AI input with intent routing, sequential Generate All agent, Rewrite with instructions, AEO auto-draft, tone check, topic focus, reading level, and social post generation. Per-user hourly rate limit (50 calls/hr) enforced server-side with a usage meter in the editor. |
 | **Content Revisions** | Each post save creates a revision snapshot; any previous version is restorable from the edit page |
 | **Compact Codebase** | Sized to fit within a single AI context window with clear conventions for extension |
@@ -130,6 +131,7 @@ pugmill/
 │   │   │   ├── blog/             # Paginated blog listing
 │   │   │   └── post/[slug]/      # Individual post pages
 │   │   ├── admin/                # Admin dashboard
+│   │   │   ├── bot-analytics/    # Bot analytics report
 │   │   │   ├── posts/            # Post CRUD
 │   │   │   ├── pages/            # Page CRUD
 │   │   │   ├── categories/       # Category management
@@ -144,10 +146,11 @@ pugmill/
 │   │   │   ├── categories/
 │   │   │   ├── tags/
 │   │   │   └── media/
-│   │   ├── [slug]/llms.txt/      # Per-section llms.txt
-│   │   ├── llms.txt/             # Site-level llms.txt
-│   │   ├── llms-full.txt/        # Full-content llms.txt
-│   │   ├── sitemap.ts            # XML sitemap (native Next.js)
+│   │   ├── [slug]/llms.txt/      # Per-section llms.txt (fires request:bot-visit)
+│   │   ├── llms.txt/             # Site-level llms.txt (fires request:bot-visit)
+│   │   ├── llms-full.txt/        # Full-content llms.txt (fires request:bot-visit)
+│   │   ├── sitemap.xml/          # XML sitemap route handler (fires request:bot-visit)
+│   │   ├── robots.txt/           # Robots.txt route handler (fires request:bot-visit)
 │   │   └── feed.xml/             # RSS 2.0 feed
 │   ├── components/
 │   │   └── editor/
@@ -161,25 +164,29 @@ pugmill/
 │   │   ├── actions/              # Server Actions (posts, media, users, autosave, alt text update...)
 │   │   ├── storage/              # Storage abstraction (Local + S3)
 │   │   ├── auth.ts               # NextAuth configuration
+│   │   ├── bot-detection.ts      # Shared detectBot(), classifyPath(), BOT_CONFIG (13 bots)
 │   │   ├── config.ts             # DB-backed site config (60s TTL cache)
 │   │   └── hooks/                # HookManager
 │   └── types/
 │       └── next-auth.d.ts        # Module augmentation for typed session
 ├── plugins/                      # Drop-in plugin packages
-│   ├── comments/
+│   ├── bot-analytics/            # AI crawler + search spider tracking (enabled by default)
 │   ├── contact-form/
 │   └── cookie-consent/
 ├── themes/                       # Visual theme packages
 │   ├── default/                  # Built-in default theme
 │   └── _template/                # Starter template for new themes
 ├── scripts/
+│   ├── create-schema.ts          # Creates all tables (IF NOT EXISTS); pre-marks migrations on fresh installs
+│   ├── run-migrations.ts         # Migration runner; tracks applied files in schema_migrations table
+│   ├── migrate-NNN-*.ts          # Incremental column-add migrations (IF NOT EXISTS guards)
 │   ├── setup.ts                  # First-run admin seed
-│   ├── migrate-001-design-config-upsert.ts  # DB migration (existing installs)
 │   └── env-check.ts              # Env var validation
-├── pugmill.config.json           # Active theme + enabled plugins
-├── AGENT.md                      # AI agent instructions
+├── pugmill.config.json           # Seed config: active theme, enabled plugins
+├── AGENT.md                      # AI agent instructions (read this first)
+├── CHANGELOG.md                  # Version history
 ├── GUIDE.md                      # Sprint-by-sprint build guide
-├── REQUIREMENTS.md               # Full requirements document
+├── REQUIREMENTS.md               # Full product requirements
 └── SECURITY.md                   # Security policy
 ```
 
@@ -364,15 +371,17 @@ The full contract is in [`THEMES.md`](./THEMES.md). The [`/themes/_template/`](.
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Start development server |
+| `npm run dev` | Start development server (port 5000 default) |
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run setup` | Seed admin user (first run) |
-| `npm run db:init` | Push schema and seed admin account in one step (fresh installs; non-interactive when `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set) |
-| `npm run db:push` | Push Drizzle schema only (no admin seed) |
-| `npm run db:migrate` | Run incremental migration scripts in order (existing installs after schema updates; safe to re-run) |
+| `npm run db:init` | Create schema and seed admin account in one step (fresh installs; non-interactive when `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set) |
+| `npm run db:create` | Create all tables with IF NOT EXISTS guards (safe to re-run) |
+| `npm run db:migrate` | Apply pending migration scripts in order; tracks applied files in `schema_migrations` (safe to re-run) |
+| `npm run db:push` | Push Drizzle schema via drizzle-kit (dev only) |
 | `npm run db:studio` | Open Drizzle Studio (visual DB browser) |
 | `npm run env:check` | Validate required environment variables |
+| `npm run replit:init` | Force re-run the Replit first-run setup wizard |
 
 ---
 
