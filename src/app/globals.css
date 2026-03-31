@@ -106,52 +106,9 @@
   color: rgb(161 161 170);           /* zinc-400 */
 }
 
-/* ── Editor dark mode — lavender surface overrides ───────────────────────── */
-/* The editor gets violet/lavender surfaces instead of zinc to match its     */
-/* violet accent identity. Targets [data-editor] set on the PostForm root.  */
-
-/* Main editor background */
-[data-admin].dark [data-editor].bg-zinc-50  { background-color: rgb(30 24 54);   }  /* deep violet */
-[data-admin].dark [data-editor].bg-amber-50 { background-color: rgb(38 28 65);   }  /* dirty state — slightly lifted violet */
-
-/* Cards and panels within the editor */
-[data-admin].dark [data-editor] .bg-white   { background-color: rgb(38 32 64);   }  /* violet-tinted surface */
-[data-admin].dark [data-editor] .bg-zinc-50 { background-color: rgb(30 24 54);   }
-[data-admin].dark [data-editor] .bg-zinc-100{ background-color: rgb(48 40 80);   }
-
-/* Borders */
-[data-admin].dark [data-editor] .border-zinc-100 { border-color: rgb(60 50 96);  }
-[data-admin].dark [data-editor] .border-zinc-200 { border-color: rgb(72 60 110); }
-[data-admin].dark [data-editor] .border-zinc-300 { border-color: rgb(72 60 110); }
-
-/* Fixed action bar inside the editor */
-[data-admin].dark .fixed.bg-white { background-color: rgb(38 32 64); }
-
-/* Hover states */
-[data-admin].dark [data-editor] .hover\:bg-zinc-50:hover  { background-color: rgb(48 40 80); }
-[data-admin].dark [data-editor] .hover\:bg-zinc-100:hover { background-color: rgb(48 40 80); }
-
-/* Violet AI buttons — stay violet but shift to darker variants */
-[data-admin].dark [data-editor] .bg-violet-50  { background-color: rgb(46 16 101 / 0.4); }
-[data-admin].dark [data-editor] .border-violet-200 { border-color: rgb(109 40 217 / 0.5); }
-[data-admin].dark [data-editor] .text-violet-600   { color: rgb(196 181 253); }  /* violet-300 */
-[data-admin].dark [data-editor] .text-violet-500   { color: rgb(167 139 250); }  /* violet-400 */
-[data-admin].dark [data-editor] .hover\:bg-violet-100:hover { background-color: rgb(46 16 101 / 0.6); }
-[data-admin].dark [data-editor] .hover\:border-violet-300:hover { border-color: rgb(109 40 217 / 0.7); }
-
-/* Feedback/info panel inside AI toolbar */
-[data-admin].dark [data-editor] .bg-zinc-50.border-zinc-200 { background-color: rgb(48 40 80); }
-
-/* Form inputs in the editor */
-[data-admin].dark [data-editor] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]),
-[data-admin].dark [data-editor] textarea,
-[data-admin].dark [data-editor] select {
-  background-color: rgb(38 32 64);
-  border-color: rgb(72 60 110);
-  color: rgb(237 233 254);  /* violet-100 */
-}
-[data-admin].dark [data-editor] input::placeholder,
-[data-admin].dark [data-editor] textarea::placeholder { color: rgb(109 40 217 / 0.6); }
+/* Editor toolbar — dark lavender in dark mode to match its light lavender identity */
+[data-admin].dark [data-editor-toolbar] { background: rgb(46 24 96) !important; }  /* deep violet */
+[data-admin].dark [data-editor-toolbar] .border-zinc-100 { border-color: rgb(72 54 130); }
 
 /* Blue action links & buttons — lift to light blue for dark mode contrast */
 [data-admin].dark .text-blue-600          { color: rgb(96 165 250);  }  /* blue-400 */

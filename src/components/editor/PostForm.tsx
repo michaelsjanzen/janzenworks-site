@@ -715,7 +715,6 @@ export default function PostForm({
 
   return (
     <div
-      data-editor
       className={`-mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 sm:pt-6 transition-colors duration-500 ${isDirty ? "bg-amber-50" : "bg-zinc-50"}`}
       onChange={() => { if (!isDirty) setIsDirty(true); }}
     >
@@ -936,7 +935,7 @@ export default function PostForm({
         {/* Content editor */}
         <div id="content-editor-card" className="bg-white border border-zinc-200 rounded-lg">
           {/* Sticky toolbar — sticks below the fixed action bar (top-14 = 56px) */}
-          <div className="sticky top-14 z-20 px-6 pt-5 pb-3 border-b border-zinc-100 rounded-t-lg" style={{ background: "#f5f0ff" }}>
+          <div data-editor-toolbar className="sticky top-14 z-20 px-6 pt-5 pb-3 border-b border-zinc-100 rounded-t-lg" style={{ background: "#f5f0ff" }}>
             <SectionLabel>Content</SectionLabel>
             {aiEnabled && <AiDocumentActions
               handleAssist={handleAssist}
