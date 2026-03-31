@@ -52,7 +52,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm"
+            className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm"
           >
             Save Changes
           </button>
@@ -77,7 +77,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
             placeholder="Describe this author's writing voice and style preferences..."
             className="w-full border rounded px-3 py-2 text-sm resize-y"
           />
-          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm">
+          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm">
             Save Voice Guide
           </button>
         </form>

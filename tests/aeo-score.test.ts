@@ -136,4 +136,30 @@ describe("parseAeoMetadata", () => {
     const result = parseAeoMetadata({ summary: "Ok.", unknownField: true });
     expect(result?.summary).toBe("Ok.");
   });
+
+  it("preserves schemaType when provided", () => {
+    const result = parseAeoMetadata({ schemaType: "HowTo" });
+    expect(result?.schemaType).toBe("HowTo");
+  });
+
+  it("preserves schemaData when provided alongside schemaType", () => {
+    const result = parseAeoMetadata({ schemaType: "Product", schemaData: { name: "Widget", price: "9.99" } });
+    expect(result?.schemaType).toBe("Product");
+    expect(result?.schemaData?.name).toBe("Widget");
+    expect(result?.schemaData?.price).toBe("9.99");
+  });
+
+  it("ignores schemaData when schemaType is absent", () => {
+    // schemaData without a type is still a valid parse — just no type to render
+    const result = parseAeoMetadata({ schemaData: { foo: "bar" } });
+    expect(result).not.toBeNull();
+  });
+
+  it("handles all defined extended schema types", () => {
+    const types = ["HowTo", "Product", "Event", "LocalBusiness", "VideoObject"] as const;
+    for (const t of types) {
+      const result = parseAeoMetadata({ schemaType: t });
+      expect(result?.schemaType).toBe(t);
+    }
+  });
 });

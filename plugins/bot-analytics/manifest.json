@@ -1,0 +1,6 @@
+{
+  "id": "bot-analytics",
+  "name": "Bot Analytics",
+  "version": "1.0.0",
+  "description": "Tracks AI crawler and search engine bot visits to your content. Shows visit counts per bot in the admin dashboard."
+}

@@ -17,6 +17,7 @@ const aiSettingsSchema = z.object({
   provider: z.enum(["anthropic", "openai", "gemini"]).nullable(),
   apiKey: z.string().max(500),
   model: z.string().max(200),
+  aiRateLimit: z.coerce.number().int().min(1).max(500).default(50),
 });
 
 export async function saveAiSettings(formData: FormData) {
@@ -27,9 +28,10 @@ export async function saveAiSettings(formData: FormData) {
     provider: rawProvider === "" || rawProvider === null ? null : rawProvider,
     apiKey: (formData.get("apiKey") as string) ?? "",
     model: (formData.get("model") as string) ?? "",
+    aiRateLimit: (formData.get("aiRateLimit") as string) ?? "50",
   });
   if (!result.success) throw new Error(result.error.issues.map(i => i.message).join(", "));
-  const { provider, apiKey, model } = result.data;
+  const { provider, apiKey, model, aiRateLimit } = result.data;
 
   const current = await getConfig();
   await updateConfig({
@@ -39,6 +41,7 @@ export async function saveAiSettings(formData: FormData) {
       // If apiKey is blank (masked field left empty), keep the existing key; otherwise encrypt the new one
       apiKey: apiKey ? encryptString(apiKey) : current.ai.apiKey,
       model,
+      aiRateLimit,
     },
   });
 

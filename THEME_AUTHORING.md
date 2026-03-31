@@ -1,8 +1,6 @@
-# Pugmill Theme Authoring Guide
+# Pugmill CMS Theme Authoring Guide
 
-Themes control the visual presentation of the public-facing site. They live in `/themes/<theme-id>/`
-and are registered statically across three files. This guide covers everything needed to build
-and distribute a theme.
+Themes control the visual presentation of the public-facing site. They live in `/themes/<theme-id>/` and are registered statically across three files. This guide covers everything needed to build and distribute a theme.
 
 ---
 
@@ -34,25 +32,23 @@ themes/
 }
 ```
 
-The `id` must match the directory name. Use only lowercase letters, numbers, and hyphens.
+The `id` must match the directory name. Lowercase letters, numbers, and hyphens only.
 
 ---
 
 ## 2. Installation Contract (6 Steps)
 
-When installing a theme — manually or via `npx pugmill add theme <name>` — update these files
-in order:
+When installing a theme -- manually or via `npx pugmill add theme <name>` -- updating these files in order is required:
 
-**STEP 1** — Create the theme directory with all required files (see section 1).
+**STEP 1** -- Create the theme directory with all required files (see section 1).
 
-**STEP 2** — Add the theme id to `THEME_ALLOWLIST` in `src/lib/theme-registry.ts`:
+**STEP 2** -- Add the theme id to `THEME_ALLOWLIST` in `src/lib/theme-registry.ts`:
 ```typescript
 export const THEME_ALLOWLIST = ["default", "my-theme"] as const;
 ```
-This allowlist is the security gate that prevents path traversal. Any theme not listed here
-cannot be activated, even if the config says otherwise.
+This allowlist is the security gate that prevents path traversal. Any theme not listed here cannot be activated, even if the config says otherwise.
 
-**STEP 3** — Register static imports in `src/lib/theme-modules.ts`:
+**STEP 3** -- Register static imports in `src/lib/theme-modules.ts`:
 ```typescript
 import MyLayout from "../../themes/my-theme/Layout";
 import MyHomeView from "../../themes/my-theme/views/HomeView";
@@ -86,10 +82,9 @@ Then add an entry to `THEME_MODULES`:
 },
 ```
 
-Static imports are required — Turbopack cannot analyze dynamic template-literal imports and
-will cause an infinite Fast Refresh loop if you try.
+Static imports are required -- Turbopack cannot analyze dynamic template-literal imports and will cause an infinite Fast Refresh loop otherwise.
 
-**STEP 4** — Import the manifest and add it to `ALL_THEMES` in `src/lib/theme-registry.ts`:
+**STEP 4** -- Import the manifest and add it to `ALL_THEMES` in `src/lib/theme-registry.ts`:
 ```typescript
 import myThemeManifest from "../../themes/my-theme/manifest.json";
 
@@ -99,11 +94,9 @@ const ALL_THEMES: ThemeManifest[] = [
 ];
 ```
 
-**STEP 5** — Activate the theme in the admin UI (Design → Themes → Activate) or set
-`config.appearance.activeTheme = "my-theme"` directly.
+**STEP 5** -- Activate the theme in the admin UI (Design > Themes > Activate) or set `config.appearance.activeTheme = "my-theme"` directly.
 
-**STEP 6** — Create your `design.ts` (see section 4). The Design admin page will not work
-without it.
+**STEP 6** -- Create `design.ts` (see section 4). The Design admin page will not work without it.
 
 ---
 
@@ -131,7 +124,7 @@ export default async function ThemeLayout({ children }: { children: React.ReactN
   const config = await getConfig();
   const themeId = sanitizeThemeName(config.appearance.activeTheme);
 
-  // Design token resolution — supports draft preview mode
+  // Design token resolution -- supports draft preview mode
   const cookieStore = await cookies();
   const isPreview = cookieStore.get("__pugmill_design_preview")?.value === "1";
   const designConfig = await getDesignConfig(themeId, isPreview ? "draft" : "published");
@@ -162,17 +155,13 @@ export default async function ThemeLayout({ children }: { children: React.ReactN
 
 ### `views/HomeView.tsx`
 
-Receives the post feed data and renders the listing page. The core route passes all data as
-props — the view does not fetch anything itself.
+Receives the post feed data and renders the listing page. The core route passes all data as props -- the view does not fetch anything itself.
 
 ### `views/PostView.tsx`
 
-Receives a single post's data (title, content, categories, tags, AEO metadata, etc.) and
-renders the article page. Content arrives as a Markdown string — the view is responsible for
-rendering it (typically via `ReactMarkdown` with `rehypeSanitize`).
+Receives a single post's data (title, content, categories, tags, AEO metadata, etc.) and renders the article page. Content arrives as a Markdown string -- the view is responsible for rendering it (via `ReactMarkdown` with `rehypeSanitize`).
 
-Important: pass content through `rehypeSanitize` when rendering — the `content:render` filter
-hook allows plugins to append raw HTML, and sanitization prevents XSS.
+Content must pass through `rehypeSanitize` when rendering -- the `content:render` filter hook allows plugins to append raw HTML, and sanitization prevents XSS.
 
 ```typescript
 import ReactMarkdown from "react-markdown";
@@ -202,8 +191,7 @@ const postFooters = getActiveSlots("postFooter", activePlugins, pluginSettings);
 
 ### `views/PageView.tsx`
 
-Same pattern as PostView but for static pages (About, Contact, etc.). Simpler — typically no
-taxonomy, no AEO metadata, no postFooter slots.
+Same pattern as PostView but for static pages (About, Contact, etc.). Typically no taxonomy, no AEO metadata, and no postFooter slots.
 
 ---
 
@@ -213,15 +201,14 @@ Every theme must export these symbols from `themes/<theme-id>/design.ts`:
 
 | Export | Type | Purpose |
 |---|---|---|
-| `DESIGN_TOKEN_DEFS` | `DesignTokenDef[]` | Token definitions — drives the Design admin UI |
+| `DESIGN_TOKEN_DEFS` | `DesignTokenDef[]` | Token definitions -- drives the Design admin UI |
 | `DESIGN_DEFAULTS` | `Record<string, string>` | Default values for every token key |
 | `SANS_FONTS` | `string[]` | Allowlist of sans-serif Google Fonts |
 | `MONO_FONTS` | `string[]` | Allowlist of monospace Google Fonts |
-| `buildCssString` | function | Converts token values → `:root { --var: value; }` CSS |
+| `buildCssString` | function | Converts token values to `:root { --var: value; }` CSS |
 | `buildGoogleFontsUrl` | function | Builds Google Fonts stylesheet URL from active fonts |
 
-See `/themes/_template/design.ts` for the fully documented interface contract and
-`/themes/default/design.ts` for a complete working example.
+The fully documented interface contract is in `/themes/_template/design.ts`. A complete working example is in `/themes/default/design.ts`.
 
 ### Token definition shape
 
@@ -230,12 +217,12 @@ import type { DesignTokenDef } from "../../src/types/design";
 
 export const DESIGN_TOKEN_DEFS: DesignTokenDef[] = [
   {
-    key: "colorBackground",      // unique key — used in DESIGN_DEFAULTS and config
+    key: "colorBackground",      // unique key -- used in DESIGN_DEFAULTS and config
     label: "Background",         // shown in admin UI
     description: "Page background color.",
     type: "color",               // "color" | "font" | "spacing" | "text"
     group: "colors",             // groups tokens into sections in admin UI
-    cssVariable: "--color-background",  // injected as CSS custom property
+    cssVariable: "--color-background",
     default: "#ffffff",
     editable: true,              // false = internal token, hidden from admin UI
     order: 1,                    // display order within group
@@ -285,8 +272,7 @@ export function buildCssString(
 
 ### `buildGoogleFontsUrl`
 
-Returns a Google Fonts stylesheet URL if any active fonts are in `SANS_FONTS` or `MONO_FONTS`,
-or `null` if only system fonts are in use:
+Returns a Google Fonts stylesheet URL if any active fonts are in `SANS_FONTS` or `MONO_FONTS`, or `null` if only system fonts are in use:
 
 ```typescript
 export function buildGoogleFontsUrl(config: Record<string, string>): string | null {
@@ -302,8 +288,7 @@ export function buildGoogleFontsUrl(config: Record<string, string>): string | nu
 
 ## 5. CSS Custom Properties
 
-Design tokens are injected as CSS custom properties in `:root`. Reference them in your theme
-components via Tailwind's `[]` escape or inline `style` attributes:
+Design tokens are injected as CSS custom properties in `:root`. Referencing them in theme components via Tailwind's `[]` escape or inline `style` attributes is the correct approach:
 
 ```typescript
 // Inline style (always works)
@@ -313,16 +298,13 @@ components via Tailwind's `[]` escape or inline `style` attributes:
 <div className="text-[var(--color-foreground)] bg-[var(--color-background)]">
 ```
 
-Do not hardcode color or font values — always reference tokens so the Design admin changes
-take effect.
+Hardcoding color or font values in components is incorrect -- CSS custom properties are the mechanism that makes Admin > Design work.
 
 ---
 
 ## 6. Hook Filters in Themes
 
-Themes apply filters at render time for content and metadata. These are called by the core
-page routes before the view receives data — the view always receives the already-filtered
-values and does not call hooks itself.
+Themes apply filters at render time for content and metadata. These are called by the core page routes before the view receives data -- the view always receives already-filtered values and does not call hooks itself.
 
 | Filter | Applied by | What it does |
 |---|---|---|
@@ -331,7 +313,7 @@ values and does not call hooks itself.
 | `nav:items` | Call from `Layout.tsx` | Allows plugins to add nav entries |
 | `head:meta` | Call from view or layout | Allows plugins to add `<meta>` tags |
 
-To apply `nav:items` in your layout:
+Applying `nav:items` in a layout:
 
 ```typescript
 import { hooks } from "@/lib/hooks";
@@ -344,22 +326,16 @@ const nav = await hooks.applyFilters("nav:items", { input: rawNav });
 
 ## 7. The `default` Theme
 
-The `default` theme is the system fallback. It must never be removed from `THEME_ALLOWLIST`
-or `ALL_THEMES`. Any theme missing from the module registry silently falls back to `default`
-at runtime via the accessor functions in `src/lib/theme-modules.ts`.
+The `default` theme is the system fallback. It must never be removed from `THEME_ALLOWLIST` or `ALL_THEMES`. Any theme missing from the module registry silently falls back to `default` at runtime via the accessor functions in `src/lib/theme-modules.ts`.
 
-Use `default` as a reference implementation when building a new theme.
+Using `default` as a reference implementation when building a new theme is recommended.
 
 ---
 
 ## 8. Conventions
 
-- **Server Components by default.** Add `"use client"` only when interactivity is required.
-  Layouts, views, and static components should all be server-rendered.
-- **No direct plugin imports.** Themes use `getActiveSlots()` to render plugin UI — they must
-  not import plugin modules directly.
-- **No hardcoded colors or fonts.** Always use CSS custom properties defined in `design.ts`.
-- **`sanitizeThemeName()` must gate any dynamic theme reference.** Never use a raw
-  user-supplied or config-supplied string in an import path.
-- **The theme `id` is immutable after install.** It keys the `theme_design_configs` table.
-  Changing it orphans existing design configurations.
+- **Server Components by default.** Adding `"use client"` is appropriate only when interactivity is required. Layouts, views, and static components should all be server-rendered.
+- **No direct plugin imports.** Themes use `getActiveSlots()` to render plugin UI -- importing plugin modules directly is prohibited.
+- **No hardcoded colors or fonts.** CSS custom properties defined in `design.ts` are the correct mechanism.
+- **`sanitizeThemeName()` must gate any dynamic theme reference.** Using a raw user-supplied or config-supplied string in an import path is prohibited.
+- **The theme `id` is immutable after install.** It keys the `theme_design_configs` table. Changing it orphans existing design configurations.

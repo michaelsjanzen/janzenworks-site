@@ -156,6 +156,20 @@ export interface ActionCatalogue {
 
   /** Fired after a visitor updates their consent preferences. */
   "consent:after-update": { categories: { essential: true; nonEssential: boolean } };
+
+  /**
+   * Fired when a known bot visits any tracked URL.
+   * Sources: content:render (HTML pages), llms.txt route handlers, llms-full.txt route handler.
+   *
+   * resourceType is one of:
+   *   "HTML Page"     — regular post/page render
+   *   "llms.txt"      — /llms.txt or /[slug]/llms.txt
+   *   "llms-full.txt" — /llms-full.txt
+   *   "Post Markdown" — path containing llm= query param
+   *   "Sitemap"       — /sitemap.xml
+   *   "Robots.txt"    — /robots.txt
+   */
+  "request:bot-visit": { botName: string; path: string; resourceType: string };
 }
 
 // ─── Filter Catalogue ─────────────────────────────────────────────────────────

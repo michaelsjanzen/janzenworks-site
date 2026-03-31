@@ -28,7 +28,7 @@ export default function HeaderClient({ siteName, logoUrl, headerIdentity, navIte
   const showName = headerIdentity === "name-only" || headerIdentity === "logo-and-name" || !logoUrl;
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-md bg-white/80 border-b border-[var(--color-border)]">
+    <header className="sticky top-0 z-50 backdrop-blur-md bg-[var(--color-background)]/80 border-b border-[var(--color-border)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Logo / name */}
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition">
@@ -77,7 +77,7 @@ export default function HeaderClient({ siteName, logoUrl, headerIdentity, navIte
 
       {/* Mobile dropdown */}
       {open && (
-        <div className="md:hidden border-t border-[var(--color-border)] bg-white/95 backdrop-blur-md">
+        <div className="md:hidden border-t border-[var(--color-border)] bg-[var(--color-background)]/95 backdrop-blur-md">
           <nav className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
             {navItems.map(item => (
               <Link

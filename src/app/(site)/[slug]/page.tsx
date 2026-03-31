@@ -47,13 +47,33 @@ export async function generateMetadata(
   const siteName = config.site?.name ?? "Pugmill";
   if (!page) return { title: `Not found | ${siteName}` };
 
+  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const seoTitle = page.seoTitle;
+  const seoMetaDescription = page.seoMetaDescription;
+  const defaultDescription = page.excerpt ?? config.site.seoDefaults?.metaDescription ?? undefined;
+  const canonicalUrl = (page.canonicalUrl && page.canonicalUrl.trim())
+    ? page.canonicalUrl
+    : `${siteUrl}/${page.slug}`;
+  const ogImage = (page.ogImageUrl && page.ogImageUrl.trim())
+    ? page.ogImageUrl
+    : config.site.seoDefaults?.ogImage;
+
+  const robotsDirectives: string[] = [];
+  if (page.robotsNoindex) robotsDirectives.push("noindex");
+  if (page.robotsNofollow) robotsDirectives.push("nofollow");
+
   return {
-    title: `${page.title} | ${siteName}`,
-    description: page.excerpt ?? config.site.seoDefaults?.metaDescription ?? undefined,
+    title: seoTitle ? seoTitle : `${page.title} | ${siteName}`,
+    description: seoMetaDescription ?? defaultDescription,
+    ...(robotsDirectives.length ? { robots: robotsDirectives.join(", ") } : {}),
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
-      title: page.title,
-      description: page.excerpt ?? config.site.seoDefaults?.metaDescription ?? undefined,
-      ...(config.site.seoDefaults?.ogImage ? { images: [config.site.seoDefaults.ogImage] } : {}),
+      title: seoTitle ?? page.title,
+      description: seoMetaDescription ?? defaultDescription,
+      url: canonicalUrl,
+      ...(ogImage ? { images: [{ url: ogImage, alt: page.title }] } : {}),
     },
   };
 }

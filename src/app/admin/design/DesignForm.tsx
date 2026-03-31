@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useTransition } from "react";
-import type { DesignTokenDef } from "@/types/design";
+import type { DesignTokenDef, ColorPreset } from "@/types/design";
 import { BUILT_IN_GROUPS } from "@/types/design";
 import MediaUrlPicker from "@/components/admin/MediaUrlPicker";
 
@@ -21,6 +21,7 @@ interface Props {
   draftConfig: Record<string, string>;
   sansFonts: string[];
   monoFonts: string[];
+  colorPresets?: ColorPreset[];
   hasDraft?: boolean;
   saveAction: (partial: Record<string, string>) => Promise<void>;
   saveStructuralAction?: (partial: Record<string, string>) => Promise<void>;
@@ -33,6 +34,7 @@ export default function DesignForm({
   draftConfig,
   sansFonts,
   monoFonts,
+  colorPresets = [],
   hasDraft,
   saveAction,
   saveStructuralAction,
@@ -410,7 +412,33 @@ export default function DesignForm({
                 </span>
               )}
             </h3>
-            {groupTokens.map(token =>
+            {group === "colors" && colorPresets.length > 0 && (
+              <div className="space-y-2 pb-1">
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Presets</p>
+                <div className="flex flex-wrap gap-2">
+                  {colorPresets.map(preset => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        for (const [k, v] of Object.entries(preset.colors)) {
+                          setValue(k, v);
+                        }
+                      }}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-200 bg-white hover:border-zinc-400 hover:shadow-sm transition-all text-xs font-medium text-zinc-700"
+                    >
+                      <span className="flex gap-0.5">
+                        <span className="inline-block h-3.5 w-3.5 rounded-full ring-1 ring-black/10" style={{ background: preset.colors.colorBackground }} />
+                        <span className="inline-block h-3.5 w-3.5 rounded-full ring-1 ring-black/10" style={{ background: preset.colors.colorAccent }} />
+                        <span className="inline-block h-3.5 w-3.5 rounded-full ring-1 ring-black/10" style={{ background: preset.colors.colorForeground }} />
+                      </span>
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          {groupTokens.map(token =>
               isGated && token.key !== gateToken!.key ? null : renderToken(token)
             )}
             {isGated && (

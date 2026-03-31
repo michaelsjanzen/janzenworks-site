@@ -80,3 +80,24 @@ export const BUILT_IN_GROUPS = [
 ] as const;
 
 export type BuiltInGroup = (typeof BUILT_IN_GROUPS)[number];
+
+/**
+ * A named snapshot of all color token values.
+ * Themes export an array of these as COLOR_PRESETS.
+ * Selecting a preset populates the color fields in the design form draft —
+ * it does not auto-publish.
+ */
+export interface ColorPreset {
+  id: string;
+  label: string;
+  colors: {
+    colorBackground: string;
+    colorSurface: string;
+    colorForeground: string;
+    colorMuted: string;
+    colorBorder: string;
+    colorAccent: string;
+    colorAccentFg: string;
+    colorLink: string;
+  };
+}

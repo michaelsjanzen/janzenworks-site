@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 import { eq, isNull, and } from "drizzle-orm";
 import { getConfig } from "@/lib/config";
+import { detectBot, classifyPath } from "@/lib/bot-detection";
+import { loadPlugins } from "@/lib/plugin-loader";
+import { hooks } from "@/lib/hooks";
 
 // Revalidate every hour — AI crawlers don't need real-time accuracy,
 // and regenerating the full index on every request is expensive at scale.
@@ -17,7 +20,16 @@ export const revalidate = 3600;
  *
  * See: https://llmstxt.org
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // Track bot visits to this AEO endpoint.
+  const ua = req.headers.get("user-agent") ?? "";
+  const botName = detectBot(ua);
+  if (botName) {
+    const path = new URL(req.url).pathname;
+    await loadPlugins();
+    void hooks.doAction("request:bot-visit", { botName, path, resourceType: classifyPath(path) });
+  }
+
   const config = await getConfig();
   const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const siteName = config.site?.name ?? "Pugmill";

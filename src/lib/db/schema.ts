@@ -20,6 +20,15 @@ export const posts = pgTable("posts", {
   // AEO: structured Q&A pairs and entity data for AI crawlers.
   // Shape: { summary?: string, questions?: { q: string, a: string }[], entities?: { type: string, name: string, description?: string }[] }
   aeoMetadata: jsonb("aeo_metadata"),
+  // Per-post SEO overrides. When set, these replace the default title/description in <head>.
+  seoTitle: text("seo_title"),
+  seoMetaDescription: text("seo_meta_description"),
+  // Per-post robots meta directives.
+  robotsNoindex: boolean("robots_noindex").default(false).notNull(),
+  robotsNofollow: boolean("robots_nofollow").default(false).notNull(),
+  // Per-post canonical URL override and OG image URL override.
+  canonicalUrl: text("canonical_url"),
+  ogImageUrl: text("og_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => [

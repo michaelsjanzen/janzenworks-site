@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { getCurrentUser } from "@/lib/get-current-user";
 import { getConfig } from "@/lib/config";
 import { getAllPlugins } from "@/lib/plugin-registry";
+import { getAllThemes } from "@/lib/theme-registry";
 import { getUnreadCountsByPlugin } from "@/lib/notifications";
 import { loadPlugins } from "@/lib/plugin-loader";
 import AdminShell from "@/components/admin/AdminShell";
@@ -41,11 +42,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     config.modules.pluginSettings ?? {}
   ).filter(p => p.isActive);
 
+  const themes = getAllThemes(config.appearance.activeTheme);
+
   return (
     <AdminShell
       user={{ username: user.name || user.email || "Account", role: user.role }}
       plugins={activePlugins.map(p => ({ id: p.id, name: p.name, actionHref: p.actionHref }))}
+      themes={themes.map(t => ({ id: t.id, name: t.name, isActive: t.isActive }))}
       badges={badges}
+      announcement={config.site.adminAnnouncement || undefined}
     >
       {children}
     </AdminShell>

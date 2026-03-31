@@ -19,8 +19,8 @@
 }
 
 :root {
-  --ds-blue-1000: #00254D;
-  --ds-blue-900:  #003875;  /* hover state */
+  --ds-blue-1000: #4f46e5;  /* indigo-600 — primary actions */
+  --ds-blue-900:  #4338ca;  /* indigo-700 — hover state */
 }
 
 /* Admin UI — bump text sizes one step for readability */

@@ -193,7 +193,7 @@ export default async function LoginPage({
             </div>
             <button
               type="submit"
-              className="w-full bg-[var(--ds-blue-1000)] text-white py-2 rounded-lg text-sm font-medium hover:bg-[var(--ds-blue-900)] transition"
+              className="w-full bg-[var(--ds-blue-1000)] text-white py-2 rounded-full text-sm font-medium hover:bg-[var(--ds-blue-900)] transition"
             >
               Sign In
             </button>

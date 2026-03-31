@@ -8,11 +8,15 @@ import TaxonomyPicker from "@/components/admin/TaxonomyPicker";
 import PostImagePanel from "@/components/editor/PostImagePanel";
 import { createCategoryInline } from "@/lib/actions/categories";
 import { createTagInline } from "@/lib/actions/tags";
+import { autosavePost } from "@/lib/actions/posts";
+import { updateMediaAltText } from "@/lib/actions/media";
+import { useAiTools, parseJson } from "@/components/editor/useAiTools";
+import SerpPreview from "@/components/editor/SerpPreview";
 
 interface Category { id: number; name: string; slug: string; }
 interface Tag { id: number; name: string; slug: string; }
 interface Page { id: number; title: string; }
-interface MediaItem { id: number; url: string; fileName: string; }
+interface MediaItem { id: number; url: string; fileName: string; altText?: string | null; }
 
 interface PostFormProps {
   mode: "create" | "edit";
@@ -36,11 +40,12 @@ interface PostFormProps {
   initialFeaturedImageId?: number | null;
   initialFeaturedImageUrl?: string | null;
   initialFeatured?: boolean;
-}
-
-function parseJson<T>(raw: string): T {
-  const stripped = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
-  return JSON.parse(stripped) as T;
+  initialSeoTitle?: string;
+  initialSeoMetaDescription?: string;
+  initialRobotsNoindex?: boolean;
+  initialRobotsNofollow?: boolean;
+  initialCanonicalUrl?: string;
+  initialOgImageUrl?: string;
 }
 
 function toSlug(s: string): string {
@@ -61,75 +66,73 @@ function AiBtn({ label, onClick, pending, activeKey, myKey }: {
       onClick={onClick}
       disabled={pending}
       title={label}
-      className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all
+      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all
         ${isActive
-          ? "bg-violet-600 border-violet-600 text-white cursor-wait"
+          ? "btn-processing border-transparent text-white cursor-wait"
           : pending
             ? "bg-violet-50 border-violet-200 text-violet-300 cursor-not-allowed"
             : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300"
         }`}
     >
-      {isActive ? (
-        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-        </svg>
-      ) : (
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-      )}
+      <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
       {isActive ? "Working…" : label}
     </button>
   );
 }
 
 
-function AeoBadge({ aeo }: { aeo: AeoMetadata }) {
-  const hasSummary = !!aeo.summary?.trim();
-  const hasQa = (aeo.questions ?? []).some(q => q.q && q.a);
-  const hasEntities = (aeo.entities ?? []).some(e => e.name);
-  const dots = [hasSummary, hasQa, hasEntities];
-  const count = dots.filter(Boolean).length;
-  return (
-    <div
-      className="flex items-center gap-1"
-      title={`AEO: ${count}/3 sections filled (summary · Q&A · entities)`}
-    >
-      {dots.map((filled, i) => (
-        <span key={i} className={`w-2 h-2 rounded-full ${filled ? "bg-green-500" : "bg-zinc-200"}`} />
-      ))}
-      {count === 3 && (
-        <span className="text-xs text-green-600 font-medium ml-0.5">Complete</span>
-      )}
-    </div>
-  );
-}
 
 // ── AEO Health panel ──────────────────────────────────────────────────────────
 
-const AEO_HEALTH_CRITERIA: { key: string; label: string; pts: number; tip: string }[] = [
-  { key: "summary",        label: "Summary written",     pts: 20, tip: "Add a 2–3 sentence summary for AI crawlers." },
-  { key: "summary-length", label: "Summary 50+ chars",   pts: 10, tip: "Expand your summary to at least 50 characters." },
-  { key: "qa-1",           label: "At least 1 Q&A pair", pts: 20, tip: "Add a Q&A pair to generate FAQPage schema." },
-  { key: "qa-3",           label: "3 or more Q&A pairs", pts: 10, tip: "Add at least 3 Q&A pairs for better coverage." },
-  { key: "entities",       label: "Named entity tagged",  pts: 20, tip: "Tag key people, orgs, products, or concepts." },
-  { key: "keywords",       label: "5+ keywords",         pts: 20, tip: "Add 5–10 search-focused keywords." },
+const AEO_HEALTH_CRITERIA: { key: string; label: string; pts: number; tip: string; fixTool?: string; scrollTo?: string }[] = [
+  { key: "content-length",       label: "400+ words",                  pts: 15, tip: "Write at least 400 words for meaningful content depth." },
+  { key: "has-headings",         label: "H2/H3 subheadings present",   pts: 10, tip: "Add subheadings to structure the content." },
+  { key: "no-h1",                label: "No H1 in body",               pts:  5, tip: "Remove any # H1 headings — the post title already provides one." },
+  { key: "opening-concise",      label: "Opening para ≤ 80 words",     pts:  5, tip: "Shorten your first paragraph to make it scannable." },
+  { key: "summary",              label: "Summary written",             pts: 10, tip: "Add a 2–3 sentence summary for AI crawlers.",          fixTool: "aeo" },
+  { key: "summary-length",       label: "Summary 80+ chars",           pts:  5, tip: "Expand your summary to at least 80 characters.",       fixTool: "aeo" },
+  { key: "qa-1",                 label: "At least 1 Q&A pair",         pts: 10, tip: "Add a Q&A pair to generate FAQPage schema.",           fixTool: "aeo" },
+  { key: "qa-3",                 label: "3+ Q&A pairs",                pts:  5, tip: "Add at least 3 Q&A pairs for better coverage.",        fixTool: "aeo" },
+  { key: "entities",             label: "Named entity tagged",         pts: 10, tip: "Tag key people, orgs, products, or concepts.",         fixTool: "aeo" },
+  { key: "keywords",             label: "5+ keywords",                 pts: 10, tip: "Add 5–10 search-focused keywords.",                    fixTool: "aeo" },
+  { key: "keywords-in-content",  label: "Keywords found in content",   pts: 10, tip: "Ensure your AEO keywords appear naturally in the post body." },
+  { key: "featured-image-alt",   label: "Featured image has alt text", pts:  5, tip: "Set alt text on the featured image for accessibility and SEO.", scrollTo: "featured-image-alt-input" },
 ];
 
-function calcAeoHealth(aeo: AeoMetadata) {
+function countWords(text: string): number {
+  return text.replace(/#+\s|[*_`~\[\]()!]/g, "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function calcAeoHealth(aeo: AeoMetadata, content: string, featuredAlt: string | null | undefined) {
   const summary   = aeo.summary?.trim() ?? "";
   const questions = (aeo.questions ?? []).filter(q => q.q && q.a);
   const entities  = (aeo.entities  ?? []).filter(e => e.name);
   const keywords  = (aeo.keywords  ?? []).filter(k => k.trim());
 
+  // Content-based checks
+  const wordCount = content ? countWords(content) : 0;
+  const hasH2H3   = /^#{2,3}\s/m.test(content);
+  const hasH1     = /^#\s/m.test(content);
+  const firstPara = content.split(/\n\s*\n/)[0]?.trim() ?? "";
+  const openingWords = countWords(firstPara);
+  const contentLower = content.toLowerCase();
+  const keywordsInContent = keywords.length > 0 && keywords.some(k => contentLower.includes(k.toLowerCase()));
+
   const passed: Record<string, boolean> = {
-    "summary":        summary.length > 0,
-    "summary-length": summary.length >= 50,
-    "qa-1":           questions.length >= 1,
-    "qa-3":           questions.length >= 3,
-    "entities":       entities.length >= 1,
-    "keywords":       keywords.length >= 5,
+    "content-length":      wordCount >= 400,
+    "has-headings":        hasH2H3,
+    "no-h1":               !hasH1,
+    "opening-concise":     openingWords > 0 && openingWords <= 80,
+    "summary":             summary.length > 0,
+    "summary-length":      summary.length >= 80,
+    "qa-1":                questions.length >= 1,
+    "qa-3":                questions.length >= 3,
+    "entities":            entities.length >= 1,
+    "keywords":            keywords.length >= 5,
+    "keywords-in-content": keywordsInContent,
+    "featured-image-alt":  !!featuredAlt?.trim(),
   };
 
   const items = AEO_HEALTH_CRITERIA.map(c => ({ ...c, pass: passed[c.key] }));
@@ -137,13 +140,19 @@ function calcAeoHealth(aeo: AeoMetadata) {
   return { score, items };
 }
 
-function AeoHealthPanel({ aeo, aiEnabled, onGenerateAll, generating }: {
+function AeoHealthPanel({ aeo, content, featuredAlt, aiEnabled, onGenerateAll, generating, currentStep, summary, onFix, fixing }: {
   aeo: AeoMetadata;
+  content: string;
+  featuredAlt?: string | null;
   aiEnabled: boolean;
   onGenerateAll?: () => void;
   generating?: boolean;
+  currentStep?: string | null;
+  summary?: { step: string; applied: boolean; detail: string }[] | null;
+  onFix?: () => void;
+  fixing?: string | null;
 }) {
-  const { score, items } = calcAeoHealth(aeo);
+  const { score, items } = calcAeoHealth(aeo, content, featuredAlt);
   const grade    = score >= 90 ? "Excellent" : score >= 70 ? "Good" : score >= 40 ? "Fair" : "Poor";
   const barCls   = score >= 90 ? "bg-green-500" : score >= 70 ? "bg-blue-500" : score >= 40 ? "bg-amber-400" : "bg-red-400";
   const scoreCls = score >= 90 ? "text-green-600" : score >= 70 ? "text-blue-600" : score >= 40 ? "text-amber-500" : "text-red-500";
@@ -168,7 +177,38 @@ function AeoHealthPanel({ aeo, aiEnabled, onGenerateAll, generating }: {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-1">
                 <span className={`text-xs ${item.pass ? "text-zinc-700" : "text-zinc-400"}`}>{item.label}</span>
-                <span className={`text-[10px] shrink-0 ${item.pass ? "text-green-500" : "text-zinc-300"}`}>+{item.pts}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {!item.pass && aiEnabled && item.fixTool && onFix && (
+                    <button
+                      type="button"
+                      onClick={onFix}
+                      disabled={!!fixing}
+                      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed ${
+                        fixing === item.fixTool
+                          ? "btn-processing border-transparent text-white cursor-wait"
+                          : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
+                      }`}
+                    >
+                      {fixing === item.fixTool ? "Working…" : "Generate"}
+                    </button>
+                  )}
+                  {!item.pass && item.scrollTo && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById(item.scrollTo!);
+                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                          setTimeout(() => el.focus(), 400);
+                        }
+                      }}
+                      className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 transition-all"
+                    >
+                      Set
+                    </button>
+                  )}
+                  <span className={`text-[10px] ${item.pass ? "text-green-500" : "text-zinc-300"}`}>+{item.pts}</span>
+                </div>
               </div>
               {!item.pass && (
                 <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">{item.tip}</p>
@@ -189,11 +229,83 @@ function AeoHealthPanel({ aeo, aiEnabled, onGenerateAll, generating }: {
                 : "bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40"
             }`}
           >
-            {generating ? "Generating…" : "Generate All AEO Metadata"}
+            {generating ? "Generating…" : "Generate All"}
           </button>
-          <p className="text-[11px] text-zinc-400 mt-1.5 text-center leading-relaxed">Fills excerpt, slug, categories, tags, and AEO in one shot.</p>
+          <p className="text-[11px] text-zinc-400 mt-1.5 text-center leading-relaxed">Fills excerpt, slug, SEO, AEO, categories, tags, topic focus, and internal links — one step at a time.</p>
+          {generating && currentStep && (
+            <div className="mt-3 space-y-1.5">
+              <div className="h-1 rounded-full overflow-hidden bg-zinc-100">
+                <div className="h-full btn-processing rounded-full" />
+              </div>
+              <p className="text-xs text-zinc-500">Running: <span className="font-medium text-zinc-700">{currentStep}</span></p>
+            </div>
+          )}
+          {summary && !generating && (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">What changed</p>
+              {summary.map((item, i) => (
+                <div key={i} className="flex items-baseline gap-2 text-xs">
+                  <span className={`shrink-0 font-bold ${item.applied ? "text-green-500" : "text-zinc-300"}`}>
+                    {item.applied ? "✓" : "→"}
+                  </span>
+                  <span className="font-medium text-zinc-700">{item.step}</span>
+                  {item.detail && <span className="text-zinc-400 truncate">{item.detail}</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Featured image alt text input ─────────────────────────────────────────────
+
+function FeaturedAltInput({ mediaId, initialAlt, onSaved }: {
+  mediaId: number;
+  initialAlt: string;
+  onSaved: (alt: string) => void;
+}) {
+  const [value, setValue] = useState(initialAlt);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function save() {
+    if (value === initialAlt) return;
+    setSaving(true);
+    const result = await updateMediaAltText(mediaId, value);
+    setSaving(false);
+    if (result.ok) {
+      onSaved(value);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <label htmlFor="featured-image-alt-input" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">
+        Alt text
+      </label>
+      <div className="flex gap-1.5">
+        <input
+          id="featured-image-alt-input"
+          type="text"
+          value={value}
+          onChange={e => { setValue(e.target.value); setSaved(false); }}
+          onBlur={save}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); save(); } }}
+          placeholder="Describe the image…"
+          className="flex-1 border border-zinc-200 rounded px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-violet-400 bg-white"
+        />
+        {saved && (
+          <span className="text-xs text-green-600 font-medium self-center shrink-0">Saved</span>
+        )}
+        {saving && (
+          <span className="text-xs text-zinc-400 self-center shrink-0">Saving…</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -243,6 +355,12 @@ export default function PostForm({
   initialFeaturedImageId,
   initialFeaturedImageUrl,
   initialFeatured,
+  initialSeoTitle,
+  initialSeoMetaDescription,
+  initialRobotsNoindex,
+  initialRobotsNofollow,
+  initialCanonicalUrl,
+  initialOgImageUrl,
 }: PostFormProps) {
   const [title, setTitle] = useState(initialTitle ?? "");
   const [slug, setSlug] = useState(initialSlug ?? "");
@@ -255,6 +373,13 @@ export default function PostForm({
   const [currentType, setCurrentType] = useState<"post" | "page">(initialType ?? "post");
   const [slugEditing, setSlugEditing] = useState(false);
   const [slugManuallySet, setSlugManuallySet] = useState(!!initialSlug);
+  const [seoTitle, setSeoTitle] = useState(initialSeoTitle ?? "");
+  const [seoMetaDescription, setSeoMetaDescription] = useState(initialSeoMetaDescription ?? "");
+  const [robotsNoindex, setRobotsNoindex] = useState(initialRobotsNoindex ?? false);
+  const [robotsNofollow, setRobotsNofollow] = useState(initialRobotsNofollow ?? false);
+  const [canonicalUrl, setCanonicalUrl] = useState(initialCanonicalUrl ?? "");
+  const [ogImageUrl, setOgImageUrl] = useState(initialOgImageUrl ?? "");
+  const [contentForAudit, setContentForAudit] = useState(initialContent ?? "");
   const intentRef = useRef<HTMLInputElement>(null);
 
   function handleMediaUploaded(item: MediaItem) {
@@ -266,6 +391,37 @@ export default function PostForm({
   const aeoRef = useRef<AeoMetadataEditorHandle>(null);
 
   const [isDirty, setIsDirty] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced autosave — fires 10s after last change, edit mode only.
+  useEffect(() => {
+    if (!isDirty || !postId) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(async () => {
+      setAutosaveStatus("saving");
+      const result = await autosavePost(postId, {
+        title,
+        slug,
+        content: editorRef.current?.getContent() ?? "",
+        excerpt: excerpt || undefined,
+        seoTitle: seoTitle || undefined,
+        seoMetaDescription: seoMetaDescription || undefined,
+        aeoMetadata: aeoMeta,
+        canonicalUrl: canonicalUrl || undefined,
+        ogImageUrl: ogImageUrl || undefined,
+      });
+      if (result.ok) {
+        setAutosaveStatus("saved");
+        setIsDirty(false);
+        setTimeout(() => setAutosaveStatus("idle"), 3000);
+      } else {
+        setAutosaveStatus("error");
+      }
+    }, 10_000);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
+  }, [isDirty, title, slug, excerpt, seoTitle, seoMetaDescription, aeoMeta, canonicalUrl, ogImageUrl, postId]);
 
   // Warn the user if they try to navigate away with unsaved changes.
   const handleBeforeUnload = useCallback((e: BeforeUnloadEvent) => {
@@ -280,286 +436,83 @@ export default function PostForm({
     }
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isDirty, handleBeforeUnload]);
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [aiUsage, setAiUsage] = useState<{ count: number; limit: number }>({ count: 0, limit: 50 });
-  const [titleSuggestions, setTitleSuggestions] = useState<string[] | null>(null);
-  const [refineResult, setRefineResult] = useState<string | null>(null);
-  const [refineFocusResult, setRefineFocusResult] = useState<Array<{ label: string; passage?: string; recommendation: string }> | null>(null);
-  const [dismissedIssues, setDismissedIssues] = useState<Set<number>>(new Set());
-  const [toneItems, setToneItems] = useState<Array<{ quote: string; issue: string; suggestion: string }> | null>(null);
-  const [catSuggestions, setCatSuggestions] = useState<string[] | null>(null);
-  const [tagSuggestions, setTagSuggestions] = useState<string[] | null>(null);
-  const [moreAiPending, setMoreAiPending] = useState<string | null>(null);
-  const [moreAiResults, setMoreAiResults] = useState<Record<string, string>>({});
-  const [runAllPending, setRunAllPending] = useState<Set<string>>(new Set());
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [appliedKey, setAppliedKey] = useState<string | null>(null);
-  const [socialPlatform, setSocialPlatform] = useState<string | null>(null);
-  const [socialDraft, setSocialDraft] = useState<string>("");
-  const [socialPending, setSocialPending] = useState(false);
-
-  async function callAi(type: string, extra?: Record<string, unknown>): Promise<string | null> {
-    setAiError(null);
-    const content = editorRef.current?.getContent() ?? "";
-    const endpoint = type === "refine" ? "/api/ai/refine" : "/api/ai/suggest";
-    const body = type === "refine"
-      ? { content, postTitle: title }
-      : { content, postTitle: title, type, postId, ...extra };
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = (await res.json()) as { result?: string; error?: string; usage?: { count: number; limit: number } };
-      if (data.usage) setAiUsage(data.usage);
-      if (!res.ok) {
-        if (res.status === 429) setAiError(data.error ?? "AI rate limit reached. Try again in under an hour.");
-        else setAiError(data.error ?? "AI request failed");
-        return null;
-      }
-      return data.result ?? null;
-    } catch {
-      setAiError("Network error — please try again.");
-      return null;
-    }
-  }
-
-  async function handleSuggestTitles() {
-    setPendingAction("titles");
-    const result = await callAi("titles");
-    setPendingAction(null);
-    if (!result) return;
-    try { setTitleSuggestions(parseJson<string[]>(result)); }
-    catch { setAiError("Could not parse AI response. Try again."); }
-  }
-
-  async function handleGenerateSlug() {
-    setPendingAction("slug");
-    const result = await callAi("slug");
-    setPendingAction(null);
-    if (result) { setSlug(result.trim()); setSlugManuallySet(true); }
-  }
-
-  async function handleSuggestExcerpt() {
-    setPendingAction("excerpt");
-    const result = await callAi("excerpt");
-    setPendingAction(null);
-    if (result) setExcerpt(result.trim());
-  }
-
-  async function handleRefine() {
-    setPendingAction("refine");
-    const result = await callAi("refine");
-    setPendingAction(null);
-    if (result) setRefineResult(result);
-  }
-
-  async function handleWrite() {
-    setPendingAction("write");
-    const content = editorRef.current?.getContent() ?? "";
-    setAiError(null);
-    try {
-      const res = await fetch("/api/ai/refine", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ content, postTitle: title, mode: "write" }),
-      });
-      const data = (await res.json()) as { result?: string; error?: string };
-      if (!res.ok) { setAiError(data.error ?? "AI request failed"); }
-      else if (data.result) { setRefineResult(data.result); }
-    } catch { setAiError("Network error — please try again."); }
-    setPendingAction(null);
-  }
-
-  async function handleToneCheck() {
-    setPendingAction("tone-check");
-    const result = await callAi("tone-check");
-    setPendingAction(null);
-    if (!result) return;
-    try { setToneItems(parseJson<Array<{ quote: string; issue: string; suggestion: string }>>(result)); }
-    catch { setAiError("Could not parse AI response. Try again."); }
-  }
-
-  async function handleRefineFocus() {
-    setRefineFocusResult(null);
-    setDismissedIssues(new Set());
-    setPendingAction("refine-focus");
-    const result = await callAi("refine-focus");
-    setPendingAction(null);
-    if (!result) return;
-    try {
-      setRefineFocusResult(parseJson<Array<{ label: string; passage?: string; recommendation: string }>>(result));
-    } catch { setAiError("Could not parse AI response. Try again."); }
-  }
-
-  async function handleSocialPost(platform: string) {
-    setSocialPlatform(platform);
-    setSocialDraft("");
-    setSocialPending(true);
-    setAiError(null);
-    const content = editorRef.current?.getContent() ?? "";
-    try {
-      const res = await fetch("/api/ai/suggest", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ type: "social-post", platform, postTitle: title, content, aeoMeta }),
-      });
-      const data = (await res.json()) as { result?: string; error?: string; usage?: { count: number; limit: number } };
-      if (data.usage) setAiUsage(data.usage);
-      if (!res.ok) {
-        if (res.status === 429) setAiError(data.error ?? "AI rate limit reached.");
-        else setAiError(data.error ?? "AI request failed");
-      } else if (data.result) {
-        setSocialDraft(data.result);
-      }
-    } catch {
-      setAiError("Network error — please try again.");
-    }
-    setSocialPending(false);
-  }
-
-  async function handleSuggestCategories() {
-    setPendingAction("categories");
-    const result = await callAi("categories");
-    setPendingAction(null);
-    if (!result) return;
-    try { setCatSuggestions(parseJson<string[]>(result)); }
-    catch { setAiError("Could not parse AI response. Try again."); }
-  }
-
-  async function handleSuggestTags() {
-    setPendingAction("tags");
-    const result = await callAi("tags", { existingTags: allTags.map(t => t.name) });
-    setPendingAction(null);
-    if (!result) return;
-    try { setTagSuggestions(parseJson<string[]>(result)); }
-    catch { setAiError("Could not parse AI response. Try again."); }
-  }
-
-  async function handleGenerateAll() {
-    setPendingAction("generate-all");
-    const [excerptResult, slugResult, catResult, tagResult, aeoResult, kwResult] = await Promise.all([
-      callAi("excerpt"),
-      slugManuallySet ? Promise.resolve(null) : callAi("slug"),
-      callAi("categories"),
-      callAi("tags", { existingTags: allTags.map(t => t.name) }),
-      callAi("aeo"),
-      callAi("keywords"),
-    ]);
-    setPendingAction(null);
-    if (excerptResult) setExcerpt(excerptResult.trim());
-    if (slugResult && !slugManuallySet) setSlug(slugResult.trim());
-    if (catResult) { try { setCatSuggestions(parseJson<string[]>(catResult)); } catch { /* ignore */ } }
-    if (tagResult) { try { setTagSuggestions(parseJson<string[]>(tagResult)); } catch { /* ignore */ } }
-    if (aeoResult) {
-      try {
-        const parsed = parseJson<AeoMetadata>(aeoResult);
-        if (kwResult) { try { parsed.keywords = parseJson<string[]>(kwResult); } catch { /* keep */ } }
-        aeoRef.current?.setValue(parsed);
-      } catch { setAiError("Could not parse AEO response. Try again."); }
-    }
-  }
-
-  async function handleDraftAeo() {
-    setPendingAction("aeo");
-    const [aeoResult, kwResult] = await Promise.all([
-      callAi("aeo"),
-      callAi("keywords"),
-    ]);
-    setPendingAction(null);
-    if (!aeoResult) return;
-    try {
-      const parsed = parseJson<AeoMetadata>(aeoResult);
-      if (kwResult) {
-        try { parsed.keywords = parseJson<string[]>(kwResult); } catch { /* keep existing */ }
-      }
-      aeoRef.current?.setValue(parsed);
-      // onChange on AeoMetadataEditor will call setAeoMeta via the onChange prop
-    } catch { setAiError("Could not parse AI response. Try again."); }
-  }
-
-  async function runMoreAi(type: string) {
-    setMoreAiPending(type);
-    const result = await callAi(type);
-    setMoreAiPending(null);
-    if (result) setMoreAiResults(prev => ({ ...prev, [type]: result }));
-  }
-
-  const RUN_ALL_TOOLS = [
-    "excerpt", "categories", "tags", "aeo",
-    "internal-links", "topic-report",
-  ] as const;
-
-  async function handleRunAll() {
-    setMoreAiResults({});
-    setRunAllPending(new Set(RUN_ALL_TOOLS));
-
-    function finish(tool: string) {
-      setRunAllPending(prev => { const next = new Set(prev); next.delete(tool); return next; });
-    }
-
-    function applyInline(tool: string, result: string) {
-      try {
-        if (tool === "excerpt") { setExcerpt(result.trim()); return; }
-        if (tool === "categories") { setCatSuggestions(parseJson<string[]>(result)); return; }
-        if (tool === "tags") { setTagSuggestions(parseJson<string[]>(result)); return; }
-        if (tool === "aeo") {
-          const p = parseJson<AeoMetadata>(result);
-          aeoRef.current?.setValue(p);
-          // onChange on AeoMetadataEditor will call setAeoMeta via the onChange prop
-          return;
-        }
-      } catch { /* ignore parse errors for inline tools */ }
-    }
-
-    await Promise.allSettled(
-      RUN_ALL_TOOLS.map(tool =>
-        callAi(tool).then(result => {
-          if (!result) return;
-          const isInline = ["excerpt", "categories", "tags", "aeo"].includes(tool);
-          if (isInline) applyInline(tool, result);
-          else setMoreAiResults(prev => ({ ...prev, [tool]: result }));
-        }).finally(() => finish(tool))
-      )
-    );
-  }
-
-  function markApplied(key: string) {
-    setAppliedKey(key);
-    setTimeout(() => setAppliedKey(null), 2000);
-  }
-
-  function handleCopy(text: string, key: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedKey(key);
-      setTimeout(() => setCopiedKey(null), 2000);
-    });
-  }
-
-  function applyTitle(text: string, key: string) {
-    setTitle(text);
-    setTitleSuggestions(null);
-    markApplied(key);
-  }
-
-  function tryInsertInternalLink(anchorText: string, slug: string, context: string): boolean {
-    const content = editorRef.current?.getContent() ?? "";
-    if (!content.includes(context)) return false;
-    const linked = `[${anchorText}](/post/${slug})`;
-    if (content.includes(linked)) return false;
-    const updatedContext = context.replace(anchorText, linked);
-    if (updatedContext === context) return false;
-    editorRef.current?.setContent(content.replace(context, updatedContext));
-    return true;
-  }
-
-  function insertOutline(outline: string[]) {
-    const md = outline.map(s => `## ${s}\n\n`).join("");
-    const current = editorRef.current?.getContent() ?? "";
-    editorRef.current?.setContent(current ? `${current}\n\n${md}` : md);
-  }
+  const {
+    pendingAction,
+    aiError,
+    aiUsage,
+    titleSuggestions,
+    setTitleSuggestions,
+    refineResult,
+    setRefineResult,
+    refineFocusResult,
+    setRefineFocusResult,
+    readingLevel,
+    setReadingLevel,
+    dismissedIssues,
+    setDismissedIssues,
+    toneItems,
+    setToneItems,
+    catSuggestions,
+    setCatSuggestions,
+    tagSuggestions,
+    setTagSuggestions,
+    moreAiPending,
+    moreAiResults,
+    setMoreAiResults,
+    agentRunning,
+    agentCurrentStep,
+    agentSummary,
+    copiedKey,
+    setCopiedKey,
+    appliedKey,
+    socialPlatform,
+    setSocialPlatform,
+    socialDraft,
+    setSocialDraft,
+    socialPending,
+    handleSuggestTitles,
+    handleGenerateSlug,
+    handleSuggestExcerpt,
+    handleSuggestSeo,
+    handleRewrite,
+    handleAssist,
+    handleReadingLevel,
+    assistFeedback,
+    setAssistFeedback,
+    handleToneCheck,
+    handleRefineFocus,
+    handleSocialPost,
+    handleSuggestCategories,
+    handleSuggestTags,
+    handleGenerateAll,
+    handleDraftAeo,
+    runMoreAi,
+    markApplied,
+    handleCopy,
+    applyTitle,
+    tryInsertInternalLink,
+    excerptSuggestion,
+    setExcerptSuggestion,
+    swapPassageState,
+    setSwapPassageState,
+    handleSwapPassage,
+    applySwapPassage,
+  } = useAiTools({
+    title,
+    postId,
+    allTags,
+    aeoMeta,
+    slugManuallySet,
+    setTitle,
+    setSlug,
+    setSlugManuallySet,
+    setExcerpt,
+    setSeoTitle,
+    setSeoMetaDescription,
+    setIsDirty,
+    editorRef,
+    aeoRef,
+  });
 
   function renderToolResult(action: string, result: string) {
     let content: React.ReactNode;
@@ -654,8 +607,6 @@ export default function PostForm({
     ? `Edit ${initialType === "page" ? "Page" : "Post"}`
     : "New Content";
 
-  const isScheduled = publishAt && new Date(publishAt) > new Date();
-
   function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
       <p className="text-xs font-semibold tracking-widest text-zinc-700 uppercase mb-3">{children}</p>
@@ -663,35 +614,78 @@ export default function PostForm({
   }
 
   function RunBtn({ tool, label }: { tool: string; label: string }) {
-    const isSpinning = runAllPending.has(tool) || moreAiPending === tool;
+    const isSpinning = moreAiPending === tool;
     const done = !!moreAiResults[tool];
     return (
       <button
         type="button"
-        disabled={!!moreAiPending || runAllPending.size > 0}
+        disabled={!!moreAiPending || agentRunning}
         onClick={() => runMoreAi(tool)}
-        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border transition-all disabled:cursor-not-allowed
+        className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border transition-all disabled:cursor-not-allowed
           ${isSpinning
-            ? "bg-violet-600 border-violet-600 text-white"
+            ? "btn-processing border-transparent text-white cursor-wait"
             : done
               ? "bg-violet-50 border-violet-200 text-violet-500"
               : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
           }`}
       >
-        {isSpinning ? (
-          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
-        ) : done ? (
-          <span>✓</span>
+        {done ? (
+          <span className="w-2.5 h-2.5 flex items-center justify-center shrink-0">✓</span>
         ) : (
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         )}
-        {isSpinning ? "Running…" : label}
+        {isSpinning ? "Working…" : label}
       </button>
+    );
+  }
+
+  function AiDocumentActions() {
+    const [instruction, setInstruction] = useState("");
+
+    function submit() {
+      const val = instruction.trim();
+      if (!val) return;
+      handleAssist(val);
+      setInstruction("");
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={instruction}
+            onChange={e => { setInstruction(e.target.value); if (assistFeedback) setAssistFeedback(null); }}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
+            disabled={!!pendingAction}
+            placeholder="Ask the AI — rewrite, suggest excerpt, check tone, simplify…"
+            className="flex-1 min-w-0 border border-zinc-200 rounded-full px-3 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 placeholder:text-zinc-400 disabled:opacity-50"
+          />
+          <AiBtn
+            label="Ask"
+            pending={!!pendingAction}
+            activeKey={pendingAction}
+            myKey="assist"
+            onClick={submit}
+          />
+        </div>
+        {assistFeedback && (
+          <div className="flex items-start gap-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-500">
+            <span className="shrink-0 mt-px">ℹ</span>
+            <span className="flex-1">{assistFeedback}</span>
+            <button type="button" onClick={() => setAssistFeedback(null)} className="shrink-0 text-zinc-400 hover:text-zinc-600">✕</button>
+          </div>
+        )}
+        <div className="flex items-center gap-1 flex-wrap">
+          <AiBtn label="Tone check"    pending={!!pendingAction} activeKey={pendingAction} myKey="tone-check"    onClick={handleToneCheck} />
+          <AiBtn label="Reading level" pending={!!pendingAction} activeKey={pendingAction} myKey="reading-level" onClick={handleReadingLevel} />
+          <span className="w-px h-3 bg-zinc-200 mx-0.5 shrink-0" />
+          <RunBtn tool="topic-report"   label="Topic focus" />
+          <RunBtn tool="internal-links" label="Internal links" />
+        </div>
+      </div>
     );
   }
 
@@ -710,6 +704,15 @@ export default function PostForm({
         {aiError && (
           <p className="text-xs text-red-500 truncate max-w-xs hidden sm:block">{aiError}</p>
         )}
+        {autosaveStatus !== "idle" && (
+          <p className={`text-xs shrink-0 hidden sm:block ${
+            autosaveStatus === "saving" ? "text-zinc-400" :
+            autosaveStatus === "saved"  ? "text-green-500" :
+                                          "text-red-400"
+          }`}>
+            {autosaveStatus === "saving" ? "Saving…" : autosaveStatus === "saved" ? "Saved" : "Autosave failed"}
+          </p>
+        )}
         <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/admin/posts"
@@ -717,6 +720,14 @@ export default function PostForm({
           >
             Cancel
           </Link>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden px-3 py-1.5 rounded-lg border border-zinc-200 text-sm text-zinc-600 hover:bg-zinc-50 transition-colors"
+            title="Open settings"
+          >
+            Settings
+          </button>
           <button
             type="submit"
             form="post-form"
@@ -729,9 +740,9 @@ export default function PostForm({
             type="submit"
             form="post-form"
             onClick={() => { if (intentRef.current) intentRef.current.value = "publish"; }}
-            className="px-3 py-1.5 rounded-lg bg-[var(--ds-blue-1000)] text-white text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
+            className="px-3 py-1.5 rounded-full bg-[var(--ds-blue-1000)] text-white text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
           >
-            {isScheduled ? "Schedule" : "Publish"}
+            Publish
           </button>
         </div>
       </div>
@@ -799,11 +810,7 @@ export default function PostForm({
                     onChange={e => setPublishAt(e.target.value)}
                     className="w-full border border-zinc-200 rounded-lg px-3 py-1.5 text-sm bg-white text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-400"
                   />
-                  {isScheduled && (
-                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                      Scheduled publishing requires a cron job. Works automatically on Vercel — on other hosts, call <code className="bg-zinc-100 px-0.5 rounded">/api/cron/publish-scheduled</code> on a regular interval.
-                    </p>
-                  )}
+
                 </>
               )}
             </div>
@@ -879,37 +886,40 @@ export default function PostForm({
           </div>
 
           {titleSuggestions && (
-            <div className="mt-3 space-y-1">
-              <p className="text-xs text-zinc-600 mb-1.5">Suggested — click to use:</p>
-              {titleSuggestions.map((t, i) => (
-                <button
-                  key={i} type="button"
-                  onClick={() => {
-                    setTitle(t);
-                    setTitleSuggestions(null);
-                    if (!slugManuallySet) setSlug(toSlug(t));
-                  }}
-                  className="block w-full text-left text-sm text-zinc-700 hover:text-zinc-900 px-2 py-1 rounded hover:bg-zinc-100 transition-colors"
-                >{t}</button>
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs text-zinc-500 mb-2">Suggested — click to use:</p>
+              {([["curiosity", "Curiosity"], ["utility", "Utility"]] as const).map(([key, label]) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-xs font-semibold text-violet-500 w-16 shrink-0 pt-1.5">{label}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const t = titleSuggestions[key];
+                      setTitle(t);
+                      setTitleSuggestions(null);
+                      if (!slugManuallySet) setSlug(toSlug(t));
+                    }}
+                    className="flex-1 text-left text-sm text-zinc-700 hover:text-zinc-900 px-2 py-1 rounded hover:bg-zinc-100 transition-colors"
+                  >{titleSuggestions[key]}</button>
+                </div>
               ))}
-              <button type="button" onClick={() => setTitleSuggestions(null)} className="text-xs text-zinc-500 hover:text-zinc-600 px-2">Dismiss</button>
+              <button type="button" onClick={() => setTitleSuggestions(null)} className="text-xs text-zinc-500 hover:text-zinc-600 px-2 pt-1">Dismiss</button>
             </div>
           )}
         </div>
 
         {/* Content editor */}
-        <div id="content-editor-card" className="bg-white border border-zinc-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-3">
-                <SectionLabel>Content</SectionLabel>
-                {aiEnabled && (
-                  <div className="flex items-center gap-4">
-                    <AiBtn label="Write" pending={!!pendingAction} activeKey={pendingAction} myKey="write" onClick={handleWrite} />
-                    <AiBtn label="Refine" pending={!!pendingAction} activeKey={pendingAction} myKey="refine" onClick={handleRefine} />
-                    <AiBtn label="Tone check" pending={!!pendingAction} activeKey={pendingAction} myKey="tone-check" onClick={handleToneCheck} />
-                  </div>
-                )}
-              </div>
+        <div id="content-editor-card" className="bg-white border border-zinc-200 rounded-lg">
+          {/* Sticky toolbar — sticks below the fixed action bar (top-14 = 56px) */}
+          <div className="sticky top-14 z-20 px-6 pt-5 pb-3 border-b border-zinc-100 rounded-t-lg" style={{ background: "#f5f0ff" }}>
+            <SectionLabel>Content</SectionLabel>
+            {aiEnabled && <AiDocumentActions />}
+            {/* Toolbar portal target — MarkdownEditor portals its toolbar here */}
+            <div id="md-toolbar-portal" />
+          </div>
 
+          {/* Scrolling body */}
+          <div className="px-6 pt-4 pb-6">
               {toneItems && (
                 <div className="mb-4 space-y-3">
                   <p className="text-xs font-semibold tracking-widest text-zinc-700 uppercase">Tone suggestions</p>
@@ -950,6 +960,29 @@ export default function PostForm({
                 </div>
               )}
 
+              {readingLevel && (
+                <div className="mb-4 border border-zinc-200 rounded-lg p-4 bg-white space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold tracking-widest text-zinc-700 uppercase">Reading Level</p>
+                    <button type="button" onClick={() => setReadingLevel(null)} className="text-xs text-zinc-400 hover:text-zinc-600">✕</button>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-zinc-900">{readingLevel.gradeLevel}</span>
+                    <span className="text-sm text-zinc-500">/ Grade</span>
+                    <span className="ml-auto text-xs font-semibold bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded-full">{readingLevel.level}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 leading-relaxed">{readingLevel.note}</p>
+                  {readingLevel.fit && (
+                    <p className="text-xs text-zinc-400 italic">{readingLevel.fit}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setReadingLevel(null); handleRewrite("simplify to plain language, shorter sentences, no jargon"); }}
+                    className="text-xs text-violet-600 hover:text-violet-800 font-medium underline"
+                  >Simplify draft →</button>
+                </div>
+              )}
+
               <MarkdownEditor
                 ref={editorRef}
                 name="content"
@@ -959,66 +992,170 @@ export default function PostForm({
                 aiEnabled={aiEnabled}
                 postTitle={title}
                 onMediaUploaded={handleMediaUploaded}
+                onContentChange={setContentForAudit}
               />
-        </div>{/* end content editor */}
-        </div>{/* end left column */}
 
-        {/* Right column — AEO health + images, sticky on desktop */}
-        <div className="shrink-0 lg:flex-[1] lg:sticky lg:top-[52px] lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto space-y-4">
-
-        <AeoHealthPanel
-          aeo={aeoMeta}
-          aiEnabled={aiEnabled}
-          onGenerateAll={handleGenerateAll}
-          generating={pendingAction === "generate-all"}
-        />
-
-        {/* Image panel card */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-3 flex flex-col gap-3">
-            <p className="text-xs font-semibold tracking-widest text-zinc-700 uppercase shrink-0">Images</p>
-            {featuredId !== null && (
-              <>
-                <input type="hidden" name="featuredImage" value={featuredId} />
-                {(() => {
-                  const featuredUrl = sharedMedia.find(m => m.id === featuredId)?.url ?? initialFeaturedImageUrl;
-                  return featuredUrl ? (
-                    <div className="shrink-0">
-                      <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Featured image</p>
-                      <div className="relative rounded-md overflow-hidden bg-zinc-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={featuredUrl} alt="Featured" className="w-full object-cover max-h-32" />
-                        <button
-                          type="button"
-                          onClick={() => setFeaturedId(null)}
-                          className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center transition-colors"
-                          title="Remove featured image"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
+              {/* Topic Focus result — inline below editor */}
+              {aiEnabled && (moreAiResults["topic-report"] || refineFocusResult !== null) && (
+                <div className="mt-4 pt-4 border-t border-zinc-100 space-y-3">
+                  {moreAiResults["topic-report"] && renderToolResult("topic-report", moreAiResults["topic-report"])}
+                  {refineFocusResult !== null && (
+                    <div>
+                      {refineFocusResult.length === 0 && (
+                        <p className="text-xs text-green-600 font-medium">Post is well-focused — no issues found.</p>
+                      )}
+                      {refineFocusResult.length > 0 && (
+                        <div className="space-y-2">
+                          {refineFocusResult.map((issue, i) => {
+                            if (dismissedIssues.has(i)) return null;
+                            return (
+                              <div key={i} className="p-3 bg-amber-50 border-l-2 border-amber-400 rounded-r">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-xs font-semibold text-zinc-800">{issue.label}</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDismissedIssues(prev => new Set([...prev, i]))}
+                                    className="text-zinc-300 hover:text-zinc-500 transition-colors shrink-0 mt-0.5"
+                                    title="Mark as done"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </button>
+                                </div>
+                                {issue.passage && (
+                                  <div className="flex items-start gap-2 mt-1">
+                                    <p className="text-xs text-zinc-500 italic flex-1">&ldquo;{issue.passage}&rdquo;</p>
+                                    <div className="flex gap-1 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const found = editorRef.current?.scrollToText(issue.passage!);
+                                          if (!found) {
+                                            navigator.clipboard.writeText(issue.passage!);
+                                            return;
+                                          }
+                                          const card = document.getElementById("content-editor-card");
+                                          if (card) {
+                                            const y = card.getBoundingClientRect().top + window.scrollY - 72;
+                                            window.scrollTo({ top: y, behavior: "smooth" });
+                                          }
+                                        }}
+                                        className="text-xs text-violet-500 hover:text-violet-700 font-medium transition-colors"
+                                        title="Find in editor"
+                                      >
+                                        Find
+                                      </button>
+                                      {aiEnabled && (
+                                        <button
+                                          type="button"
+                                          disabled={swapPassageState?.issueIndex === i && swapPassageState.pending}
+                                          onClick={() => handleSwapPassage(issue, i)}
+                                          className="text-xs text-amber-600 hover:text-amber-800 font-medium transition-colors disabled:opacity-50"
+                                          title="Rewrite this passage with AI"
+                                        >
+                                          {swapPassageState?.issueIndex === i && swapPassageState.pending ? "…" : "Swap"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                {swapPassageState?.issueIndex === i && !swapPassageState.pending && swapPassageState.result && (
+                                  <div className="mt-2 p-2 bg-white border border-amber-200 rounded text-xs">
+                                    <p className="text-zinc-700 mb-2">{swapPassageState.result}</p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => applySwapPassage(issue.passage!, swapPassageState.result!)}
+                                        className="px-2 py-0.5 bg-amber-500 text-white rounded font-medium hover:bg-amber-600 transition-colors"
+                                      >Apply</button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSwapPassageState(null)}
+                                        className="text-zinc-400 hover:text-zinc-600 transition-colors"
+                                      >Dismiss</button>
+                                    </div>
+                                  </div>
+                                )}
+                                <p className="text-xs text-zinc-700 mt-1.5 font-medium">Fix: {issue.recommendation}</p>
+                              </div>
+                            );
+                          })}
+                          {refineFocusResult.every((_, i) => dismissedIssues.has(i)) && (
+                            <p className="text-xs text-green-600 font-medium">All issues addressed.</p>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { setRefineFocusResult(null); setDismissedIssues(new Set()); }}
+                            className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
+                          >
+                            Dismiss all
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  ) : null;
-                })()}
-              </>
-            )}
-            <PostImagePanel
-              mode={mode}
-              sessionMedia={sessionMedia}
-              associatedMedia={mode === "edit" ? extractAssociatedMedia(initialContent ?? "", sharedMedia) : []}
-              allMedia={sharedMedia}
-              featuredId={featuredId}
-              onFeaturedChange={setFeaturedId}
-              onInsert={(url, alt) => editorRef.current?.insertImage(url, alt)}
-              onUpload={handleMediaUploaded}
-              postTitle={title}
-            />
-        </div>{/* end image panel card */}
-        </div>{/* end right column */}
-        </div>{/* end two-column layout */}
+                  )}
+                </div>
+              )}
 
-        {/* Excerpt */}
+              {/* Internal Links result — inline below editor */}
+              {aiEnabled && moreAiResults["internal-links"] && (
+                <div className="mt-4 pt-4 border-t border-zinc-100">
+                  {renderToolResult("internal-links", moreAiResults["internal-links"])}
+                </div>
+              )}
+          </div>{/* end scrolling body */}
+        </div>{/* end content editor */}
+
+        {/* Images — inside left column */}
+        <div className="bg-white border border-zinc-200 rounded-lg p-4 flex flex-col gap-3">
+          {featuredId !== null && (
+            <>
+              <input type="hidden" name="featuredImage" value={featuredId} />
+              {(() => {
+                const featuredUrl = sharedMedia.find(m => m.id === featuredId)?.url ?? initialFeaturedImageUrl;
+                const featuredItem = sharedMedia.find(m => m.id === featuredId);
+                return featuredUrl ? (
+                  <div>
+                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Featured image</p>
+                    <div className="relative rounded-lg overflow-hidden bg-zinc-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={featuredUrl} alt="Featured" className="w-full object-cover max-h-56" />
+                      <button
+                        type="button"
+                        onClick={() => setFeaturedId(null)}
+                        className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-6 h-6 flex items-center justify-center transition-colors"
+                        title="Remove featured image"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <FeaturedAltInput
+                      mediaId={featuredId!}
+                      initialAlt={featuredItem?.altText ?? ""}
+                      onSaved={(alt) => setSharedMedia(prev => prev.map(m => m.id === featuredId ? { ...m, altText: alt } : m))}
+                    />
+                  </div>
+                ) : null;
+              })()}
+            </>
+          )}
+          <PostImagePanel
+            mode={mode}
+            sessionMedia={sessionMedia}
+            associatedMedia={mode === "edit" ? extractAssociatedMedia(initialContent ?? "", sharedMedia) : []}
+            allMedia={sharedMedia}
+            featuredId={featuredId}
+            onFeaturedChange={setFeaturedId}
+            onInsert={(url, alt) => editorRef.current?.insertImage(url, alt)}
+            onUpload={handleMediaUploaded}
+            postTitle={title}
+          />
+        </div>
+
+        {/* Excerpt — inside left column */}
         <div className="bg-white border border-zinc-200 rounded-lg p-6">
           <div className="flex items-center justify-between mb-3">
             <SectionLabel>Excerpt</SectionLabel>
@@ -1033,245 +1170,27 @@ export default function PostForm({
             className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
             placeholder="Short description for search engines and previews..."
           />
+          {excerptSuggestion && (
+            <div className="mt-3 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+              <p className="text-xs text-zinc-500 mb-1.5">AI suggestion — review before applying:</p>
+              <p className="text-sm text-zinc-800 mb-3">{excerptSuggestion}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setExcerpt(excerptSuggestion); setExcerptSuggestion(null); }}
+                  className="px-3 py-1 text-xs font-medium bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors"
+                >Apply</button>
+                <button
+                  type="button"
+                  onClick={() => setExcerptSuggestion(null)}
+                  className="px-3 py-1 text-xs text-zinc-500 hover:text-zinc-700 transition-colors"
+                >Dismiss</button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Categories */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-6">
-          <TaxonomyPicker
-            label="Categories"
-            fieldName="categories"
-            items={allCategories}
-            selectedIds={initialCategoryIds ? new Set(initialCategoryIds) : undefined}
-            onCreate={createCategoryInline}
-            onAiSuggest={aiEnabled ? handleSuggestCategories : undefined}
-            aiPending={!!pendingAction}
-            suggestions={catSuggestions ?? undefined}
-            onSuggestDismiss={() => setCatSuggestions(null)}
-          />
-        </div>
-
-        {/* Tags */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-6">
-          <TaxonomyPicker
-            label="Tags"
-            fieldName="tags"
-            items={allTags}
-            selectedIds={initialTagIds ? new Set(initialTagIds) : undefined}
-            onCreate={createTagInline}
-            onAiSuggest={aiEnabled ? handleSuggestTags : undefined}
-            aiPending={!!pendingAction}
-            suggestions={tagSuggestions ?? undefined}
-            onSuggestDismiss={() => setTagSuggestions(null)}
-          />
-        </div>
-
-
-        {/* AI usage meter */}
-        {aiEnabled && (() => {
-          const { count, limit } = aiUsage;
-          const pct       = Math.min(count / limit * 100, 100);
-          const barColor  = count >= 40 ? "bg-red-500"    : count >= 30 ? "bg-orange-500" : count >= 20 ? "bg-amber-400" : "bg-green-500";
-          const textColor = count >= 40 ? "text-red-600"  : count >= 30 ? "text-orange-600" : count >= 20 ? "text-amber-600" : "text-zinc-400";
-          const label     = count >= limit
-            ? "Limit reached — resets in under 1 hour"
-            : `${count} / ${limit} AI calls this hour`;
-          return (
-            <div className="bg-white border border-zinc-200 rounded-lg px-6 py-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs text-zinc-400">AI usage</span>
-                <span className={`text-xs font-medium ${textColor}`}>{label}</span>
-              </div>
-              <div className="w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${barColor}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* AEO Metadata */}
-        <div className="bg-white border border-zinc-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <SectionLabel>AEO Metadata</SectionLabel>
-              <div className="-mt-3">
-                <AeoBadge aeo={aeoMeta} />
-              </div>
-            </div>
-            {aiEnabled && (
-              <AiBtn label="Generate AEO" pending={!!pendingAction} activeKey={pendingAction} myKey="aeo" onClick={handleDraftAeo} />
-            )}
-          </div>
-          <AeoMetadataEditor
-            ref={aeoRef}
-            name="aeoMetadata"
-            defaultValue={initialAeoMetadata}
-            onChange={setAeoMeta}
-          />
-        </div>
-
-
-        {/* ── AI Analysis sections ── */}
-        {aiEnabled && (
-          <>
-            {/* Section divider label */}
-            <div className="pt-2 pb-1">
-              <p className="text-xs font-semibold tracking-widest text-zinc-700 uppercase">AI Analysis</p>
-            </div>
-
-            {/* Topic Focus */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-1.5">
-                <SectionLabel>Topic Focus</SectionLabel>
-                <RunBtn tool="topic-report" label="Run" />
-              </div>
-              <p className="text-xs text-zinc-600 mb-3">{ACTION_INSTRUCTIONS["topic-report"]}</p>
-              {moreAiResults["topic-report"] && renderToolResult("topic-report", moreAiResults["topic-report"])}
-              {refineFocusResult && refineFocusResult.length === 0 && (
-                <p className="mt-3 text-xs text-green-600 font-medium">Post is well-focused — no issues found.</p>
-              )}
-              {refineFocusResult && refineFocusResult.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  {refineFocusResult.map((issue, i) => {
-                    if (dismissedIssues.has(i)) return null;
-                    return (
-                      <div key={i} className="p-3 bg-amber-50 border-l-2 border-amber-400 rounded-r">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-xs font-semibold text-zinc-800">{issue.label}</p>
-                          <button
-                            type="button"
-                            onClick={() => setDismissedIssues(prev => new Set([...prev, i]))}
-                            className="text-zinc-300 hover:text-zinc-500 transition-colors shrink-0 mt-0.5"
-                            title="Mark as done"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                        </div>
-                        {issue.passage && (
-                          <div className="flex items-start gap-2 mt-1">
-                            <p className="text-xs text-zinc-500 italic flex-1">&ldquo;{issue.passage}&rdquo;</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const found = editorRef.current?.scrollToText(issue.passage!);
-                                if (!found) {
-                                  navigator.clipboard.writeText(issue.passage!);
-                                  return;
-                                }
-                                // Scroll to top of content card, offset for sticky header (56px) + gap
-                                const card = document.getElementById("content-editor-card");
-                                if (card) {
-                                  const y = card.getBoundingClientRect().top + window.scrollY - 72;
-                                  window.scrollTo({ top: y, behavior: "smooth" });
-                                }
-                              }}
-                              className="text-xs text-violet-500 hover:text-violet-700 font-medium shrink-0 transition-colors"
-                              title="Find in editor"
-                            >
-                              Find
-                            </button>
-                          </div>
-                        )}
-                        <p className="text-xs text-zinc-700 mt-1.5 font-medium">Fix: {issue.recommendation}</p>
-                      </div>
-                    );
-                  })}
-                  {refineFocusResult.every((_, i) => dismissedIssues.has(i)) && (
-                    <p className="text-xs text-green-600 font-medium">All issues addressed.</p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => { setRefineFocusResult(null); setDismissedIssues(new Set()); }}
-                    className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
-                  >
-                    Dismiss all
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Internal Links */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-1.5">
-                <SectionLabel>Internal Links</SectionLabel>
-                <RunBtn tool="internal-links" label="Run" />
-              </div>
-              <p className="text-xs text-zinc-600 mb-3">{ACTION_INSTRUCTIONS["internal-links"]}</p>
-              {moreAiResults["internal-links"] && renderToolResult("internal-links", moreAiResults["internal-links"])}
-            </div>
-
-            {/* Social Post Generator */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <div className="mb-3">
-                <SectionLabel>Social Post</SectionLabel>
-                <p className="text-xs text-zinc-600">Generate a platform-ready post draft. Click a platform to generate — click again to regenerate.</p>
-              </div>
-              <div className="flex gap-2 flex-wrap mb-3">
-                {SOCIAL_PLATFORMS.map(p => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleSocialPost(p.id)}
-                    disabled={socialPending}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                      socialPlatform === p.id && socialPending
-                        ? "bg-violet-600 border-violet-600 text-white cursor-wait"
-                        : socialPlatform === p.id && !socialPending
-                          ? "bg-violet-600 border-violet-600 text-white"
-                          : socialPending
-                            ? "bg-violet-50 border-violet-200 text-violet-300 cursor-not-allowed"
-                            : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300"
-                    }`}
-                  >
-                    {socialPlatform === p.id && socialPending ? "Generating…" : p.label}
-                  </button>
-                ))}
-              </div>
-              {socialPending && (
-                <div className="h-1.5 rounded-full overflow-hidden mb-3">
-                  <div className="h-full w-full btn-processing rounded-full" />
-                </div>
-              )}
-              {socialDraft && !socialPending && (() => {
-                const plat = SOCIAL_PLATFORMS.find(p => p.id === socialPlatform);
-                const limit = plat?.limit ?? Infinity;
-                const over = socialDraft.length > limit;
-                return (
-                  <div className="space-y-2">
-                    <textarea
-                      value={socialDraft}
-                      onChange={e => setSocialDraft(e.target.value)}
-                      rows={5}
-                      className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 resize-y focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs font-mono ${over ? "text-red-500 font-semibold" : "text-zinc-400"}`}>
-                        {socialDraft.length}{limit !== Infinity ? ` / ${limit}` : ""}
-                        {over && ` — ${socialDraft.length - limit} over limit`}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(socialDraft).then(() => {
-                          setCopiedKey("social");
-                          setTimeout(() => setCopiedKey(null), 2000);
-                        })}
-                        className="text-xs text-zinc-500 hover:text-zinc-800 font-medium transition-colors"
-                      >
-                        {copiedKey === "social" ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </>
-        )}
-
-        {/* Bottom actions */}
+        {/* Bottom actions — inside left column */}
         <div className="flex items-center justify-end gap-2 pt-2 pb-6">
           <Link
             href="/admin/posts"
@@ -1289,11 +1208,299 @@ export default function PostForm({
           <button
             type="submit"
             onClick={() => { if (intentRef.current) intentRef.current.value = "publish"; }}
-            className="px-4 py-2 rounded-lg bg-[var(--ds-blue-1000)] text-white text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
+            className="px-4 py-2 rounded-full bg-[var(--ds-blue-1000)] text-white text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
           >
-            {isScheduled ? "Schedule" : "Publish"}
+            Publish
           </button>
         </div>
+        </div>{/* end left column */}
+
+        {/* Right sidebar — sticky column on desktop, overlay drawer on mobile */}
+        <div className={`shrink-0 lg:flex-[2] lg:sticky lg:top-[52px] lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto${sidebarOpen ? " fixed inset-0 z-30" : " hidden lg:block"}`}>
+          {sidebarOpen && (
+            <div className="fixed inset-0 bg-black/30 lg:hidden" onClick={() => setSidebarOpen(false)} />
+          )}
+          <div className={`${sidebarOpen ? "fixed right-0 top-0 bottom-0 w-80 overflow-y-auto" : ""} lg:static lg:w-auto bg-white lg:bg-transparent space-y-4 p-4 lg:p-0`}>
+            {sidebarOpen && (
+              <div className="flex items-center justify-between mb-2 lg:hidden">
+                <span className="text-sm font-medium text-zinc-700">Settings</span>
+                <button type="button" onClick={() => setSidebarOpen(false)} className="text-zinc-400 hover:text-zinc-700 transition-colors">✕</button>
+              </div>
+            )}
+
+            <AeoHealthPanel
+              aeo={aeoMeta}
+              content={contentForAudit}
+              featuredAlt={sharedMedia.find(m => m.id === featuredId)?.altText}
+              aiEnabled={aiEnabled}
+              onGenerateAll={handleGenerateAll}
+              generating={agentRunning}
+              currentStep={agentCurrentStep}
+              summary={agentSummary}
+              onFix={() => handleDraftAeo()}
+              fixing={pendingAction === "aeo" && !agentRunning ? "aeo" : null}
+            />
+
+            {/* AI usage meter */}
+            {aiEnabled && (() => {
+              const { count, limit } = aiUsage;
+              const pct       = Math.min(count / limit * 100, 100);
+              const barColor  = count >= 40 ? "bg-red-500"    : count >= 30 ? "bg-orange-500" : count >= 20 ? "bg-amber-400" : "bg-green-500";
+              const textColor = count >= 40 ? "text-red-600"  : count >= 30 ? "text-orange-600" : count >= 20 ? "text-amber-600" : "text-zinc-400";
+              const label     = count >= limit
+                ? "Limit reached — resets in under 1 hour"
+                : `${count} / ${limit} AI calls this hour`;
+              return (
+                <div className="bg-white border border-zinc-200 rounded-lg px-6 py-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs text-zinc-400">AI usage</span>
+                    <span className={`text-xs font-medium ${textColor}`}>{label}</span>
+                  </div>
+                  <div className="w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${barColor}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* AEO */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <SectionLabel>AEO</SectionLabel>
+                  {(() => {
+                    const aeoComplete =
+                      !!aeoMeta.summary?.trim() &&
+                      (aeoMeta.questions?.filter(q => q.q && q.a).length ?? 0) >= 1 &&
+                      (aeoMeta.entities?.filter(e => e.name).length ?? 0) >= 1 &&
+                      (aeoMeta.keywords?.filter(k => k.trim()).length ?? 0) >= 5;
+                    return aeoComplete ? (
+                      <svg className="w-3.5 h-3.5 text-green-500 -mt-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : null;
+                  })()}
+                </div>
+                {aiEnabled && (
+                  <AiBtn label="Generate AEO" pending={!!pendingAction} activeKey={pendingAction} myKey="aeo" onClick={handleDraftAeo} />
+                )}
+              </div>
+              <AeoMetadataEditor
+                ref={aeoRef}
+                name="aeoMetadata"
+                defaultValue={initialAeoMetadata}
+                onChange={setAeoMeta}
+              />
+            </div>
+
+            {/* SEO */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SectionLabel>SEO</SectionLabel>
+                  {seoTitle.trim() && seoMetaDescription.trim() && (
+                    <svg className="w-3.5 h-3.5 text-green-500 -mt-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                {aiEnabled && (
+                  <AiBtn label="Generate SEO" pending={!!pendingAction} activeKey={pendingAction} myKey="seo" onClick={handleSuggestSeo} />
+                )}
+              </div>
+              <div className="mt-3 space-y-4">
+                <SerpPreview
+                  seoTitle={seoTitle}
+                  seoMetaDescription={seoMetaDescription}
+                  postTitle={title}
+                  slug={slug}
+                />
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-zinc-500">SEO Title</label>
+                    <span className={`text-xs ${seoTitle.length > 60 ? "text-red-500" : "text-zinc-400"}`}>
+                      {seoTitle.length}/60
+                    </span>
+                  </div>
+                  <input
+                    name="seoTitle"
+                    value={seoTitle}
+                    onChange={e => { setSeoTitle(e.target.value); setIsDirty(true); }}
+                    maxLength={60}
+                    className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    placeholder="Custom title tag — leave blank to use post title"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-medium text-zinc-500">Meta Description</label>
+                    <span className={`text-xs ${seoMetaDescription.length > 155 ? "text-red-500" : "text-zinc-400"}`}>
+                      {seoMetaDescription.length}/155
+                    </span>
+                  </div>
+                  <textarea
+                    name="seoMetaDescription"
+                    value={seoMetaDescription}
+                    onChange={e => { setSeoMetaDescription(e.target.value); setIsDirty(true); }}
+                    maxLength={155}
+                    rows={3}
+                    className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none"
+                    placeholder="Custom meta description — leave blank to use excerpt"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-500 block mb-1">Canonical URL</label>
+                  <input
+                    name="canonicalUrl"
+                    value={canonicalUrl}
+                    onChange={e => { setCanonicalUrl(e.target.value); setIsDirty(true); }}
+                    className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    placeholder="Leave blank to use default permalink"
+                  />
+                </div>
+                {/* Robots meta */}
+                <div className="pt-1 space-y-2">
+                  <p className="text-xs font-medium text-zinc-500">Robots directives</p>
+                  <input type="hidden" name="robotsNoindex" value="0" />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="robotsNoindex"
+                      value="1"
+                      checked={robotsNoindex}
+                      onChange={e => { setRobotsNoindex(e.target.checked); setIsDirty(true); }}
+                      className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
+                    />
+                    <span className="text-sm text-zinc-700">noindex — hide from search engines</span>
+                  </label>
+                  <input type="hidden" name="robotsNofollow" value="0" />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="robotsNofollow"
+                      value="1"
+                      checked={robotsNofollow}
+                      onChange={e => { setRobotsNofollow(e.target.checked); setIsDirty(true); }}
+                      className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
+                    />
+                    <span className="text-sm text-zinc-700">nofollow — tell crawlers not to follow links</span>
+                  </label>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-500 block mb-1">OG Image URL</label>
+                  <input
+                    name="ogImageUrl"
+                    value={ogImageUrl}
+                    onChange={e => { setOgImageUrl(e.target.value); setIsDirty(true); }}
+                    className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                    placeholder="Leave blank to use featured image"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Categories */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-6">
+              <TaxonomyPicker
+                label="Categories"
+                fieldName="categories"
+                items={allCategories}
+                selectedIds={initialCategoryIds ? new Set(initialCategoryIds) : undefined}
+                onCreate={createCategoryInline}
+                onAiSuggest={aiEnabled ? handleSuggestCategories : undefined}
+                aiPending={pendingAction === "categories"}
+                suggestions={catSuggestions ?? undefined}
+                onSuggestDismiss={() => setCatSuggestions(null)}
+              />
+            </div>
+
+            {/* Tags */}
+            <div className="bg-white border border-zinc-200 rounded-lg p-6">
+              <TaxonomyPicker
+                label="Tags"
+                fieldName="tags"
+                items={allTags}
+                selectedIds={initialTagIds ? new Set(initialTagIds) : undefined}
+                onCreate={createTagInline}
+                onAiSuggest={aiEnabled ? handleSuggestTags : undefined}
+                aiPending={pendingAction === "tags"}
+                suggestions={tagSuggestions ?? undefined}
+                onSuggestDismiss={() => setTagSuggestions(null)}
+              />
+            </div>
+
+            {/* Social Post */}
+            {aiEnabled && (
+              <div className="bg-white border border-zinc-200 rounded-lg p-6">
+                <div className="mb-3">
+                  <SectionLabel>Social Post</SectionLabel>
+                  <p className="text-xs text-zinc-600">Generate a platform-ready post draft. Click a platform to generate — click again to regenerate.</p>
+                </div>
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {SOCIAL_PLATFORMS.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSocialPost(p.id)}
+                      disabled={socialPending}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                        socialPlatform === p.id && socialPending
+                          ? "bg-violet-600 border-violet-600 text-white cursor-wait"
+                          : socialPlatform === p.id && !socialPending
+                            ? "bg-violet-600 border-violet-600 text-white"
+                            : socialPending
+                              ? "bg-violet-50 border-violet-200 text-violet-300 cursor-not-allowed"
+                              : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300"
+                      }`}
+                    >
+                      {socialPlatform === p.id && socialPending ? "Generating…" : p.label}
+                    </button>
+                  ))}
+                </div>
+                {socialPending && (
+                  <div className="h-1.5 rounded-full overflow-hidden mb-3">
+                    <div className="h-full w-full btn-processing rounded-full" />
+                  </div>
+                )}
+                {socialDraft && !socialPending && (() => {
+                  const plat = SOCIAL_PLATFORMS.find(p => p.id === socialPlatform);
+                  const limit = plat?.limit ?? Infinity;
+                  const over = socialDraft.length > limit;
+                  return (
+                    <div className="space-y-2">
+                      <textarea
+                        value={socialDraft}
+                        onChange={e => setSocialDraft(e.target.value)}
+                        rows={5}
+                        className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-800 resize-y focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                      />
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-mono ${over ? "text-red-500 font-semibold" : "text-zinc-400"}`}>
+                          {socialDraft.length}{limit !== Infinity ? ` / ${limit}` : ""}
+                          {over && ` — ${socialDraft.length - limit} over limit`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => navigator.clipboard.writeText(socialDraft).then(() => {
+                            setCopiedKey("social");
+                            setTimeout(() => setCopiedKey(null), 2000);
+                          })}
+                          className="text-xs text-zinc-500 hover:text-zinc-800 font-medium transition-colors"
+                        >
+                          {copiedKey === "social" ? "Copied!" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>{/* end right sidebar */}
+        </div>{/* end two-column layout */}
       </form>
     </div>
   );

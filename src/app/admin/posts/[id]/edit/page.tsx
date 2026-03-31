@@ -22,7 +22,7 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     db.select().from(postCategories).where(eq(postCategories.postId, postId)),
     db.select().from(postTags).where(eq(postTags.postId, postId)),
     isAiConfigured(),
-    db.select({ id: media.id, url: media.url, fileName: media.fileName })
+    db.select({ id: media.id, url: media.url, fileName: media.fileName, altText: media.altText })
       .from(media)
       .where(like(media.fileType, "image/%"))
       .orderBy(desc(media.createdAt)),
@@ -65,6 +65,12 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
       initialFeaturedImageId={post.featuredImage ?? null}
       initialFeaturedImageUrl={featuredMediaRecord?.url ?? null}
       initialFeatured={post.featured}
+      initialSeoTitle={post.seoTitle ?? ""}
+      initialSeoMetaDescription={post.seoMetaDescription ?? ""}
+      initialRobotsNoindex={post.robotsNoindex}
+      initialRobotsNofollow={post.robotsNofollow}
+      initialCanonicalUrl={post.canonicalUrl ?? ""}
+      initialOgImageUrl={post.ogImageUrl ?? ""}
     />
   );
 }

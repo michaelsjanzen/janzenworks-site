@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getConfig } from "@/lib/config";
 import { parseAeoMetadata } from "@/lib/aeo";
+import { detectBot, classifyPath } from "@/lib/bot-detection";
+import { loadPlugins } from "@/lib/plugin-loader";
+import { hooks } from "@/lib/hooks";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +17,15 @@ export const dynamic = "force-dynamic";
  * Intended for AI systems that want to index the entire site in one request.
  * Large sites should paginate this endpoint or implement incremental feeds.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const ua = req.headers.get("user-agent") ?? "";
+  const botName = detectBot(ua);
+  if (botName) {
+    const path = new URL(req.url).pathname;
+    await loadPlugins();
+    void hooks.doAction("request:bot-visit", { botName, path, resourceType: classifyPath(path) });
+  }
+
   const config = await getConfig();
   const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const siteName = config.site?.name ?? "Pugmill";

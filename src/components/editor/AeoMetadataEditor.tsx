@@ -1,12 +1,56 @@
 "use client";
 import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 
+export type ExtendedSchemaType = "HowTo" | "Product" | "Event" | "LocalBusiness" | "VideoObject";
+
 export interface AeoMetadata {
   summary?: string;
   questions?: { q: string; a: string }[];
   entities?: { type: string; name: string; description?: string }[];
   keywords?: string[];
+  schemaType?: ExtendedSchemaType;
+  schemaData?: Record<string, string>;
 }
+
+// Per-type field definitions: [fieldKey, label, placeholder, isTextarea?]
+const SCHEMA_FIELDS: Record<ExtendedSchemaType, [string, string, string, boolean?][]> = {
+  HowTo: [
+    ["name", "Name", "How to bake sourdough bread"],
+    ["totalTime", "Total time", "PT1H30M (ISO 8601 duration, e.g. PT1H for 1 hour)"],
+    ["description", "Description", "Brief overview of what this guide covers"],
+    ["steps", "Steps (one per line)", "Mix flour and water\nAdd starter and salt\nKnead for 10 minutes", true],
+  ],
+  Product: [
+    ["name", "Product name", "Pugmill CMS"],
+    ["description", "Description", "A self-hosted CMS built for content teams"],
+    ["brand", "Brand", "Pugmill"],
+    ["price", "Price", "0"],
+    ["priceCurrency", "Currency", "USD"],
+    ["availability", "Availability", "InStock"],
+  ],
+  Event: [
+    ["name", "Event name", "Annual Content Summit 2025"],
+    ["startDate", "Start date", "2025-09-01T09:00"],
+    ["endDate", "End date", "2025-09-01T17:00"],
+    ["locationName", "Location name", "San Francisco Convention Center"],
+    ["description", "Description", "Brief description of the event"],
+  ],
+  LocalBusiness: [
+    ["name", "Business name", "Acme Pottery Studio"],
+    ["businessType", "Business type", "LocalBusiness (or ProfessionalService, Restaurant, etc.)"],
+    ["address", "Address", "123 Main St, Portland, OR 97201"],
+    ["telephone", "Phone", "+1-555-123-4567"],
+    ["url", "Website", "https://example.com"],
+  ],
+  VideoObject: [
+    ["name", "Video title", "Getting started with Pugmill CMS"],
+    ["description", "Description", "A walkthrough of the Pugmill CMS setup process"],
+    ["contentUrl", "Video URL", "https://example.com/video.mp4"],
+    ["thumbnailUrl", "Thumbnail URL", "https://example.com/thumb.jpg"],
+    ["uploadDate", "Upload date", "2025-01-15"],
+    ["duration", "Duration", "PT4M30S (ISO 8601, e.g. PT4M30S for 4m30s)"],
+  ],
+};
 
 export interface AeoMetadataEditorHandle {
   setValue: (value: AeoMetadata) => void;
@@ -32,18 +76,23 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
   const [keywords, setKeywords] = useState<string[]>(defaultValue?.keywords ?? []);
   const [kwInput, setKwInput] = useState("");
   const kwInputRef = useRef<HTMLInputElement>(null);
+  const [schemaType, setSchemaType] = useState<ExtendedSchemaType | "">(defaultValue?.schemaType ?? "");
+  const [schemaData, setSchemaData] = useState<Record<string, string>>(defaultValue?.schemaData ?? {});
 
   function buildValue(
     s: string,
     qs: { q: string; a: string }[],
     es: { type: string; name: string; description?: string }[],
-    kws: string[]
+    kws: string[],
+    st: ExtendedSchemaType | "",
+    sd: Record<string, string>,
   ): AeoMetadata {
     return {
       ...(s ? { summary: s } : {}),
       ...(qs.filter(q => q.q && q.a).length > 0 ? { questions: qs.filter(q => q.q && q.a) } : {}),
       ...(es.filter(e => e.name).length > 0 ? { entities: es.filter(e => e.name) } : {}),
       ...(kws.length > 0 ? { keywords: kws } : {}),
+      ...(st ? { schemaType: st, schemaData: sd } : {}),
     };
   }
 
@@ -53,15 +102,19 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
       const qs = aeo.questions ?? [];
       const es = aeo.entities ?? [];
       const kws = (aeo.keywords ?? []).slice(0, 10);
+      const st = aeo.schemaType ?? "";
+      const sd = aeo.schemaData ?? {};
       setSummary(s);
       setQuestions(qs);
       setEntities(es);
       setKeywords(kws);
-      onChange?.(buildValue(s, qs, es, kws));
+      setSchemaType(st);
+      setSchemaData(sd);
+      onChange?.(buildValue(s, qs, es, kws, st, sd));
     },
   }));
 
-  const value = buildValue(summary, questions, entities, keywords);
+  const value = buildValue(summary, questions, entities, keywords, schemaType, schemaData);
 
   return (
     <div className="space-y-5">
@@ -79,16 +132,14 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
 
       {/* Summary */}
       <div>
-        <label className="block text-sm font-medium text-zinc-700 mb-1">
-          Summary
-          <span className="font-normal text-zinc-400 ml-1.5 text-xs">— one paragraph for AI crawlers</span>
-        </label>
+        <label className="block text-sm font-medium text-zinc-700">Summary</label>
+        <p className="text-xs text-zinc-400 mb-1.5">One paragraph for AI crawlers.</p>
         <textarea
           value={summary}
           onChange={e => {
             const s = e.target.value;
             setSummary(s);
-            onChange?.(buildValue(s, questions, entities, keywords));
+            onChange?.(buildValue(s, questions, entities, keywords, schemaType, schemaData));
           }}
           rows={3}
           placeholder="A concise description of this page for AI systems..."
@@ -99,16 +150,16 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
       {/* Q&A Pairs */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-zinc-700">
-            Q&amp;A Pairs
-            <span className="font-normal text-zinc-400 ml-1.5 text-xs">— questions your content answers</span>
-          </label>
+          <div>
+            <label className="text-sm font-medium text-zinc-700">Q&amp;A Pairs</label>
+            <p className="text-xs text-zinc-400">Questions your content answers.</p>
+          </div>
           <button
             type="button"
             onClick={() => {
               const next = [...questions, { q: "", a: "" }];
               setQuestions(next);
-              onChange?.(buildValue(summary, next, entities, keywords));
+              onChange?.(buildValue(summary, next, entities, keywords, schemaType, schemaData));
             }}
             className="text-xs text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded px-2 py-1 transition-colors"
           >
@@ -124,7 +175,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                   const next = [...questions];
                   next[i] = { ...next[i], q: e.target.value };
                   setQuestions(next);
-                  onChange?.(buildValue(summary, next, entities, keywords));
+                  onChange?.(buildValue(summary, next, entities, keywords, schemaType, schemaData));
                 }}
                 placeholder="Question"
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
@@ -135,7 +186,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                   const next = [...questions];
                   next[i] = { ...next[i], a: e.target.value };
                   setQuestions(next);
-                  onChange?.(buildValue(summary, next, entities, keywords));
+                  onChange?.(buildValue(summary, next, entities, keywords, schemaType, schemaData));
                 }}
                 placeholder="Answer"
                 rows={2}
@@ -146,7 +197,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                 onClick={() => {
                   const next = questions.filter((_, j) => j !== i);
                   setQuestions(next);
-                  onChange?.(buildValue(summary, next, entities, keywords));
+                  onChange?.(buildValue(summary, next, entities, keywords, schemaType, schemaData));
                 }}
                 className="text-xs text-red-500 hover:text-red-700 transition-colors"
               >
@@ -163,16 +214,16 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
       {/* Named Entities */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-zinc-700">
-            Named Entities
-            <span className="font-normal text-zinc-400 ml-1.5 text-xs">— key concepts, people, or products</span>
-          </label>
+          <div>
+            <label className="text-sm font-medium text-zinc-700">Named Entities</label>
+            <p className="text-xs text-zinc-400">Key concepts, people, or products.</p>
+          </div>
           <button
             type="button"
             onClick={() => {
               const next = [...entities, { type: "Thing", name: "", description: "" }];
               setEntities(next);
-              onChange?.(buildValue(summary, questions, next, keywords));
+              onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
             }}
             className="text-xs text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded px-2 py-1 transition-colors"
           >
@@ -189,7 +240,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                     const next = [...entities];
                     next[i] = { ...next[i], name: e.target.value };
                     setEntities(next);
-                    onChange?.(buildValue(summary, questions, next, keywords));
+                    onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
                   }}
                   placeholder="Name (e.g. Pugmill CMS)"
                   className="border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
@@ -200,7 +251,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                     const next = [...entities];
                     next[i] = { ...next[i], type: e.target.value };
                     setEntities(next);
-                    onChange?.(buildValue(summary, questions, next, keywords));
+                    onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
                   }}
                   className="border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
                 >
@@ -215,7 +266,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                   const next = [...entities];
                   next[i] = { ...next[i], description: e.target.value };
                   setEntities(next);
-                  onChange?.(buildValue(summary, questions, next, keywords));
+                  onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
                 }}
                 placeholder="Short description (optional)"
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
@@ -225,7 +276,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                 onClick={() => {
                   const next = entities.filter((_, j) => j !== i);
                   setEntities(next);
-                  onChange?.(buildValue(summary, questions, next, keywords));
+                  onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
                 }}
                 className="text-xs text-red-500 hover:text-red-700 transition-colors"
               >
@@ -242,13 +293,20 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
       {/* Keywords */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-zinc-700">
-            Keywords
-            <span className="font-normal text-zinc-400 ml-1.5 text-xs">— 5–10 specific, search-focused terms</span>
-          </label>
-          <span className={`text-xs font-medium ${keywords.length >= 5 ? "text-green-600" : "text-zinc-400"}`}>
-            {keywords.length}/10
-          </span>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-sm font-medium text-zinc-700">Keywords</label>
+              {keywords.length >= 5 ? (
+                <svg className="w-3.5 h-3.5 text-green-500 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <span className="text-xs text-zinc-400">{keywords.length}/10</span>
+              )}
+            </div>
+            <p className="text-xs text-zinc-400">5–10 specific, search-focused terms.</p>
+          </div>
+          <span />
         </div>
 
         {/* Tag pills */}
@@ -262,7 +320,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                   onClick={() => {
                     const next = keywords.filter((_, j) => j !== i);
                     setKeywords(next);
-                    onChange?.(buildValue(summary, questions, entities, next));
+                    onChange?.(buildValue(summary, questions, entities, next, schemaType, schemaData));
                   }}
                   className="text-zinc-400 hover:text-zinc-700 transition-colors leading-none"
                   aria-label={`Remove ${kw}`}
@@ -288,13 +346,13 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                     if (trimmed && !keywords.includes(trimmed) && keywords.length < 10) {
                       const next = [...keywords, trimmed];
                       setKeywords(next);
-                      onChange?.(buildValue(summary, questions, entities, next));
+                      onChange?.(buildValue(summary, questions, entities, next, schemaType, schemaData));
                     }
                     setKwInput("");
                   } else if (e.key === "Backspace" && kwInput === "" && keywords.length > 0) {
                     const next = keywords.slice(0, -1);
                     setKeywords(next);
-                    onChange?.(buildValue(summary, questions, entities, next));
+                    onChange?.(buildValue(summary, questions, entities, next, schemaType, schemaData));
                   }
                 }}
                 placeholder="Type a keyword and press Enter"
@@ -307,7 +365,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                   if (trimmed && !keywords.includes(trimmed) && keywords.length < 10) {
                     const next = [...keywords, trimmed];
                     setKeywords(next);
-                    onChange?.(buildValue(summary, questions, entities, next));
+                    onChange?.(buildValue(summary, questions, entities, next, schemaType, schemaData));
                   }
                   setKwInput("");
                   kwInputRef.current?.focus();
@@ -321,6 +379,65 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
           </>
         ) : (
           <p className="text-xs text-zinc-400">10 keyword limit reached — remove one to add another.</p>
+        )}
+      </div>
+
+      {/* Extended Schema Type */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <label className="text-sm font-medium text-zinc-700">Extended Schema</label>
+            <p className="text-xs text-zinc-400">Additional JSON-LD type for this post.</p>
+          </div>
+        </div>
+        <select
+          value={schemaType}
+          onChange={e => {
+            const st = e.target.value as ExtendedSchemaType | "";
+            setSchemaType(st);
+            setSchemaData({});
+            onChange?.(buildValue(summary, questions, entities, keywords, st, {}));
+          }}
+          className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+        >
+          <option value="">— none —</option>
+          {(["HowTo", "Product", "Event", "LocalBusiness", "VideoObject"] as ExtendedSchemaType[]).map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+
+        {schemaType && (
+          <div className="mt-3 space-y-2 border border-zinc-100 rounded-lg p-3 bg-zinc-50">
+            {SCHEMA_FIELDS[schemaType].map(([key, label, placeholder, isTextarea]) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-zinc-500 mb-1">{label}</label>
+                {isTextarea ? (
+                  <textarea
+                    value={schemaData[key] ?? ""}
+                    onChange={e => {
+                      const next = { ...schemaData, [key]: e.target.value };
+                      setSchemaData(next);
+                      onChange?.(buildValue(summary, questions, entities, keywords, schemaType, next));
+                    }}
+                    rows={4}
+                    placeholder={placeholder}
+                    className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white resize-y focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  />
+                ) : (
+                  <input
+                    value={schemaData[key] ?? ""}
+                    onChange={e => {
+                      const next = { ...schemaData, [key]: e.target.value };
+                      setSchemaData(next);
+                      onChange?.(buildValue(summary, questions, entities, keywords, schemaType, next));
+                    }}
+                    placeholder={placeholder}
+                    className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

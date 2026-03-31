@@ -62,7 +62,9 @@ export async function generateMetadata(
   const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const siteName = config.site?.name ?? "Pugmill";
   const description = buildDescription(post);
-  const canonicalUrl = `${siteUrl}/post/${post.slug}`;
+  const canonicalUrl = (post.canonicalUrl && post.canonicalUrl.trim())
+    ? post.canonicalUrl
+    : `${siteUrl}/post/${post.slug}`;
 
   const featuredMedia = post.featuredImage
     ? await db.query.media.findFirst({ where: (m, { eq }) => eq(m.id, post.featuredImage!) })
@@ -70,12 +72,23 @@ export async function generateMetadata(
   const featuredImageUrl = featuredMedia
     ? featuredMedia.url.startsWith("http") ? featuredMedia.url : `${siteUrl}${featuredMedia.url}`
     : null;
-  const ogImage = featuredImageUrl ?? config.site.seoDefaults?.ogImage ?? undefined;
+  const ogImage = (post.ogImageUrl && post.ogImageUrl.trim())
+    ? post.ogImageUrl
+    : featuredImageUrl ?? config.site.seoDefaults?.ogImage ?? undefined;
   const metaDescription = description || config.site.seoDefaults?.metaDescription || undefined;
 
+  const seoTitle = post.seoTitle;
+  const seoMetaDescription = post.seoMetaDescription;
+  const imageAlt = featuredMedia?.altText ?? post.title;
+
+  const robotsDirectives: string[] = [];
+  if (post.robotsNoindex) robotsDirectives.push("noindex");
+  if (post.robotsNofollow) robotsDirectives.push("nofollow");
+
   return {
-    title: `${post.title} | ${siteName}`,
-    description: metaDescription,
+    title: seoTitle ? seoTitle : `${post.title} | ${siteName}`,
+    description: seoMetaDescription ?? metaDescription,
+    ...(robotsDirectives.length ? { robots: robotsDirectives.join(", ") } : {}),
     keywords: aeoMeta?.keywords?.length ? aeoMeta.keywords : undefined,
     alternates: {
       canonical: canonicalUrl,
@@ -86,19 +99,19 @@ export async function generateMetadata(
     },
     openGraph: {
       type: "article",
-      title: post.title,
-      description: metaDescription,
+      title: seoTitle ?? post.title,
+      description: seoMetaDescription ?? metaDescription,
       url: canonicalUrl,
       siteName,
-      ...(ogImage ? { images: [{ url: ogImage, alt: post.title }] } : {}),
+      ...(ogImage ? { images: [{ url: ogImage, alt: imageAlt }] } : {}),
       publishedTime: (post.publishedAt ?? post.createdAt).toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
     },
     twitter: {
       card: ogImage ? "summary_large_image" : "summary",
-      title: post.title,
-      description: metaDescription,
-      ...(ogImage ? { images: [ogImage] } : {}),
+      title: seoTitle ?? post.title,
+      description: seoMetaDescription ?? metaDescription,
+      ...(ogImage ? { images: [{ url: ogImage, alt: imageAlt }] } : {}),
     },
   };
 }

@@ -107,7 +107,7 @@ export default function PostImagePanel({
             <p className="text-xs">No images yet</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
             {allShown.map(item => {
               const isSession = sessionIds.has(item.id);
               const isAssoc = !isSession && assocNotInSession.some(m => m.id === item.id);

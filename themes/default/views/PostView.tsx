@@ -34,6 +34,8 @@ export interface AeoMetadata {
   questions?: { q: string; a: string }[];
   entities?: { type: string; name: string; description?: string }[];
   keywords?: string[];
+  schemaType?: "HowTo" | "Product" | "Event" | "LocalBusiness" | "VideoObject";
+  schemaData?: Record<string, string>;
 }
 
 export interface PostViewProps {
@@ -165,6 +167,70 @@ export default function PostView({
         })
       : null;
 
+  // Extended schema type (HowTo, Product, Event, LocalBusiness, VideoObject)
+  const extendedSchema = (() => {
+    const st = aeoMetadata?.schemaType;
+    const sd = aeoMetadata?.schemaData ?? {};
+    if (!st || !canonicalUrl) return null;
+
+    if (st === "HowTo") {
+      const steps = (sd.steps ?? "").split("\n").map(s => s.trim()).filter(Boolean);
+      if (!steps.length) return null;
+      return safeJson({
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        name: sd.name || title,
+        ...(sd.description ? { description: sd.description } : {}),
+        ...(sd.totalTime ? { totalTime: sd.totalTime } : {}),
+        step: steps.map((text, i) => ({ "@type": "HowToStep", position: i + 1, text })),
+      });
+    }
+    if (st === "Product") {
+      return safeJson({
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: sd.name || title,
+        ...(sd.description ? { description: sd.description } : {}),
+        ...(sd.brand ? { brand: { "@type": "Brand", name: sd.brand } } : {}),
+        ...(sd.price ? { offers: { "@type": "Offer", price: sd.price, priceCurrency: sd.priceCurrency || "USD", ...(sd.availability ? { availability: `https://schema.org/${sd.availability}` } : {}) } } : {}),
+      });
+    }
+    if (st === "Event") {
+      return safeJson({
+        "@context": "https://schema.org",
+        "@type": "Event",
+        name: sd.name || title,
+        ...(sd.startDate ? { startDate: sd.startDate } : {}),
+        ...(sd.endDate ? { endDate: sd.endDate } : {}),
+        ...(sd.locationName ? { location: { "@type": "Place", name: sd.locationName } } : {}),
+        ...(sd.description ? { description: sd.description } : {}),
+      });
+    }
+    if (st === "LocalBusiness") {
+      return safeJson({
+        "@context": "https://schema.org",
+        "@type": sd.businessType || "LocalBusiness",
+        name: sd.name || siteName || title,
+        ...(sd.address ? { address: sd.address } : {}),
+        ...(sd.telephone ? { telephone: sd.telephone } : {}),
+        ...(sd.url ? { url: sd.url } : {}),
+      });
+    }
+    if (st === "VideoObject") {
+      return safeJson({
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        name: sd.name || title,
+        ...(sd.description ? { description: sd.description } : {}),
+        ...(sd.contentUrl ? { contentUrl: sd.contentUrl } : {}),
+        ...(sd.thumbnailUrl ? { thumbnailUrl: sd.thumbnailUrl } : {}),
+        ...(sd.uploadDate ? { uploadDate: sd.uploadDate } : {}),
+        ...(sd.duration ? { duration: sd.duration } : {}),
+      });
+    }
+    return null;
+  })();
+
   const articleBody = (
     <article className="space-y-10">
       {/* JSON-LD */}
@@ -172,6 +238,12 @@ export default function PostView({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: articleSchema }}
+        />
+      )}
+      {extendedSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: extendedSchema }}
         />
       )}
       {faqSchema && (

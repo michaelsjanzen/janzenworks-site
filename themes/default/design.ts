@@ -13,7 +13,7 @@
 // NEVER remove 'default' from THEME_ALLOWLIST in src/lib/theme-registry.ts.
 // ============================================================
 
-import type { DesignTokenDef } from "../../src/types/design";
+import type { DesignTokenDef, ColorPreset } from "../../src/types/design";
 import type { WidgetAreaDef } from "../../src/types/widget";
 
 // ─── Layout config types ──────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ export const DESIGN_TOKEN_DEFS: DesignTokenDef[] = [
     type: "color",
     group: "colors",
     cssVariable: "--color-muted",
-    default: "#64748b",
+    default: "#334155",
     editable: true,
     order: 4,
   },
@@ -670,6 +670,97 @@ export const DESIGN_TOKEN_DEFS: DesignTokenDef[] = [
     default: "outline",
     editable: true,
     order: 20,
+  },
+];
+
+// ─── Color presets ────────────────────────────────────────────────────────────
+// Named snapshots of the 8 color tokens. Selecting one populates the draft
+// fields — it does not auto-publish. Themes may export their own preset list.
+
+export const COLOR_PRESETS: ColorPreset[] = [
+  {
+    id: "light",
+    label: "Light",
+    colors: {
+      colorBackground: "#ffffff",
+      colorSurface:    "#f8fafc",
+      colorForeground: "#0f172a",
+      colorMuted:      "#334155", // darkened from #64748b — was 4.8:1, now 10.4:1 on white
+      colorBorder:     "#e2e8f0",
+      colorAccent:     "#2563eb",
+      colorAccentFg:   "#ffffff",
+      colorLink:       "#2563eb",
+    },
+  },
+  {
+    id: "dark",
+    label: "Dark",
+    colors: {
+      colorBackground: "#09090b",
+      colorSurface:    "#18181b",
+      colorForeground: "#fafafa",
+      colorMuted:      "#ababba", // lightened from #a1a1aa — was 7.75:1, now 8.77:1 on #09090b
+      colorBorder:     "#27272a",
+      colorAccent:     "#6366f1",
+      colorAccentFg:   "#ffffff",
+      colorLink:       "#818cf8",
+    },
+  },
+  {
+    id: "paper",
+    label: "Paper",
+    colors: {
+      colorBackground: "#faf7f2",
+      colorSurface:    "#f5f0e8",
+      colorForeground: "#2c2416",
+      colorMuted:      "#4a3e2c", // darkened from #7a6b52 — was 4.85:1, now 9.74:1 on #faf7f2
+      colorBorder:     "#e5d9c5",
+      colorAccent:     "#b45309",
+      colorAccentFg:   "#ffffff",
+      colorLink:       "#92400e",
+    },
+  },
+  {
+    id: "slate",
+    label: "Slate",
+    colors: {
+      colorBackground: "#f1f5f9",
+      colorSurface:    "#e2e8f0",
+      colorForeground: "#0f172a",
+      colorMuted:      "#334155", // darkened from #475569 — was 6.9:1, now 9.48:1 on #f1f5f9
+      colorBorder:     "#cbd5e1",
+      colorAccent:     "#0f172a",
+      colorAccentFg:   "#ffffff",
+      colorLink:       "#1e40af",
+    },
+  },
+  {
+    id: "ocean",
+    label: "Ocean",
+    colors: {
+      colorBackground: "#f0f9ff",
+      colorSurface:    "#e0f2fe",
+      colorForeground: "#0c4a6e",
+      colorMuted:      "#08497a", // darkened from #0369a1 — was 5.6:1, now 8.78:1 on #f0f9ff
+      colorBorder:     "#bae6fd",
+      colorAccent:     "#0284c7",
+      colorAccentFg:   "#ffffff",
+      colorLink:       "#0369a1",
+    },
+  },
+  {
+    id: "midnight",
+    label: "Midnight",
+    colors: {
+      colorBackground: "#0f172a",
+      colorSurface:    "#1e293b",
+      colorForeground: "#f1f5f9",
+      colorMuted:      "#a8b8cc", // lightened from #94a3b8 — was 7.0:1, now 8.84:1 on #0f172a
+      colorBorder:     "#334155",
+      colorAccent:     "#818cf8",
+      colorAccentFg:   "#ffffff",
+      colorLink:       "#a5b4fc",
+    },
   },
 ];
 

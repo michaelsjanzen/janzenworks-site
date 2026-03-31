@@ -68,7 +68,7 @@ export default async function ProfilePage({
           </div>
           <button
             type="submit"
-            className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm"
+            className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm"
           >
             Save Profile
           </button>
@@ -134,7 +134,7 @@ export default async function ProfilePage({
             placeholder={`Example:\n"Write in a conversational but authoritative tone. Use short paragraphs and clear headings. Avoid jargon. My audience is technical but prefers plain language. I prefer active voice and concrete examples over abstract explanations."`}
             className="w-full border rounded px-3 py-2 text-sm resize-y font-sans"
           />
-          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm">
+          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm">
             Save Voice Guide
           </button>
         </form>

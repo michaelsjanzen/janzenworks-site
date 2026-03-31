@@ -23,7 +23,7 @@ export default async function DesignPage() {
   const allThemes = getAllThemes(themeId);
   const activeThemeName = allThemes.find(t => t.id === themeId)?.name ?? themeId;
 
-  const [{ DESIGN_TOKEN_DEFS, DESIGN_DEFAULTS, SANS_FONTS, MONO_FONTS }, draftConfig, hasDraft, allMedia, areaAssignments] =
+  const [{ DESIGN_TOKEN_DEFS, DESIGN_DEFAULTS, SANS_FONTS, MONO_FONTS, COLOR_PRESETS }, draftConfig, hasDraft, allMedia, areaAssignments] =
     await Promise.all([
       loadThemeDesignDefs(themeId),
       getDesignConfig(themeId, "draft"),
@@ -93,6 +93,7 @@ export default async function DesignPage() {
         draftConfig={draftConfig}
         sansFonts={SANS_FONTS}
         monoFonts={MONO_FONTS}
+        colorPresets={COLOR_PRESETS}
         hasDraft={hasDraft}
         saveAction={savePartialDesignDraft}
         saveStructuralAction={saveStructuralDesignTokens}

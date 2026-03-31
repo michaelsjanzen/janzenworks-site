@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { getConfig, updateConfig } from "@/lib/config";
+import { detectSiteUrl, isDevUrl } from "@/lib/detect-site-url";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PageShell, Field, SaveButton, ToggleField } from "./_components";
@@ -36,6 +37,7 @@ export default async function SiteIdentityPage({ searchParams }: { searchParams:
         favicon: (formData.get("favicon") as string) || undefined,
         headerIdentity,
         showPoweredBy: formData.get("showPoweredBy") === "true",
+        adminAnnouncement: (formData.get("adminAnnouncement") as string) || undefined,
       },
     });
     revalidatePath("/", "layout");
@@ -50,17 +52,30 @@ export default async function SiteIdentityPage({ searchParams }: { searchParams:
         <section className="bg-white border border-zinc-200 rounded-lg p-6 space-y-4">
           <Field label="Site Name" name="siteName" defaultValue={config.site.name} />
           <Field label="Description" name="siteDescription" defaultValue={config.site.description} />
-          <div>
-            <p className="text-sm font-medium text-zinc-700 mb-1">Site URL</p>
-            <p className="text-sm text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 font-mono">
-              {config.site.url}
-            </p>
-            <p className="text-xs text-zinc-400 mt-1">
-              Set via the <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> environment variable — not editable here for security reasons.
-              Before going live with a custom domain, update <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> to your production URL (e.g. <code className="bg-zinc-100 px-1 rounded">https://yourdomain.com</code>).
-              Ask your AI agent to update it in your host&apos;s environment/secrets panel, or do it manually before you deploy.
-            </p>
-          </div>
+          {(() => {
+            const displayUrl = detectSiteUrl() ?? config.site.url;
+            const isPlaceholder = displayUrl === "https://your-site.com";
+            const needsSetup = isPlaceholder || isDevUrl(displayUrl);
+            return (
+              <div>
+                <p className="text-sm font-medium text-zinc-700 mb-1">Site URL</p>
+                <p className="text-sm text-zinc-500 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 font-mono">
+                  {displayUrl}
+                </p>
+                {needsSetup ? (
+                  <p className="text-xs text-amber-600 mt-1">
+                    This URL is not your final production URL. Before going live with a custom domain, set{" "}
+                    <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> to{" "}
+                    <code className="bg-zinc-100 px-1 rounded">https://yourdomain.com</code> in your host&apos;s environment/secrets panel, then redeploy.
+                  </p>
+                ) : (
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Read from <code className="bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> — update that environment variable to change it.
+                  </p>
+                )}
+              </div>
+            );
+          })()}
           <MediaUrlPicker
             label="Logo"
             name="logo"
@@ -82,6 +97,20 @@ export default async function SiteIdentityPage({ searchParams }: { searchParams:
             name="showPoweredBy"
             defaultChecked={config.site.showPoweredBy !== false}
           />
+          <div>
+            <label htmlFor="adminAnnouncement" className="block text-sm font-medium text-zinc-700 mb-1">
+              Admin Announcement
+            </label>
+            <input
+              id="adminAnnouncement"
+              type="text"
+              name="adminAnnouncement"
+              defaultValue={config.site.adminAnnouncement ?? ""}
+              placeholder="Optional message shown as a dismissable banner to all admins"
+              className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
+            />
+            <p className="text-xs text-zinc-400 mt-1">Leave blank to hide the banner. Admins can dismiss it per session.</p>
+          </div>
           <SaveButton />
         </section>
       </form>

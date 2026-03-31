@@ -163,7 +163,7 @@ async function main() {
     await seedDefaultContent(admin.id);
     console.log("  Config and default content verified.\n");
   } else {
-    const email = process.env.ADMIN_EMAIL || "admin@pugmill.local";
+    const email = process.env.ADMIN_EMAIL || "admin@pugmillcms.test";
     const name  = process.env.ADMIN_NAME  || "Admin";
 
     let password: string;

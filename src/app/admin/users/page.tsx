@@ -53,7 +53,7 @@ export default async function UsersPage({ searchParams }: Props) {
         <h1 className="text-xl font-semibold text-zinc-900">Users</h1>
         <Link
           href="/admin/users/new"
-          className="bg-[var(--ds-blue-1000)] text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
+          className="bg-[var(--ds-blue-1000)] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
         >
           + New User
         </Link>

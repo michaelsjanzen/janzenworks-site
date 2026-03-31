@@ -41,7 +41,7 @@ function makeRequest(slug: string) {
   };
 }
 
-async function insertPost(overrides: Partial<typeof posts.$inferInsert> = {}) {
+async function insertPost(overrides: Record<string, unknown> = {}) {
   await db.insert(posts).values({
     slug: SLUG,
     title: "Test AEO Post",

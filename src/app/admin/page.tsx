@@ -5,6 +5,8 @@ import { getConfig } from "@/lib/config";
 import { isDevUrl } from "@/lib/detect-site-url";
 import DashboardCharts from "@/components/admin/DashboardCharts";
 import GettingStartedCard from "@/components/admin/GettingStartedCard";
+import BotAnalyticsTeaser from "@/components/admin/BotAnalyticsTeaser";
+import { getBotTotals, getTopPaths } from "../../../plugins/bot-analytics/db";
 
 function buildMonthlyBuckets(n: number): { key: string; label: string }[] {
   const result: { key: string; label: string }[] = [];
@@ -136,6 +138,19 @@ export default async function AdminDashboard() {
   }));
 
   // Onboarding steps
+  // Bot analytics teaser — wrapped in try/catch so dashboard never breaks
+  // if the plugin tables haven't been created yet on a fresh install.
+  const isBotAnalyticsActive = config.modules.activePlugins?.includes("bot-analytics") ?? false;
+  let botTotals: Awaited<ReturnType<typeof getBotTotals>> = [];
+  let botTopPaths: Awaited<ReturnType<typeof getTopPaths>> = [];
+  if (isBotAnalyticsActive) {
+    try {
+      [botTotals, botTopPaths] = await Promise.all([getBotTotals(30), getTopPaths(5)]);
+    } catch {
+      // Tables not yet created — teaser will show empty states
+    }
+  }
+
   const onboardingSteps = [
     {
       label: "Set your site identity",
@@ -194,6 +209,11 @@ export default async function AdminDashboard() {
       )}
 
       {showOnboarding && <GettingStartedCard steps={onboardingSteps} />}
+
+      {isBotAnalyticsActive && (
+        <BotAnalyticsTeaser totals={botTotals} topPaths={botTopPaths} />
+      )}
+
       <DashboardCharts
         monthly={monthly}
         postStatus={postStatus}

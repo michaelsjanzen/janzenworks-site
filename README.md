@@ -1,45 +1,42 @@
 # Pugmill CMS
 
-**A rebuildable, AI-native CMS designed for the human-AI team.**
+Pugmill CMS is a full-stack, rebuildable content management system for developers working with AI agents. It owns its own frontend -- a modern React/Next.js presentation layer that ships as part of the CMS, not as an afterthought. It includes an admin dashboard, a Markdown-first editor with Visual/Raw toggle, hierarchical content types, a public REST API for external consumption, and per-post AI Engine Optimization (AEO) metadata served via `llms.txt` endpoints.
 
-Pugmill CMS is a modern, modular Content Management System built for the 2026 developer ecosystem — where every admin works alongside an AI agent. It ships with a full admin dashboard, a Markdown-first editor, hierarchical content types, a REST API for headless consumption, and first-class **AI Engine Optimisation (AEO)** — including `llms.txt` endpoints that make your content natively discoverable by large language models.
-
-> **v0.1 Developer Preview.** Built for technically capable humans working with AI agents in Claude Code, Cursor, Replit, or similar environments.
+> **v0.1 Developer Preview.** Intended for developers working with AI agents in Claude Code, Cursor, Replit, or similar environments.
 
 ---
 
 ## Philosophy
 
-Pugmill CMS is designed around a single belief: the future of content management is a human-AI team, not a solo human operator.
+Pugmill CMS is built for a team of one human and one AI agent. The human sets direction, makes decisions, and owns outcomes. The AI agent contributes context, technical judgment, and execution.
 
-The human is in charge — they set direction, make decisions, own outcomes. The AI agent brings context, technical judgment, and execution. Pugmill CMS is built to serve both halves of that team.
+This informs what belongs in the product. Functionality that an AI agent can handle as a one-off task does not belong in core. Core exists for things that run continuously, require deep integration, or establish trust boundaries. Everything else is either a plugin (persistent, optional, used by many installations) or agent-generated (one-time, written on demand).
 
-This shapes what belongs in the product. A CMS built for solo operators needs to anticipate every use case and bundle a feature for each one. A CMS built for the human-AI team can stay lean, because the agent can handle anything the product doesn't cover — on demand, tailored to the situation, without adding permanent complexity to the codebase.
+**The scope filter:** If an AI agent can do something as a one-off task, it does not belong in core.
 
-**The scope filter:** If an AI agent can do something trivially as a one-off task, it does not belong in core. Core exists for things that run continuously, require deep integration, or establish trust boundaries. Everything else is either a plugin (persistent, optional, needed by many) or agent-generated (one-time, specific, written on demand).
+**Built-in vs enhanced:** Every feature works without an AI provider configured. Connecting one in Settings > AI adds generation, suggestion, and automation to those same features. The base layer is complete on its own; AI adds speed and intelligence.
 
-**The built-in vs enhanced pattern:** Every feature in Pugmill CMS works fully without an AI provider. Connect one in Settings → AI and the same features become meaningfully smarter — AEO auto-generation, content suggestions, alt text, and more. The built-in layer is not a crippled preview. Both levels are complete. AI adds speed and intelligence, not basic functionality.
-
-Read [`PHILOSOPHY.md`](./PHILOSOPHY.md) before building on or extending Pugmill CMS. It is the most important document in this repository.
+The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canonical reference for this repository.
 
 ---
 
-## Why Pugmill CMS?
+## Capabilities
 
 | Capability | Description |
 |---|---|
-| **Human-AI Native** | Docs written as active briefings for AI agents — every admin's agent is a well-briefed advisor, not a blank slate |
+| **AI-Aware Documentation** | Documentation structured as active briefings for AI agents, giving each installation's agent full project context from the start |
 | **AEO-Native** | Per-post AEO metadata (summaries, Q&A pairs, entities) served via `llms.txt` spec endpoints |
-| **Headless-Ready** | Full REST API (`/api/posts`, `/api/categories`, `/api/tags`, `/api/media`) with CORS, pagination, and `{ data, meta }` envelopes |
-| **Markdown-First** | Tiptap editor with Visual ↔ Raw Markdown toggle; no HTML soup |
-| **Hierarchical Content** | Pages nest under parent pages; breadcrumb nav generated automatically |
-| **Plugin System** | Plugins register lifecycle hooks (`content:render`, `post:save`, `admin:sidebar`, etc.) via `HookManager` |
-| **Theme System** | Full design token system with draft/publish workflow. Colors, fonts, and layout controls editable in Admin → Design without touching code |
+| **Integrated Frontend** | A first-class React/Next.js presentation layer -- swappable themes, server components, design token system. The frontend is yours to own, not escape from |
+| **API-Capable** | REST API (`/api/posts`, `/api/categories`, `/api/tags`, `/api/media`) with CORS, pagination, and `{ data, meta }` envelopes for external frontends or native apps |
+| **Markdown-First** | Tiptap editor with Visual/Raw Markdown toggle; content stored as Markdown |
+| **Hierarchical Content** | Pages nest under parent pages with automatically generated breadcrumb navigation |
+| **Plugin System** | Plugins register lifecycle hooks (`content:render`, `post:after-save`, etc.) via `HookManager` |
+| **Theme System** | Design token system with draft/publish workflow; colors, fonts, and layout controls editable in Admin > Design |
 | **Storage Abstraction** | `LocalStorageProvider` (default) or `S3StorageProvider` (AWS S3, R2, DO Spaces, MinIO) |
 | **SEO & Discovery** | `generateMetadata()`, `sitemap.ts`, `/feed.xml` (RSS 2.0), Open Graph, Twitter Cards |
-| **Built-in vs Enhanced** | Every feature works without AI. Connect an AI provider (Admin → Settings → AI) and the same features gain generation, suggestion, and automation — AEO auto-draft, content refine, tone check, topic focus, social post generator, and more. Per-user hourly rate limit (50 calls/hr) enforced server-side with a colour-coded usage meter in the editor |
-| **Content Revisions** | Every post save creates a revision snapshot; restore any previous version from the edit page |
-| **Lean Core** | Small enough for an agent to understand completely in one context window; opinionated enough that the right path is obvious |
+| **AI Integration** | Connecting an AI provider (Admin > Settings > AI) adds: natural language Ask the AI input with intent routing, sequential Generate All agent, Rewrite with instructions, AEO auto-draft, tone check, topic focus, reading level, and social post generation. Per-user hourly rate limit (50 calls/hr) enforced server-side with a usage meter in the editor. |
+| **Content Revisions** | Each post save creates a revision snapshot; any previous version is restorable from the edit page |
+| **Compact Codebase** | Sized to fit within a single AI context window with clear conventions for extension |
 
 ---
 
@@ -67,7 +64,7 @@ Read [`PHILOSOPHY.md`](./PHILOSOPHY.md) before building on or extending Pugmill 
 - PostgreSQL 16 database
 - (Optional) AWS S3-compatible bucket for media storage
 
-### 1. Clone & install
+### 1. Clone and install
 
 ```bash
 git clone https://github.com/pugmillcms/pugmill.git
@@ -77,7 +74,7 @@ npm install
 
 ### 2. Configure environment
 
-Copy the example env file and fill in your values:
+Copying the example env file and filling in the required values:
 
 ```bash
 cp .env.example .env.local
@@ -100,26 +97,26 @@ ADMIN_PASSWORD=your-admin-password
 
 Optional variables (OAuth, S3, etc.) are documented in [REQUIREMENTS.md](./REQUIREMENTS.md#environment-variables).
 
-### 3. Initialise the database and create your admin account
+### 3. Initialize the database and create the admin account
 
 ```bash
 npm run db:init
 ```
 
-This pushes the schema and runs the setup script in one step. If `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` are set in your environment the setup runs non-interactively (ideal for Replit, CI, or any automated deployment). Otherwise it prompts you.
+This pushes the schema and runs the setup script in one step. Setting `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` in the environment makes setup run non-interactively, which suits Replit, CI, or automated deployments. Without those variables, the script prompts interactively.
 
-For **existing deployments** after pulling new changes:
+For existing deployments after pulling new changes:
 ```bash
 npm run db:migrate     # incremental migrations (safe to re-run)
 ```
 
-### 5. Start the dev server
+### 4. Start the dev server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000/admin](http://localhost:3000/admin) and sign in with your admin credentials.
+The admin dashboard is at [http://localhost:3000/admin](http://localhost:3000/admin).
 
 ---
 
@@ -142,7 +139,7 @@ pugmill/
 │   │   │   ├── design/           # Design token editor (draft/publish)
 │   │   │   ├── themes/           # Theme switcher
 │   │   │   └── settings/         # Site configuration
-│   │   ├── api/                  # REST API (headless)
+│   │   ├── api/                  # REST API (public, read-only)
 │   │   │   ├── posts/
 │   │   │   ├── categories/
 │   │   │   ├── tags/
@@ -154,11 +151,14 @@ pugmill/
 │   │   └── feed.xml/             # RSS 2.0 feed
 │   ├── components/
 │   │   └── editor/
-│   │       ├── MarkdownEditor.tsx    # Tiptap Visual/Raw toggle
-│   │       └── AeoMetadataEditor.tsx # AEO Q&A + entity builder
+│   │       ├── MarkdownEditor.tsx    # Tiptap Visual/Markdown toggle; toolbar portals into sticky header
+│   │       ├── AeoMetadataEditor.tsx # AEO Q&A, entity, and keyword builder
+│   │       ├── PostForm.tsx          # Full post editor (two-column, sticky lavender header, autosave)
+│   │       ├── PostImagePanel.tsx    # 4-column image grid with featured image and drag-and-drop
+│   │       └── useAiTools.ts         # AI state, handlers, intent routing, sequential Generate All
 │   ├── lib/
 │   │   ├── db/                   # Drizzle schema + client
-│   │   ├── actions/              # Server Actions (posts, media, users…)
+│   │   ├── actions/              # Server Actions (posts, media, users, autosave, alt text update...)
 │   │   ├── storage/              # Storage abstraction (Local + S3)
 │   │   ├── auth.ts               # NextAuth configuration
 │   │   ├── config.ts             # DB-backed site config (60s TTL cache)
@@ -176,7 +176,7 @@ pugmill/
 │   ├── setup.ts                  # First-run admin seed
 │   ├── migrate-001-design-config-upsert.ts  # DB migration (existing installs)
 │   └── env-check.ts              # Env var validation
-├── pugmill.config.json        # Active theme + enabled plugins
+├── pugmill.config.json           # Active theme + enabled plugins
 ├── AGENT.md                      # AI agent instructions
 ├── GUIDE.md                      # Sprint-by-sprint build guide
 ├── REQUIREMENTS.md               # Full requirements document
@@ -192,17 +192,17 @@ pugmill/
 | Type | Description |
 |---|---|
 | `post` | Dated blog entry; appears in `/blog` and `/feed.xml` |
-| `page` | Evergreen page; can nest under a parent page |
+| `page` | Evergreen page; nestable under a parent page |
 
 ### AEO Metadata
 
-Every post/page can carry structured AEO metadata (stored as JSONB):
+Each post or page can carry structured AEO metadata stored as JSONB:
 
 ```json
 {
   "summary": "One-paragraph plain-English summary for LLMs",
   "questions": [
-    { "q": "What is Pugmill?", "a": "A headless CMS…" }
+    { "q": "What is Pugmill?", "a": "A full-stack CMS for developers working with AI agents..." }
   ],
   "entities": [
     { "type": "SoftwareApplication", "name": "Next.js", "description": "React framework" }
@@ -211,13 +211,13 @@ Every post/page can carry structured AEO metadata (stored as JSONB):
 }
 ```
 
-This data is surfaced in `/llms.txt`, `/llms-full.txt`, and `/{slug}/llms.txt`.
+This data surfaces in `/llms.txt`, `/llms-full.txt`, and `/{slug}/llms.txt`.
 
 ---
 
 ## REST API
 
-All endpoints return `{ data, meta }` with CORS headers. Responses are not authenticated (public read-only).
+All endpoints return `{ data, meta }` with CORS headers. Responses are unauthenticated (public, read-only).
 
 | Endpoint | Description |
 |---|---|
@@ -255,13 +255,13 @@ curl https://your-site.com/api/posts?limit=5&page=1
 
 ---
 
-## AEO & llms.txt
+## AEO and llms.txt
 
 Pugmill implements the [llms.txt specification](https://llmstxt.org/):
 
 | Route | Content |
 |---|---|
-| `/llms.txt` | Site overview + index of all published content |
+| `/llms.txt` | Site overview and index of all published content |
 | `/llms-full.txt` | Full content of every post, including AEO Q&A |
 | `/{slug}/llms.txt` | Section-level index for a parent page and its children |
 
@@ -269,14 +269,14 @@ Pugmill implements the [llms.txt specification](https://llmstxt.org/):
 
 ## Storage
 
-Set `STORAGE_PROVIDER` in your `.env.local`:
+Setting `STORAGE_PROVIDER` in `.env.local` selects the storage backend:
 
-| Value | Behaviour |
+| Value | Behavior |
 |---|---|
 | `local` (default) | Files saved to `public/uploads/` on the server filesystem |
 | `s3` | Files uploaded to an S3-compatible bucket |
 
-S3 additional variables:
+Additional variables for S3:
 
 ```env
 STORAGE_PROVIDER=s3
@@ -292,7 +292,7 @@ S3_PUBLIC_URL=        # Optional: CDN URL prefix
 
 ## Plugin Development
 
-Plugins live in `/plugins/<name>/` and must export a `PugmillPlugin` object:
+Plugins live in `/plugins/<name>/` and export a `PugmillPlugin` object:
 
 ```typescript
 // plugins/my-plugin/index.ts
@@ -316,13 +316,13 @@ const plugin: PugmillPlugin = {
 export default plugin;
 ```
 
-Enable and configure via Admin → Settings → Plugins. See [`HOOKS.md`](./HOOKS.md) for all available hooks.
+Enabling and configuring plugins happens via Admin > Settings > Plugins. The full hook catalog is in [`HOOKS.md`](./HOOKS.md).
 
 ---
 
 ## Theme Development
 
-Themes live in `/themes/<name>/` and must export a `Layout.tsx`, page-level views (`HomeView`, `PostView`, `PageView`), and a `design.ts` contract. Activate via Admin → Themes.
+Themes live in `/themes/<name>/` and export a `Layout.tsx`, page-level views (`HomeView`, `PostView`, `PageView`), and a `design.ts` contract. Themes are activated via Admin > Themes.
 
 ### Design token contract
 
@@ -344,9 +344,9 @@ export const DESIGN_TOKEN_DEFS: DesignTokenDef[] = [
 ];
 ```
 
-Token types: `"color"` (color picker), `"google-font"` (font selector), `"select"` (dropdown). Tokens with `editable: false` inject into CSS but are hidden from the admin UI. Design changes save as a draft and go live only when published — the live site is unaffected until then.
+Token types: `"color"` (color picker), `"google-font"` (font selector), `"select"` (dropdown). Tokens with `editable: false` inject into CSS but are hidden from the admin UI. Design changes save as a draft and go live only when published, leaving the live site unaffected until then.
 
-See [`THEMES.md`](./THEMES.md) for the full contract and [`/themes/_template/`](./themes/_template/) as your starting point.
+The full contract is in [`THEMES.md`](./THEMES.md). The [`/themes/_template/`](./themes/_template/) directory is the recommended starting point for new themes.
 
 ---
 
@@ -354,9 +354,9 @@ See [`THEMES.md`](./THEMES.md) for the full contract and [`/themes/_template/`](
 
 - Pre-commit hook scans staged files for hardcoded secrets, `.env` files, private keys, AWS keys, and connection strings
 - All admin routes require an authenticated session with `admin` or `editor` role
-- Media uploads are path-traversal guarded; only `image/*` and common doc MIME types accepted
-- HTML rendering uses `rehype-sanitize` — raw HTML in Markdown is sanitized before display
-- See [SECURITY.md](./SECURITY.md) for the full vulnerability disclosure policy
+- Media uploads are path-traversal guarded; accepted MIME types are `image/*` and common document formats
+- HTML rendering uses `rehype-sanitize`; raw HTML in Markdown is sanitized before display
+- The vulnerability disclosure policy is in [SECURITY.md](./SECURITY.md)
 
 ---
 
@@ -368,7 +368,7 @@ See [`THEMES.md`](./THEMES.md) for the full contract and [`/themes/_template/`](
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run setup` | Seed admin user (first run) |
-| `npm run db:init` | Push schema + seed admin account in one step (fresh installs; non-interactive if `ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars are set) |
+| `npm run db:init` | Push schema and seed admin account in one step (fresh installs; non-interactive when `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set) |
 | `npm run db:push` | Push Drizzle schema only (no admin seed) |
 | `npm run db:migrate` | Run incremental migration scripts in order (existing installs after schema updates; safe to re-run) |
 | `npm run db:studio` | Open Drizzle Studio (visual DB browser) |
@@ -378,4 +378,4 @@ See [`THEMES.md`](./THEMES.md) for the full contract and [`/themes/_template/`](
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT -- see [LICENSE](./LICENSE).

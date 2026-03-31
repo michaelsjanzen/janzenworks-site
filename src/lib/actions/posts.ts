@@ -10,6 +10,7 @@ import type { PostPayload } from "@/lib/hook-catalogue";
 import { auditLog } from "@/lib/audit-log";
 import { z } from "zod";
 import { aeoSchema, parseAeoMetadata } from "@/lib/aeo";
+import { pingIndexNow } from "@/lib/indexnow";
 
 const postSchema = z.object({
   type: z.enum(["post", "page"]).default("post"),
@@ -20,6 +21,12 @@ const postSchema = z.object({
   publishAt: z.string().optional(),
   parentId: z.number().int().positive().nullable().optional(),
   aeoMetadata: aeoSchema,
+  seoTitle: z.string().max(60).optional(),
+  seoMetaDescription: z.string().max(155).optional(),
+  robotsNoindex: z.boolean().default(false),
+  robotsNofollow: z.boolean().default(false),
+  canonicalUrl: z.string().optional(),
+  ogImageUrl: z.string().optional(),
 });
 
 function resolvePublishState(
@@ -82,6 +89,12 @@ export async function createPost(formData: FormData) {
     publishAt: (formData.get("publishAt") as string) || undefined,
     parentId: parseIntOrNull(formData.get("parentId")),
     aeoMetadata: parseAeoMetadata(formData.get("aeoMetadata") as string | null) ?? undefined,
+    seoTitle: (formData.get("seoTitle") as string) || undefined,
+    seoMetaDescription: (formData.get("seoMetaDescription") as string) || undefined,
+    robotsNoindex: formData.get("robotsNoindex") === "1",
+    robotsNofollow: formData.get("robotsNofollow") === "1",
+    canonicalUrl: (formData.get("canonicalUrl") as string) || undefined,
+    ogImageUrl: (formData.get("ogImageUrl") as string) || undefined,
   };
 
   const result = postSchema.safeParse(raw);
@@ -113,6 +126,12 @@ export async function createPost(formData: FormData) {
       publishedAt,
       parentId: result.data.parentId ?? null,
       aeoMetadata: result.data.aeoMetadata ?? null,
+      seoTitle: result.data.seoTitle ?? null,
+      seoMetaDescription: result.data.seoMetaDescription ?? null,
+      robotsNoindex: result.data.robotsNoindex,
+      robotsNofollow: result.data.robotsNofollow,
+      canonicalUrl: result.data.canonicalUrl ?? null,
+      ogImageUrl: result.data.ogImageUrl ?? null,
       featuredImage: featuredImage ?? null,
       authorId: user.id,
     } as typeof posts.$inferInsert).returning();
@@ -135,9 +154,17 @@ export async function createPost(formData: FormData) {
 
   auditLog({ action: "post.create", userId: user.id, resourceId: newPost[0].id, detail: `slug: ${slug}` });
   await hooks.doAction("post:after-save", { post: newPost[0] as PostPayload });
+  if (published) {
+    await hooks.doAction("post:after-publish", { post: newPost[0] as PostPayload });
+    const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    void pingIndexNow(`${siteUrl}/post/${slug}`, siteUrl);
+  }
   revalidatePath("/admin/posts");
   revalidatePath("/");
 
+  if (intent === "draft") {
+    redirect(`/admin/posts/${newPost[0].id}/edit`);
+  }
   redirect("/admin/posts");
 }
 
@@ -160,6 +187,12 @@ export async function updatePost(id: number, formData: FormData) {
     publishAt: (formData.get("publishAt") as string) || undefined,
     parentId: parseIntOrNull(formData.get("parentId")),
     aeoMetadata: parseAeoMetadata(formData.get("aeoMetadata") as string | null) ?? undefined,
+    seoTitle: (formData.get("seoTitle") as string) || undefined,
+    seoMetaDescription: (formData.get("seoMetaDescription") as string) || undefined,
+    robotsNoindex: formData.get("robotsNoindex") === "1",
+    robotsNofollow: formData.get("robotsNofollow") === "1",
+    canonicalUrl: (formData.get("canonicalUrl") as string) || undefined,
+    ogImageUrl: (formData.get("ogImageUrl") as string) || undefined,
   };
 
   const result = postSchema.safeParse(raw);
@@ -192,6 +225,12 @@ export async function updatePost(id: number, formData: FormData) {
         publishedAt,
         parentId: result.data.parentId ?? null,
         aeoMetadata: result.data.aeoMetadata ?? null,
+        seoTitle: result.data.seoTitle ?? null,
+        seoMetaDescription: result.data.seoMetaDescription ?? null,
+        robotsNoindex: result.data.robotsNoindex,
+        robotsNofollow: result.data.robotsNofollow,
+        canonicalUrl: result.data.canonicalUrl ?? null,
+        ogImageUrl: result.data.ogImageUrl ?? null,
         featuredImage: featuredImage ?? null,
         updatedAt: new Date(),
       } as Partial<typeof posts.$inferInsert>)
@@ -218,10 +257,68 @@ export async function updatePost(id: number, formData: FormData) {
 
   auditLog({ action: "post.update", userId: user.id, resourceId: id });
   await hooks.doAction("post:after-save", { post: updated[0] as PostPayload });
+  if (published) {
+    await hooks.doAction("post:after-publish", { post: updated[0] as PostPayload });
+    const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    void pingIndexNow(`${siteUrl}/post/${slug}`, siteUrl);
+  }
   revalidatePath("/admin/posts");
   revalidatePath("/");
 
+  if (intent === "draft") {
+    redirect(`/admin/posts/${id}/edit`);
+  }
   redirect("/admin/posts");
+}
+
+export async function autosavePost(
+  id: number,
+  data: {
+    title: string;
+    slug: string;
+    content: string;
+    excerpt?: string;
+    seoTitle?: string;
+    seoMetaDescription?: string;
+    aeoMetadata?: unknown;
+    canonicalUrl?: string;
+    ogImageUrl?: string;
+  }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const user = await requireAdminOrEditor();
+
+    if (user.role === "editor") {
+      const existing = await db.select({ authorId: posts.authorId }).from(posts).where(eq(posts.id, id));
+      if (!existing[0] || existing[0].authorId !== user.id) {
+        return { ok: false, error: "Unauthorized" };
+      }
+    }
+
+    if (!data.title?.trim() || !data.content?.trim()) {
+      return { ok: false, error: "Title and content are required" };
+    }
+
+    await db.update(posts)
+      .set({
+        title: data.title,
+        slug: data.slug || data.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
+        content: data.content,
+        excerpt: data.excerpt ?? null,
+        seoTitle: data.seoTitle ?? null,
+        seoMetaDescription: data.seoMetaDescription ?? null,
+        aeoMetadata: (data.aeoMetadata as Record<string, unknown>) ?? null,
+        canonicalUrl: data.canonicalUrl ?? null,
+        ogImageUrl: data.ogImageUrl ?? null,
+        updatedAt: new Date(),
+      } as Partial<typeof posts.$inferInsert>)
+      .where(eq(posts.id, id));
+
+    revalidatePath(`/admin/posts/${id}/edit`);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Autosave failed" };
+  }
 }
 
 export async function deletePost(id: number) {

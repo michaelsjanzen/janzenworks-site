@@ -57,6 +57,7 @@ import {
   DESIGN_TOKEN_DEFS as DefaultDesignTokenDefs,
   SANS_FONTS as DefaultSansFonts,
   MONO_FONTS as DefaultMonoFonts,
+  COLOR_PRESETS as DefaultColorPresets,
   buildCssString as defaultBuildCssString,
   buildGoogleFontsUrl as defaultBuildGoogleFontsUrl,
 } from "../../themes/default/design";
@@ -68,6 +69,7 @@ export interface ThemeDesignModule {
   DESIGN_TOKEN_DEFS: DesignTokenDef[];
   SANS_FONTS: string[];
   MONO_FONTS: string[];
+  COLOR_PRESETS?: import("@/types/design").ColorPreset[];
   buildCssString: (config: Record<string, string>, defs: DesignTokenDef[]) => string;
   buildGoogleFontsUrl: (config: Record<string, string>) => string | null;
 }
@@ -93,6 +95,7 @@ const THEME_MODULES: Record<string, ThemeModuleSet> = {
       DESIGN_TOKEN_DEFS: DefaultDesignTokenDefs,
       SANS_FONTS: DefaultSansFonts,
       MONO_FONTS: DefaultMonoFonts,
+      COLOR_PRESETS: DefaultColorPresets,
       buildCssString: defaultBuildCssString,
       buildGoogleFontsUrl: defaultBuildGoogleFontsUrl,
     },

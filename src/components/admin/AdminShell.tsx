@@ -3,6 +3,8 @@ import { Suspense, useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import AdminToast from "./AdminToast";
+import AnnouncementBanner from "./AnnouncementBanner";
+import CommandPalette from "./CommandPalette";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -10,10 +12,12 @@ interface Props {
   user: { username: string; role: string };
   children: React.ReactNode;
   plugins?: { id: string; name: string; actionHref?: string }[];
+  themes?: { id: string; name: string; isActive: boolean }[];
   badges?: Record<string, number>;
+  announcement?: string;
 }
 
-export default function AdminShell({ user, children, plugins = [], badges: initialBadges = {} }: Props) {
+export default function AdminShell({ user, children, plugins = [], themes = [], badges: initialBadges = {}, announcement }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [badges, setBadges] = useState<Record<string, number>>(initialBadges);
 
@@ -58,9 +62,12 @@ export default function AdminShell({ user, children, plugins = [], badges: initi
         />
       )}
 
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} plugins={plugins} badges={badges} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} plugins={plugins} themes={themes} badges={badges} />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {announcement && (
+          <AnnouncementBanner message={announcement} id={announcement.slice(0, 40)} />
+        )}
         <TopBar user={user} onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6 bg-zinc-50">
           {children}
@@ -70,6 +77,8 @@ export default function AdminShell({ user, children, plugins = [], badges: initi
       <Suspense>
         <AdminToast />
       </Suspense>
+
+      <CommandPalette plugins={plugins} />
     </div>
   );
 }

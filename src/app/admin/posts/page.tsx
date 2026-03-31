@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
-import { eq, and, asc, desc } from "drizzle-orm";
+import { eq, and, asc, desc, ilike } from "drizzle-orm";
 import { DeletePostButton } from "./DeletePostButton";
 import { parseAeoMetadata, calcAeoScore } from "@/lib/aeo";
+import { Suspense } from "react";
+import PostSearchInput from "./PostSearchInput";
 
 type SearchParams = {
   type?: string;
   status?: string;
   sort?: string;
   order?: string;
+  q?: string;
 };
 
 function buildUrl(current: SearchParams, patch: Partial<SearchParams>) {
@@ -53,12 +56,14 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
   const statusFilter = sp.status ?? "";
   const sortCol = sp.sort ?? "date";
   const sortDir = sp.order ?? "desc";
+  const query = sp.q?.trim() ?? "";
 
   const conditions = [];
   if (typeFilter === "post") conditions.push(eq(posts.type, "post"));
   if (typeFilter === "page") conditions.push(eq(posts.type, "page"));
   if (statusFilter === "published") conditions.push(eq(posts.published, true));
   if (statusFilter === "draft") conditions.push(eq(posts.published, false));
+  if (query) conditions.push(ilike(posts.title, `%${query}%`));
 
   const orderBy =
     sortCol === "title"
@@ -79,11 +84,16 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
         <h1 className="text-xl font-semibold text-zinc-900">Posts &amp; Pages</h1>
         <Link
           href="/admin/posts/new"
-          className="bg-[var(--ds-blue-1000)] text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
+          className="bg-[var(--ds-blue-1000)] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
         >
           + New
         </Link>
       </div>
+
+      {/* Search */}
+      <Suspense>
+        <PostSearchInput defaultValue={query} />
+      </Suspense>
 
       {/* Filters */}
       <div className="flex items-center gap-6 flex-wrap">

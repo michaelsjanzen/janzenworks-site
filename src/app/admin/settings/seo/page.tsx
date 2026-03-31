@@ -38,6 +38,8 @@ export default async function SearchDiscoveryPage({ searchParams }: { searchPara
         seoDefaults: {
           ogImage: (formData.get("ogImage") as string) || undefined,
           metaDescription: (formData.get("seoMetaDescription") as string) || undefined,
+          blockAiBots: formData.get("blockAiBots") === "1",
+          robotsCustomRules: (formData.get("robotsCustomRules") as string) || undefined,
         },
         aeoDefaults: {
           summary: (formData.get("aeoSummary") as string) || undefined,
@@ -83,6 +85,49 @@ export default async function SearchDiscoveryPage({ searchParams }: { searchPara
             hint="Used on pages without an excerpt. Keep under 160 characters."
             textarea
           />
+        </section>
+
+        {/* Crawler Controls */}
+        <section className="bg-white border border-zinc-200 rounded-lg p-6 space-y-4">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-900">Crawler Controls</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">Rules appended to <code className="font-mono">/robots.txt</code>. Changes take effect on the next crawl.</p>
+          </div>
+
+          {/* Block AI bots toggle */}
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="hidden"
+              name="blockAiBots"
+              value="0"
+            />
+            <input
+              type="checkbox"
+              name="blockAiBots"
+              value="1"
+              defaultChecked={seo.blockAiBots ?? false}
+              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500"
+            />
+            <div>
+              <span className="text-sm font-medium text-zinc-800">Block AI training crawlers</span>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Adds <code className="font-mono">Disallow: /</code> for GPTBot, CCBot, anthropic-ai, PerplexityBot, and other known AI-training bots.
+              </p>
+            </div>
+          </label>
+
+          {/* Custom rules */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-500 mb-1">Additional rules</label>
+            <textarea
+              name="robotsCustomRules"
+              defaultValue={seo.robotsCustomRules ?? ""}
+              rows={5}
+              placeholder={"User-agent: Googlebot\nDisallow: /private/\n\nUser-agent: *\nDisallow: /wp-admin/"}
+              className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm font-mono text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent resize-y"
+            />
+            <p className="text-xs text-zinc-400 mt-1">Standard robots.txt syntax. These lines are appended after the default allow-all rule.</p>
+          </div>
         </section>
 
         {/* Site AEO */}

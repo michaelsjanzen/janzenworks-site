@@ -28,7 +28,7 @@ export default async function EditTagPage({ params }: { params: Promise<{ id: st
           <input name="slug" defaultValue={tag.slug} className="w-full border rounded px-3 py-2 text-sm" />
         </div>
         <div className="flex gap-3">
-          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm">Save</button>
+          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm">Save</button>
           <Link href="/admin/tags" className="px-5 py-2 rounded border text-sm text-zinc-600 hover:bg-zinc-50">Cancel</Link>
         </div>
       </form>

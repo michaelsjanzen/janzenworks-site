@@ -225,6 +225,11 @@ export async function createSchema() {
     )
   `);
 
+  // Plugin tables are created by each plugin's schema.migrate() method,
+  // called automatically via loadPlugins() on first server startup.
+  // They are intentionally omitted here to keep create-schema.ts focused
+  // on core tables only and avoid schema drift between the two sources.
+
   console.log("  Database schema ready.");
 }
 

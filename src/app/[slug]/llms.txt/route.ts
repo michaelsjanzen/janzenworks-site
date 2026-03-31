@@ -4,6 +4,9 @@ import { posts } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getConfig } from "@/lib/config";
 import { parseAeoMetadata } from "@/lib/aeo";
+import { detectBot, classifyPath } from "@/lib/bot-detection";
+import { loadPlugins } from "@/lib/plugin-loader";
+import { hooks } from "@/lib/hooks";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +25,19 @@ export const dynamic = "force-dynamic";
  * rather than requiring the full ancestor path.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+
+  const ua = req.headers.get("user-agent") ?? "";
+  const botName = detectBot(ua);
+  if (botName) {
+    const path = new URL(req.url).pathname;
+    await loadPlugins();
+    void hooks.doAction("request:bot-visit", { botName, path, resourceType: classifyPath(path) });
+  }
+
   const config = await getConfig();
   const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const siteName = config.site?.name ?? "Pugmill";

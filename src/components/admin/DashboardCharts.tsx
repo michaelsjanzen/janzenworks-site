@@ -147,7 +147,7 @@ export default function DashboardCharts({
           <p className="text-sm font-medium text-zinc-700">Users</p>
           <a
             href="/admin/users/new"
-            className="text-xs px-3 py-1.5 rounded bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] transition"
+            className="text-xs px-3 py-1.5 rounded-full bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] transition"
           >
             + New user
           </a>

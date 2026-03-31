@@ -6,6 +6,9 @@ import { z } from "zod";
  *   - Server actions (write path validation)
  *   - Site pages, llms.txt routes (read path validation)
  */
+export const EXTENDED_SCHEMA_TYPES = ["HowTo", "Product", "Event", "LocalBusiness", "VideoObject"] as const;
+export type ExtendedSchemaType = typeof EXTENDED_SCHEMA_TYPES[number];
+
 export const aeoSchema = z.object({
   summary: z.string().max(2000).optional(),
   questions: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
@@ -15,6 +18,9 @@ export const aeoSchema = z.object({
     description: z.string().optional(),
   })).optional(),
   keywords: z.array(z.string()).max(10).optional(),
+  // Extended JSON-LD schema type and its field data
+  schemaType: z.enum(EXTENDED_SCHEMA_TYPES).optional(),
+  schemaData: z.record(z.string()).optional(),
 }).optional();
 
 export type AeoMetadata = NonNullable<z.infer<typeof aeoSchema>>;
@@ -66,6 +72,16 @@ export function parseAeoMetadata(raw: unknown): AeoMetadata | null {
   if (Array.isArray(v.keywords)) {
     const kws = (v.keywords as unknown[]).filter((k): k is string => typeof k === "string").slice(0, 10);
     if (kws.length > 0) partial.keywords = kws;
+  }
+  if (typeof v.schemaType === "string" && (EXTENDED_SCHEMA_TYPES as readonly string[]).includes(v.schemaType)) {
+    partial.schemaType = v.schemaType as ExtendedSchemaType;
+  }
+  if (v.schemaData && typeof v.schemaData === "object" && !Array.isArray(v.schemaData)) {
+    const sd: Record<string, string> = {};
+    for (const [k, val] of Object.entries(v.schemaData)) {
+      if (typeof val === "string") sd[k] = val;
+    }
+    if (Object.keys(sd).length > 0) partial.schemaData = sd;
   }
   return Object.keys(partial).length > 0 ? partial : null;
 }

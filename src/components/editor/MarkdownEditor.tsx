@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useEditor, EditorContent, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -111,6 +112,12 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function Markdown
 
   // Drag-and-drop visual feedback
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Portal target for the toolbar (in the sticky content header)
+  const [toolbarPortal, setToolbarPortal] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setToolbarPortal(document.getElementById("md-toolbar-portal"));
+  }, []);
 
   // Stable ref for the drop handler so editorProps closure doesn't go stale
   const onDropFileRef = useRef<(file: File) => void>(() => {});
@@ -334,47 +341,51 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function Markdown
     <div className="space-y-1">
       <input type="hidden" name={name} value={markdown} />
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border border-b-0 border-zinc-200 rounded-t-md bg-zinc-200 px-3 py-1.5">
-        <div className="flex gap-1 flex-wrap">
-          {editor && mode === "visual" && (
-            <>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold">
-                <strong>B</strong>
-              </ToolbarButton>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic">
-                <em>I</em>
-              </ToolbarButton>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive("code")} title="Inline code">
-                <code className="text-xs">{"`"}</code>
-              </ToolbarButton>
-              <div className="w-px bg-zinc-200 mx-1" />
-              <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title="Heading 2">H2</ToolbarButton>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive("heading", { level: 3 })} title="Heading 3">H3</ToolbarButton>
-              <div className="w-px bg-zinc-200 mx-1" />
-              <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bullet list">•—</ToolbarButton>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Ordered list">1.</ToolbarButton>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="Blockquote">"</ToolbarButton>
-              <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive("codeBlock")} title="Code block">{"</>"}</ToolbarButton>
-              <div className="w-px bg-zinc-200 mx-1" />
-              <ToolbarButton onClick={() => setImgPickerOpen(true)} active={false} title="Insert image">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </ToolbarButton>
-            </>
-          )}
-        </div>
-
-        <div className="flex rounded border overflow-hidden text-xs">
-          <button type="button" onClick={() => setMode("visual")} className={`px-2.5 py-1 ${mode === "visual" ? "bg-[var(--ds-blue-1000)] text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}>Visual</button>
-          <button type="button" onClick={() => setMode("raw")} className={`px-2.5 py-1 ${mode === "raw" ? "bg-[var(--ds-blue-1000)] text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}>Markdown</button>
-        </div>
-      </div>
+      {/* Toolbar — portalled into the sticky content header when available */}
+      {(() => {
+        const toolbar = (
+          <div className="flex items-center justify-between pt-2 mt-1 border-t border-violet-100">
+            <div className="flex gap-1 flex-wrap">
+              {editor && mode === "visual" && (
+                <>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive("bold")} title="Bold">
+                    <strong>B</strong>
+                  </ToolbarButton>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive("italic")} title="Italic">
+                    <em>I</em>
+                  </ToolbarButton>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive("code")} title="Inline code">
+                    <code className="text-xs">{"`"}</code>
+                  </ToolbarButton>
+                  <div className="w-px bg-violet-200 mx-1" />
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} title="Heading 2">H2</ToolbarButton>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive("heading", { level: 3 })} title="Heading 3">H3</ToolbarButton>
+                  <div className="w-px bg-violet-200 mx-1" />
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} title="Bullet list">•—</ToolbarButton>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} title="Ordered list">1.</ToolbarButton>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive("blockquote")} title="Blockquote">"</ToolbarButton>
+                  <ToolbarButton onClick={() => editor.chain().focus().toggleCodeBlock().run()} active={editor.isActive("codeBlock")} title="Code block">{"</>"}</ToolbarButton>
+                  <div className="w-px bg-violet-200 mx-1" />
+                  <ToolbarButton onClick={() => setImgPickerOpen(true)} active={false} title="Insert image">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </ToolbarButton>
+                </>
+              )}
+            </div>
+            <div className="flex rounded border border-violet-200 overflow-hidden text-xs">
+              <button type="button" onClick={() => setMode("visual")} className={`px-2.5 py-1 ${mode === "visual" ? "bg-violet-600 text-white" : "bg-white/60 text-slate-600 hover:bg-white"}`}>Visual</button>
+              <button type="button" onClick={() => setMode("raw")} className={`px-2.5 py-1 ${mode === "raw" ? "bg-violet-600 text-white" : "bg-white/60 text-slate-600 hover:bg-white"}`}>Markdown</button>
+            </div>
+          </div>
+        );
+        return toolbarPortal ? createPortal(toolbar, toolbarPortal) : null;
+      })()}
 
       {/* Editor area — drag-and-drop target */}
       <div
-        className={`border border-zinc-200 rounded-b-md bg-white transition-colors ${isDragOver ? "border-blue-400 bg-blue-50/40 ring-2 ring-blue-200" : ""}`}
+        className={`border border-zinc-200 rounded-md bg-white transition-colors ${isDragOver ? "border-blue-400 bg-blue-50/40 ring-2 ring-blue-200" : ""}`}
         onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
         onDragLeave={() => setIsDragOver(false)}
       >
@@ -486,7 +497,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function Markdown
                     type="button"
                     onClick={confirmInsert}
                     disabled={altLoading}
-                    className="text-xs px-4 py-2 rounded bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] disabled:opacity-40 transition"
+                    className="text-xs px-4 py-2 rounded-full bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] disabled:opacity-40 transition"
                   >
                     Insert image
                   </button>
@@ -500,7 +511,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function Markdown
                     type="button"
                     onClick={() => imgFileRef.current?.click()}
                     disabled={uploading}
-                    className="text-xs px-4 py-2 rounded bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] disabled:opacity-40 transition"
+                    className="text-xs px-4 py-2 rounded-full bg-[var(--ds-blue-1000)] text-white hover:bg-[var(--ds-blue-900)] disabled:opacity-40 transition"
                   >
                     {uploading ? "Uploading…" : "Upload new image"}
                   </button>

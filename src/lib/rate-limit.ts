@@ -90,8 +90,10 @@ export interface AiUsageResult {
 /**
  * Atomically increment the AI call counter for this user.
  * Resets the window if it expired. Returns the new count and whether allowed.
+ * @param limitOverride - If provided, overrides the default AI_RATE_LIMIT (e.g. from site config).
  */
-export async function checkAndIncrementAi(userId: string): Promise<AiUsageResult> {
+export async function checkAndIncrementAi(userId: string, limitOverride?: number): Promise<AiUsageResult> {
+  const limit        = limitOverride ?? AI_RATE_LIMIT;
   const now          = new Date();
   const windowCutoff = new Date(now.getTime() - AI_RATE_WINDOW);
 
@@ -105,19 +107,21 @@ export async function checkAndIncrementAi(userId: string): Promise<AiUsageResult
 
   const rows  = await db.select().from(aiUsage).where(eq(aiUsage.userId, userId));
   const count = rows[0]?.count ?? 1;
-  return { allowed: count <= AI_RATE_LIMIT, count, limit: AI_RATE_LIMIT };
+  return { allowed: count <= limit, count, limit };
 }
 
 /**
  * Read the current AI usage without incrementing.
  * Returns count: 0 if the window has expired or no record exists.
+ * @param limitOverride - If provided, overrides the default AI_RATE_LIMIT (e.g. from site config).
  */
-export async function getAiUsage(userId: string): Promise<{ count: number; limit: number }> {
+export async function getAiUsage(userId: string, limitOverride?: number): Promise<{ count: number; limit: number }> {
+  const limit        = limitOverride ?? AI_RATE_LIMIT;
   const windowCutoff = new Date(Date.now() - AI_RATE_WINDOW);
   const rows = await db.select().from(aiUsage).where(eq(aiUsage.userId, userId));
   const row  = rows[0];
-  if (!row || row.windowStart < windowCutoff) return { count: 0, limit: AI_RATE_LIMIT };
-  return { count: row.count, limit: AI_RATE_LIMIT };
+  if (!row || row.windowStart < windowCutoff) return { count: 0, limit };
+  return { count: row.count, limit };
 }
 
 // Public API rate limiter: max 60 requests per minute per IP

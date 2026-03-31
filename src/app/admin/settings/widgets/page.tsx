@@ -85,7 +85,7 @@ export default async function WidgetsSettingsPage({
           <div className="pt-2">
             <button
               type="submit"
-              className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
+              className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
             >
               Save Widget Settings
             </button>

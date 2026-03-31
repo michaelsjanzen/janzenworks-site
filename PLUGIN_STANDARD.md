@@ -11,10 +11,10 @@ Every plugin lives in its own directory under `/plugins/`:
 ```
 plugins/
   my-plugin/
-    index.ts        ← required: exports a named const implementing PugmillPlugin
-    manifest.json   ← required: id, name, version, description
-    schema.ts       ← optional: Drizzle table definitions for plugin-owned tables
-    README.md       ← recommended
+    index.ts        -- required: exports a named const implementing PugmillPlugin
+    manifest.json   -- required: id, name, version, description
+    schema.ts       -- optional: Drizzle table definitions for plugin-owned tables
+    README.md       -- recommended
 ```
 
 ### `manifest.json` shape
@@ -50,17 +50,17 @@ export const myPlugin: PugmillPlugin = {
 
 ## Installing a plugin (for AI agents)
 
-**STEP 1** — Create `/plugins/<plugin-id>/index.ts` and `/plugins/<plugin-id>/manifest.json`.
+**STEP 1** -- Create `/plugins/<plugin-id>/index.ts` and `/plugins/<plugin-id>/manifest.json`.
 
-**STEP 2** — Add a static import to `src/lib/plugin-registry.ts`:
+**STEP 2** -- Add a static import to `src/lib/plugin-registry.ts`:
 ```ts
 import { myPlugin } from "../../plugins/my-plugin/index";
 ```
-Dynamic `import()` and `require()` are forbidden — Next.js/Turbopack requires all modules to be statically known at build time.
+Dynamic `import()` and `require()` are prohibited -- Next.js/Turbopack requires all modules to be statically known at build time.
 
-**STEP 3** — Add the imported plugin to the `ALL_PLUGINS` array in `src/lib/plugin-registry.ts`.
+**STEP 3** -- Add the imported plugin to the `ALL_PLUGINS` array in `src/lib/plugin-registry.ts`.
 
-**STEP 4** — Activate by adding the plugin id to `config.modules.activePlugins` via the admin UI or by updating `pugmill.config.json`.
+**STEP 4** -- Activate by adding the plugin id to `config.modules.activePlugins` via the admin UI or by updating `pugmill.config.json`.
 
 ---
 
@@ -68,9 +68,9 @@ Dynamic `import()` and `require()` are forbidden — Next.js/Turbopack requires 
 
 ### Rules
 
-- Hook names **must** come from `ActionCatalogue` or `FilterCatalogue` in `src/lib/hook-catalogue.ts`.
-- Do not invent hook names. To add a new hook, update `hook-catalogue.ts` and the relevant core call site.
-- TypeScript will reject unknown hook names at compile time — this is intentional.
+- Hook names must come from `ActionCatalogue` or `FilterCatalogue` in `src/lib/hook-catalogue.ts`.
+- Inventing hook names is not permitted. Adding a new hook means updating `hook-catalogue.ts` and the relevant core call site.
+- TypeScript will reject unknown hook names at compile time -- this is intentional.
 
 ### Actions (fire-and-forget)
 
@@ -98,11 +98,11 @@ hooks.addFilter("content:render", ({ input, post }) => {
 const html = await hooks.applyFilters("content:render", { input: rawHtml, post });
 ```
 
-Filters receive a payload that always includes an `input` key — the value being transformed. The callback must return a value of the same type as `input`. Multiple filters run in registration order, each receiving the previous filter's output.
+Filters receive a payload that includes an `input` key -- the value being transformed. The callback must return a value of the same type as `input`. Multiple filters run in registration order, each receiving the previous filter's output.
 
 ### Throwing from a hook
 
-Throwing inside an **action** is caught and logged — it does not interrupt the request. If you need to block an operation, use an action hook that precedes it (e.g. `comment:before-create`) and throw; the core catches this and surfaces the error to the user.
+Throwing inside a standard action is caught and logged; it does not interrupt the request. Blocking an operation requires using an action hook marked STRICT (e.g. `comment:before-create`) and throwing; core catches this and surfaces the error to the user.
 
 ---
 
@@ -151,10 +151,10 @@ Settings are passed to `initialize(hooks, settings)` with defaults merged in. Th
 
 ### Rules
 
-- Plugin-owned tables **must** be named `plugin_<id>_<tablename>` (e.g. `plugin_comments_threads`).
-- Do **not** declare `REFERENCES` / foreign key constraints to core tables. Store core row IDs as plain integer columns.
-- Referencing core data by integer value is fine — the constraint is structural, not semantic.
-- Plugin-to-plugin table references are also forbidden.
+- Plugin-owned tables must be named `plugin_<id>_<tablename>` (e.g. `plugin_comments_threads`).
+- No `REFERENCES` / foreign key constraints to core tables. Store core row IDs as plain integer columns.
+- Referencing core data by integer value is fine -- the constraint is structural, not semantic.
+- Plugin-to-plugin table references are also prohibited.
 
 ### Declaring a schema
 
@@ -203,15 +203,15 @@ export const myPlugin: PugmillPlugin = {
 
 ## Admin page
 
-By default, plugins with `settingsDefs` get a generic settings form at `/admin/plugins/<id>`.
+Plugins with `settingsDefs` get a generic settings form at `/admin/plugins/<id>` by default.
 
-For richer UI, provide an `adminPage` React component:
+For richer UI, providing an `adminPage` React component is the right approach:
 
 ```ts
 import type { AdminPageProps } from "../../src/lib/plugin-registry";
 
 function MyAdminPage({ settings, onSave }: AdminPageProps) {
-  // Rich custom UI
+  // Custom UI
 }
 
 export const myPlugin: PugmillPlugin = {
@@ -220,22 +220,15 @@ export const myPlugin: PugmillPlugin = {
 };
 ```
 
-Mark the component `"use client"` if it needs interactivity. The component is rendered inside the standard Pugmill admin shell.
+Adding `"use client"` to the component is required when interactivity is needed. The component renders inside the standard Pugmill admin shell.
 
 ---
 
 ## Inter-plugin communication
 
-**Plugin-to-plugin imports are forbidden.** Plugins must not import from each other.
+Plugin-to-plugin imports are prohibited.
 
-If two plugins need to communicate, use the hook system:
-
-```ts
-// Plugin A fires a custom hook... wait, custom hooks are not supported.
-// Instead: share data through core hooks or through the database.
-```
-
-If you need truly shared utility code between plugins, publish it as a standalone npm package and declare it as a dependency in both plugins' `package.json`.
+If two plugins need to communicate, the hook system or the database are the correct channels. For shared utility code between plugins, publishing it as a standalone npm package and declaring it as a dependency in both plugins is the standard approach.
 
 ---
 

@@ -70,7 +70,6 @@ export default function TaxonomyPicker({ label, fieldName, items, selectedIds, o
   }
 
   const selectedItems = all.filter(item => selected.has(item.id));
-  const availableItems = all.filter(item => !selected.has(item.id));
   const singularLabel = label.toLowerCase().replace(/s$/, "");
 
   return (
@@ -83,7 +82,11 @@ export default function TaxonomyPicker({ label, fieldName, items, selectedIds, o
             type="button"
             onClick={onAiSuggest}
             disabled={aiPending}
-            className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-40 transition"
+            className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border transition-all disabled:cursor-not-allowed ${
+              aiPending
+                ? "bg-violet-600 border-violet-600 text-white cursor-wait"
+                : "bg-violet-50 border-violet-200 text-violet-600 hover:bg-violet-100 hover:border-violet-300 disabled:opacity-40"
+            }`}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -94,25 +97,42 @@ export default function TaxonomyPicker({ label, fieldName, items, selectedIds, o
       </div>
 
       {/* AI suggestions */}
-      {suggestions && suggestions.filter(s => !appliedSuggestions.has(s)).length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 py-1">
-          <span className="text-xs text-zinc-400">AI suggested:</span>
-          {suggestions.filter(s => !appliedSuggestions.has(s)).map(name => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => handleApplySuggestion(name)}
-              disabled={applyingName === name}
-              className="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition"
-            >
-              {applyingName === name ? "…" : `+ ${name}`}
-            </button>
-          ))}
-          {onSuggestDismiss && (
-            <button type="button" onClick={onSuggestDismiss} aria-label="Dismiss suggestions" className="text-xs text-zinc-400 hover:text-zinc-600 ml-1">✕</button>
-          )}
-        </div>
-      )}
+      {suggestions && (() => {
+        const pending = suggestions.filter(s => !appliedSuggestions.has(s) && !selectedItems.some(item => item.name.toLowerCase() === s.toLowerCase()));
+        const existing = pending.filter(s => all.some(item => item.name.toLowerCase() === s.toLowerCase()));
+        const isNew    = pending.filter(s => !all.some(item => item.name.toLowerCase() === s.toLowerCase()));
+        if (pending.length === 0) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-1.5 py-1">
+            <span className="text-xs text-zinc-400">AI suggested:</span>
+            {existing.map(name => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => handleApplySuggestion(name)}
+                disabled={applyingName === name}
+                className="text-xs px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 disabled:opacity-50 transition"
+              >
+                {applyingName === name ? "…" : `+ ${name}`}
+              </button>
+            ))}
+            {isNew.map(name => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => handleApplySuggestion(name)}
+                disabled={applyingName === name}
+                className="text-xs px-2 py-0.5 rounded-full bg-white border border-dashed border-zinc-300 text-zinc-500 hover:bg-zinc-50 hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 transition"
+              >
+                {applyingName === name ? "…" : `+ ${name}`}
+              </button>
+            ))}
+            {onSuggestDismiss && (
+              <button type="button" onClick={onSuggestDismiss} aria-label="Dismiss suggestions" className="text-xs text-zinc-400 hover:text-zinc-600 ml-1">✕</button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Hidden inputs carry selected IDs to the server action */}
       {Array.from(selected).map(id => (
@@ -142,32 +162,7 @@ export default function TaxonomyPicker({ label, fieldName, items, selectedIds, o
           </div>
         )}
 
-        {/* Available items to add */}
-        {availableItems.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 p-3">
-            {availableItems.map(item => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => add(item.id)}
-                className="text-xs px-2.5 py-1 rounded-full bg-white border border-zinc-200 text-zinc-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition"
-              >
-                + {item.name}
-              </button>
-            ))}
-            {availableItems.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setSelected(prev => new Set([...prev, ...availableItems.map(i => i.id)]))}
-                className="text-xs px-2.5 py-1 rounded-full bg-white border border-zinc-300 text-zinc-500 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition"
-              >
-                + Add all
-              </button>
-            )}
-          </div>
-        )}
-
-        {all.length === 0 && (
+        {selectedItems.length === 0 && all.length === 0 && (
           <p className="px-3 py-2 text-sm text-zinc-400">No {label.toLowerCase()} yet — create one below.</p>
         )}
 

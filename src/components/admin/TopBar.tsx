@@ -1,6 +1,24 @@
+"use client";
 import Link from "next/link";
 import { signOutAction } from "@/lib/actions/auth";
 import DarkModeToggle from "./DarkModeToggle";
+
+function CommandTrigger() {
+  return (
+    <button
+      type="button"
+      onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }))}
+      className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-400 dark:text-zinc-500 hover:border-zinc-300 dark:hover:border-zinc-600 hover:text-zinc-600 dark:hover:text-zinc-400 transition-colors bg-zinc-50 dark:bg-zinc-800"
+      aria-label="Open command palette"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+      Search or jump to…
+      <kbd className="ml-1 font-mono text-zinc-300 dark:text-zinc-600">⌘K</kbd>
+    </button>
+  );
+}
 
 interface Props {
   user: { username: string; role: string };
@@ -24,8 +42,11 @@ export default function TopBar({ user, onMenuClick }: Props) {
         <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm tracking-tight">Pugmill</span>
       </div>
 
-      {/* Spacer on desktop */}
-      <div className="hidden lg:block" />
+      {/* Center — command palette trigger (desktop) */}
+      <CommandTrigger />
+
+      {/* Spacer on desktop (hidden when command trigger shows) */}
+      <div className="hidden" />
 
       {/* Right — user actions */}
       <div className="flex items-center gap-4 text-sm">

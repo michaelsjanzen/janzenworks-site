@@ -27,6 +27,7 @@ export function loadThemeDesignDefs(themeId: string): {
   DESIGN_DEFAULTS: Record<string, string>;
   SANS_FONTS: string[];
   MONO_FONTS: string[];
+  COLOR_PRESETS: import("@/types/design").ColorPreset[];
 } {
   const design = getThemeDesign(themeId);
   return {
@@ -34,6 +35,7 @@ export function loadThemeDesignDefs(themeId: string): {
     DESIGN_DEFAULTS: design.DESIGN_DEFAULTS,
     SANS_FONTS: design.SANS_FONTS,
     MONO_FONTS: design.MONO_FONTS,
+    COLOR_PRESETS: design.COLOR_PRESETS ?? [],
   };
 }
 

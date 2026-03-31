@@ -72,7 +72,22 @@ export default async function AiSettingsPage() {
           <p className="text-xs text-zinc-400 mt-1">Leave blank to use the recommended default for your provider.</p>
         </div>
 
-        <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm">
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
+            Hourly call limit <span className="text-zinc-400 font-normal">(per user)</span>
+          </label>
+          <input
+            name="aiRateLimit"
+            type="number"
+            min={1}
+            max={500}
+            defaultValue={ai.aiRateLimit ?? 50}
+            className="w-32 border rounded px-3 py-2 text-sm font-mono"
+          />
+          <p className="text-xs text-zinc-400 mt-1">Maximum AI calls per user per hour. Default: 50. Raise for power users, lower to control costs.</p>
+        </div>
+
+        <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm">
           Save AI Settings
         </button>
       </form>

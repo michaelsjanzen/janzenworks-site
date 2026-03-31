@@ -123,6 +123,16 @@ export async function deleteMedia(id: number) {
   revalidatePath("/admin/media");
 }
 
+export async function updateMediaAltText(id: number, altText: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+    await db.update(media).set({ altText: altText.trim() || null } as Partial<typeof media.$inferInsert>).where(eq(media.id, id));
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update alt text" };
+  }
+}
+
 export async function cleanupUnusedMedia(): Promise<{ deleted: number }> {
   const user = await requireAdmin();
 

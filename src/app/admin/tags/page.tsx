@@ -80,7 +80,7 @@ export default async function TagsPage({ searchParams }: Props) {
             <div className="flex items-end">
               <button
                 type="submit"
-                className="w-full sm:w-auto whitespace-nowrap bg-[var(--ds-blue-1000)] text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
+                className="w-full sm:w-auto whitespace-nowrap bg-[var(--ds-blue-1000)] text-white px-4 py-1.5 rounded-full text-sm font-medium hover:bg-[var(--ds-blue-900)] transition-colors"
               >
                 Add tag
               </button>

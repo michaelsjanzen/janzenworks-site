@@ -41,8 +41,11 @@ export const configSchema = z.object({
     seoDefaults: z.object({
       ogImage: urlOrPathSchema,
       metaDescription: z.string().optional(), // Fallback meta description
+      blockAiBots: z.boolean().default(false),
+      robotsCustomRules: z.string().optional(), // Extra Disallow/Allow lines appended verbatim
     }).default({}),
     showPoweredBy: z.boolean().default(true),
+    adminAnnouncement: z.string().optional(),
     aeoDefaults: z.object({
       summary: z.string().optional(),
       questions: z.array(z.object({ q: z.string(), a: z.string() })).optional(),
@@ -75,7 +78,8 @@ export const configSchema = z.object({
     provider: z.enum(["anthropic", "openai", "gemini"]).nullable().default(null),
     apiKey: z.string().default(""),
     model: z.string().default(""),
-  }).default({ provider: null, apiKey: "", model: "" }),
+    aiRateLimit: z.number().int().min(1).max(500).default(50),
+  }).default({ provider: null, apiKey: "", model: "", aiRateLimit: 50 }),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -109,7 +113,7 @@ const DEFAULT_CONFIG: Config = {
     maintenanceMode: false,
     onboardingDismissed: false,
   },
-  ai: { provider: null, apiKey: "", model: "" },
+  ai: { provider: null, apiKey: "", model: "", aiRateLimit: 50 },
 };
 
 // ─── In-memory cache ──────────────────────────────────────────────────────────

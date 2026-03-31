@@ -32,7 +32,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ i
           <textarea name="description" rows={3} defaultValue={category.description || ""} className="w-full border rounded px-3 py-2 text-sm" />
         </div>
         <div className="flex gap-3">
-          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded hover:bg-[var(--ds-blue-900)] text-sm">Save</button>
+          <button type="submit" className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm">Save</button>
           <Link href="/admin/categories" className="px-5 py-2 rounded border text-sm text-zinc-600 hover:bg-zinc-50">Cancel</Link>
         </div>
       </form>

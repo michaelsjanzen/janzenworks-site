@@ -211,7 +211,7 @@ export default function PluginCard({
               type="button"
               onClick={handleSave}
               disabled={isPending}
-              className="px-4 py-1.5 bg-[var(--ds-blue-1000)] text-white text-sm rounded hover:bg-[var(--ds-blue-900)] disabled:opacity-50 transition"
+              className="px-4 py-1.5 bg-[var(--ds-blue-1000)] text-white text-sm rounded-full hover:bg-[var(--ds-blue-900)] disabled:opacity-50 transition"
             >
               {isPending ? "Saving…" : "Save Settings"}
             </button>

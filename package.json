@@ -13,7 +13,7 @@
     "db:push": "drizzle-kit push --force",
     "db:create": "npx tsx scripts/create-schema.ts",
     "db:init": "npm run db:create && npm run setup",
-    "db:migrate": "npx tsx scripts/migrate-001-design-config-upsert.ts && npx tsx scripts/migrate-002-featured-post.ts && npx tsx scripts/migrate-002-posts-indexes.ts && npx tsx scripts/migrate-003-ai-usage.ts",
+    "db:migrate": "npx tsx --env-file=.env.local scripts/run-migrations.ts",
     "db:studio": "drizzle-kit studio",
     "env:check": "npx tsx scripts/env-check.ts",
     "replit:init": "REPLIT_REINIT=1 npx tsx scripts/replit-init.ts",
@@ -30,6 +30,7 @@
     "@types/sanitize-html": "^2.16.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "drizzle-orm": "^0.38.0",
     "lru-cache": "^11.2.6",
     "lucide-react": "^0.468.0",
@@ -47,6 +48,7 @@
     "sanitize-html": "^2.17.1",
     "tailwind-merge": "^2.5.5",
     "tiptap-markdown": "^0.9.0",
+    "use-debounce": "^10.1.0",
     "zod": "^3.24.0"
   },
   "overrides": {

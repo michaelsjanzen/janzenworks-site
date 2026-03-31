@@ -21,7 +21,7 @@ export default async function NewPostPage({
       .where(eq(posts.type, "page"))
       .orderBy(posts.title),
     isAiConfigured(),
-    db.select({ id: media.id, url: media.url, fileName: media.fileName })
+    db.select({ id: media.id, url: media.url, fileName: media.fileName, altText: media.altText })
       .from(media)
       .where(like(media.fileType, "image/%"))
       .orderBy(desc(media.createdAt)),
