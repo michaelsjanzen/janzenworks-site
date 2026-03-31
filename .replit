@@ -39,6 +39,10 @@ text = "First-Run Setup"
 command = "npm run replit:init"
 
 [[hints]]
+text = "Clean Reinstall (fix ENOTEMPTY / dirty node_modules)"
+command = "rm -rf node_modules && npm install"
+
+[[hints]]
 text = "Create / Reset Database Schema"
 command = "npm run db:create"
 

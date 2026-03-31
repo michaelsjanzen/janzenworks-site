@@ -171,6 +171,7 @@ CMS configuration is stored in the `site_config` PostgreSQL table (a single row,
 4. **Creating themes.** Copy `/themes/_template/` as a starting point. Read `THEMES.md` before writing any theme code. Register the new theme in `src/lib/theme-registry.ts`.
 5. **UI consistency.** Always use Tailwind CSS classes. Matching the admin UI patterns already established in `src/app/admin/` is required.
 6. **Rebuildability.** Ensuring the app can be fully restored by running `npm install`, `npm run db:push`, and `npm run setup` is a standing requirement.
+   - **Migrating from another platform (Vercel, Netlify, etc.):** node_modules from a different environment can arrive in a dirty state and cause `ENOTEMPTY` errors on `npm install`. Always do a clean reinstall in this case: `rm -rf node_modules && npm install`.
 7. **Do not create these files** — they conflict with existing infrastructure and must never exist in this project:
    - `server/db.ts` or `server/` directory — Replit's PostgreSQL blueprint scaffolds this automatically; delete it immediately if it appears. The database client lives at `src/lib/db/index.ts`.
    - `instrumentation.ts` — not used; creates startup errors in this configuration.
