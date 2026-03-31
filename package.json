@@ -18,6 +18,7 @@
     "env:check": "tsx scripts/env-check.ts",
     "replit:init": "REPLIT_REINIT=1 tsx scripts/replit-init.ts",
     "predev": "tsx scripts/replit-init.ts",
+    "prestart": "tsx scripts/replit-init.ts",
     "prepare": "husky 2>/dev/null || true"
   },
   "dependencies": {
