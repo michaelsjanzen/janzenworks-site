@@ -138,9 +138,24 @@ async function main() {
   dotenvConfig({ path: ENV_LOCAL, override: false });
 
   // ── Step 3: Database schema ─────────────────────────────────────────────────
+  // create-schema handles a blank DB (CREATE TABLE IF NOT EXISTS).
+  // run-migrations.ts then brings any existing DB up to the latest schema,
+  // adding columns that were added after the initial install.
   console.log("Database schema");
   const { createSchema } = await import("./create-schema");
   await createSchema();
+
+  console.log("Running migrations...");
+  const { execSync } = await import("child_process");
+  try {
+    execSync("npx tsx scripts/run-migrations.ts", {
+      stdio: "inherit",
+      env: { ...process.env },
+    });
+  } catch {
+    // Migration errors are logged by the runner; don't abort first-run setup
+    console.warn("  Warning: one or more migrations reported an error (see above). Continuing...");
+  }
 
   // ── Step 4: Admin user + default content ────────────────────────────────────
   console.log("\nAdmin setup");
