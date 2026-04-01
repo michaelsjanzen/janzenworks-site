@@ -1,3 +1,29 @@
+/* ============================================================
+ * REPLIT AGENT — PREREQUISITE CHECKLIST
+ * Read and complete these steps BEFORE installing dependencies
+ * or starting the application. Do not skip.
+ * ============================================================
+ *
+ * STEP 1 — Ask the user for their production URL
+ *   Say to the user:
+ *   "Before I start the setup, I need your production URL.
+ *    Open Replit's deployment panel or domain settings and
+ *    paste the URL here (e.g. https://yourapp.replit.app)."
+ *   Wait for their reply before continuing.
+ *
+ * STEP 2 — Save it as a Replit secret
+ *   Name:  PRODUCTION_URL
+ *   Value: (the URL the user gave you)
+ *
+ * STEP 3 — Then proceed with the rest of the setup
+ *
+ * WHY THIS MATTERS:
+ * This script writes NEXTAUTH_URL from PRODUCTION_URL when the
+ * production container first boots. If PRODUCTION_URL is missing,
+ * NEXTAUTH_URL will be wrong and login will fail in production.
+ * ============================================================
+ */
+
 /**
  * replit-init.ts
  *
