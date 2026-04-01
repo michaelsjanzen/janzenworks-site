@@ -155,11 +155,40 @@ async function main() {
       }
       const source = explicitUrl ? "PRODUCTION_URL secret" : "auto-detected";
       console.log(`  Production URL: ${url} (${source})`);
+
+      // Warn loudly when the URL was auto-detected rather than explicitly confirmed —
+      // Replit's current UUID-based domain format may not match what auto-detection
+      // produces from REPL_SLUG/REPL_OWNER.
+      if (!explicitUrl) {
+        console.warn(
+          "  ┌─────────────────────────────────────────────────────────────────┐\n" +
+          "  │ VERIFY: production URL was auto-detected, not explicitly set    │\n" +
+          "  │                                                                 │\n" +
+          "  │ If the URL above does not match your actual deployment domain,  │\n" +
+          "  │ login will not work. To fix:                                    │\n" +
+          "  │                                                                 │\n" +
+          "  │ Replit → Secrets → New secret:                                  │\n" +
+          "  │   Name:  PRODUCTION_URL                                         │\n" +
+          "  │   Value: https://your-actual-domain.com                         │\n" +
+          "  │                                                                 │\n" +
+          "  │ Then redeploy.                                                  │\n" +
+          "  └─────────────────────────────────────────────────────────────────┘\n"
+        );
+      }
     } else {
-      console.warn(
-        "  Warning: Could not detect production URL.\n" +
-        "  OAuth callbacks and redirect URLs may not work correctly.\n" +
-        "  Set PRODUCTION_URL=https://your-domain.com as a Replit secret to resolve.\n"
+      console.error(
+        "  ┌─────────────────────────────────────────────────────────────────┐\n" +
+        "  │ ACTION REQUIRED — login will not work without this             │\n" +
+        "  │                                                                 │\n" +
+        "  │ Production URL could not be detected. Login redirects and      │\n" +
+        "  │ OAuth callbacks will fail until you set it.                    │\n" +
+        "  │                                                                 │\n" +
+        "  │ Replit → Secrets → New secret:                                  │\n" +
+        "  │   Name:  PRODUCTION_URL                                         │\n" +
+        "  │   Value: https://your-actual-domain.com                         │\n" +
+        "  │                                                                 │\n" +
+        "  │ Then redeploy.                                                  │\n" +
+        "  └─────────────────────────────────────────────────────────────────┘\n"
       );
     }
   } else {

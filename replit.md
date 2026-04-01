@@ -51,8 +51,11 @@ On first run, `scripts/replit-init.ts` automatically:
 
 ## Deployment
 
-**Before deploying, ask the user for their production URL and save it as a secret.**
-Do not deploy until this is confirmed or the user explicitly says to skip it.
+**During initial setup — while you are already asking the user to save NEXTAUTH_SECRET —
+also ask them for their production URL and save it as a secret before they click Deploy.**
+
+This is the right moment: the user is present, you have their attention, and the secret
+needs to be in place before the production container boots for the first time.
 
 Why this matters: `replit-init.ts` reads `PRODUCTION_URL` at first boot to set `NEXTAUTH_URL`
 in the prod container. If it is missing, the script attempts auto-detection from Replit env
@@ -60,12 +63,16 @@ vars — but Replit's current UUID-based domain format (`*.riker.replit.dev`) ma
 detected correctly, leaving `NEXTAUTH_URL` wrong. When `NEXTAUTH_URL` is wrong, login
 redirects and OAuth callbacks fail and the site is unusable.
 
-Steps:
-1. Ask the user: *"What is your production URL? (Check Replit's deployment panel or domain settings)"*
-2. Save it as a secret: `PRODUCTION_URL=https://their-url`
-3. Ensure `NEXTAUTH_SECRET` is also saved as a Replit secret (done automatically on first run)
-4. Deploy via Replit — build and start commands are pre-configured in `.replit`
-5. After the container boots, check the init log for: `Production URL: https://... (auto-detected)` or `(PRODUCTION_URL secret)` — confirm it matches the actual domain
+What to ask the user:
+> "Before you hit Deploy, I need one more thing: your production URL. You can find it in
+> Replit's deployment panel or domain settings — it will look like
+> `https://yourapp.replit.app` or a custom domain. I'll save it as a secret now so login
+> works correctly on first boot."
+
+Then save: `PRODUCTION_URL=https://their-url`
+
+After deployment, check the init log for:
+`Production URL: https://... (PRODUCTION_URL secret)` — confirms it was picked up correctly.
 
 ## Database Scripts
 
