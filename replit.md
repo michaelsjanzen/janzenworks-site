@@ -6,15 +6,14 @@ When the init script runs it will print a banner listing required actions.
 **After the app starts, pause and complete all items in that banner before
 telling the user setup is done.** Specifically:
 
-1. Save `NEXTAUTH_SECRET` as a Replit secret (value is shown in the banner)
-2. **Ask the user for their production URL** — say something like:
-   *"Before you deploy, I need your production URL. Check Replit's deployment
-   panel for the domain (e.g. `https://yourapp.replit.app`) and paste it here.
-   I'll save it as `PRODUCTION_URL` so login works after deployment."*
-3. Wait for the user's reply, then save it using the **environment-secrets skill** (the same
-   method used for NEXTAUTH_SECRET) — this shows the user a confirmation dialog they must
-   interact with. Do NOT just mention the value in chat; that will be ignored.
-4. Only after both secrets are saved, tell the user setup is complete
+1. Call `requestEnvVar` with `requestType: "secret"` and `keys: ["NEXTAUTH_SECRET"]`.
+   The value is shown in the startup banner. Do NOT mention it in chat — use the
+   secrets tool so the user sees a confirmation dialog they must interact with.
+2. Immediately after, call `requestEnvVar` with `requestType: "secret"` and
+   `keys: ["PRODUCTION_URL"]`. This shows the user a second confirmation dialog
+   asking for their production URL (e.g. `https://yourapp.replit.app`, found in
+   Replit's deployment panel). Do NOT skip. Do NOT mention it in chat. Use the secrets tool.
+3. Only after both secrets are saved via `requestEnvVar`, tell the user setup is complete.
 
 Do not skip step 2–3. A missing `PRODUCTION_URL` causes authentication to
 fail silently in production and the site will be unusable.
