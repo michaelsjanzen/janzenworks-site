@@ -16,7 +16,14 @@ export default async function SetupPage() {
     redirect("/admin/login");
   }
 
-  const detectedUrl = detectSiteUrl() ?? "";
+  // Prefer PRODUCTION_URL for the site URL pre-fill — NEXTAUTH_URL is the dev
+  // domain in Replit dev containers and should not be presented as the site URL.
+  const rawProductionUrl = process.env.PRODUCTION_URL;
+  const detectedUrl = rawProductionUrl
+    ? rawProductionUrl.startsWith("https://")
+      ? rawProductionUrl
+      : `https://${rawProductionUrl}`
+    : (detectSiteUrl() ?? "");
   const currentSecret = process.env.NEXTAUTH_SECRET ?? "";
   const isDevEnvironment = isDevUrl(detectedUrl);
 
