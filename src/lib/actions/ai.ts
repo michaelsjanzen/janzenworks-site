@@ -15,7 +15,7 @@ async function requireAdmin() {
 
 const aiSettingsSchema = z.object({
   provider: z.enum(["anthropic", "openai", "gemini"]).nullable(),
-  apiKey: z.string().max(500),
+  apiKey: z.string().max(2000),
   model: z.string().max(200),
   aiRateLimit: z.coerce.number().int().min(1).max(500).default(50),
 });
