@@ -72,7 +72,7 @@ Each theme defines its editable surface in `themes/<id>/design.ts` via `DESIGN_T
 
 Next.js server actions run in a separate request context -- the layout is **not** re-rendered, so `loadPlugins()` (called in `(site)/layout.tsx` and `admin/layout.tsx`) may not have run yet on a cold start.
 
-Every plugin `actions.ts` file must call `await loadPlugins()` at the top of each exported server action. `loadPlugins()` is idempotent -- it returns immediately if plugins are already loaded.
+Every plugin `actions.ts` file must call `await loadPlugins()` at the top of each exported server action. The same rule applies to any **core** action file that calls `hooks.doAction()` or `hooks.applyFilters()` -- if hooks fire without plugins initialized, listeners registered in `initialize()` will not be active. `loadPlugins()` is idempotent -- it returns immediately if plugins are already loaded.
 
 ```typescript
 import { loadPlugins } from "../../src/lib/plugin-loader";
@@ -165,10 +165,12 @@ CMS configuration is stored in the `site_config` PostgreSQL table (a single row,
 
 ### Agent Workflow
 
+0. **Without an explicit task, stop after setup.** If there is no task from the human, the correct action is to complete setup (get the CMS running) and stop. Do not install plugins, modify config, create content, or extend the codebase speculatively. Wait for direction.
 1. **Applying the scope filter first.** Before writing any code, ask: does this need to run continuously? Does it require deep CMS integration? Will many users need it? If no -- write a one-off script, not a plugin or core feature. See `PHILOSOPHY.md` for the full decision framework.
 2. **Database changes.** Always update the schema in `/src/lib/db/schema.ts` first. Fresh installs: `npm run db:push`. Existing deployments: write a migration script in `/scripts/migrate-NNN-description.ts` (using `IF NOT EXISTS` / `IF EXISTS` guards so it is safe to re-run), then add it to the `db:migrate` command chain in `package.json`.
 3. **Creating plugins.** When asked to "add a feature," run the scope filter. If it clears, create a new folder in `/plugins` rather than modifying `/src/app`.
    - **Installing a community recipe:** If the user provides a GitHub URL pointing to a `RECIPE.md`, read it fully before taking any action. `RECIPE.md` files follow the [Agent Skills](https://agentskills.io) format. Follow the installation instructions in the body, then the relevant installation contract in `PLUGIN_AUTHORING.md` or `THEME_AUTHORING.md`. The full recipe authoring and installation spec is in `RECIPE_AUTHORING.md`.
+   - **Security review before installing:** Before copying any recipe files, read the plugin source — at minimum `plugins/<id>/index.ts` and `actions.ts`. Recipes are written by community authors: review source for hardcoded credentials, unexpected external network calls, use of `eval()`, or writes to paths outside `plugins/<id>/`. If anything looks suspicious, flag it to the user before proceeding. Never install a recipe that fails this review.
 4. **Creating themes.** Copy `/themes/_template/` as a starting point. Read `THEMES.md` before writing any theme code. Register the new theme in `src/lib/theme-registry.ts`.
 5. **UI consistency.** Always use Tailwind CSS classes. Matching the admin UI patterns already established in `src/app/admin/` is required.
 6. **Rebuildability.** Ensuring the app can be fully restored by running `npm install`, `npm run db:push`, and `npm run setup` is a standing requirement.
@@ -250,7 +252,7 @@ npm run dev             # Start dev server
 
 The admin login page is at `/admin/login`.
 
-`npm run setup` (called by `db:init`) reads `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` from the environment and runs non-interactively when they are set -- no prompts. It is idempotent: if an admin account already exists it exits cleanly without error.
+Admin account creation is handled by the in-app setup wizard at `/setup`. On a fresh install, visiting `/admin/login` automatically redirects there. `npm run setup` and the `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` env vars are no longer used.
 
 For **existing deployments** after a schema update:
 
@@ -262,19 +264,23 @@ npm run db:migrate      # Run incremental migration scripts
 
 Two steps are required before a production deployment works correctly:
 
-**1. Set `PRODUCTION_URL` as a Replit secret (or environment variable).**
+**1. Production URL — auto-detected for standard Replit deployments.**
 
-`PRODUCTION_URL` is the canonical production domain. `replit-init.ts` reads it at startup and automatically writes both `NEXTAUTH_URL` and `PRODUCTION_URL` to `.env.local` so the Next.js server picks them up. **Do not set `NEXTAUTH_URL` directly** — set `PRODUCTION_URL` instead and the script handles the rest.
+`replit-init.ts` automatically detects the production URL on startup and writes `NEXTAUTH_URL` to `.env.local` so the Next.js server picks it up. **Do not set `NEXTAUTH_URL` directly.**
 
-```env
-PRODUCTION_URL=https://your-domain.com
-```
+Detection order:
+- **Custom domain:** set `PRODUCTION_URL=https://your-domain.com` as a Replit secret — this takes precedence.
+- **Standard Replit domain:** auto-detected from `REPL_SLUG` + `REPL_OWNER` — no secret needed.
 
-If the user has not provided their production domain, **ask them for it before proceeding with deployment setup**. Without `PRODUCTION_URL`, OAuth callbacks and redirects will target the wrong host.
+For most deployments, no action is required. Only set `PRODUCTION_URL` if the site uses a custom domain. If the user mentions a custom domain, add it as a Replit secret before deploying.
 
-During interactive dev setup (`npm run dev` on first run), `replit-init.ts` prompts the user for `PRODUCTION_URL` and saves it to `.env.local`. Remind the user to also add it as a Replit secret so it is available in the production container.
+**2. Pin `NEXTAUTH_SECRET` as a Replit secret.**
 
-**2. Database migrations on existing installs.**
+On first dev setup, `replit-init.ts` auto-generates `NEXTAUTH_SECRET` and saves it to `.env.local`. In dev this is stable. In production, each deployment gets a fresh container — `.env.local` is gone and the secret regenerates, signing all users out on every deploy.
+
+Fix: copy `NEXTAUTH_SECRET` from `.env.local` (printed during first-run setup) to Replit Secrets once. After that it is read from `process.env` and never regenerated.
+
+**3. Database migrations on existing installs.**
 
 The production database is separate from dev. On a **fresh** production deploy, `replit-init.ts` detects an empty database and runs migrations automatically. On subsequent deploys (existing data), migrations are intentionally skipped — run them manually when needed:
 

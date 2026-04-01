@@ -41,6 +41,7 @@ import { hooks } from "./hooks";
 import type { HookManager } from "./hooks";
 import type { WidgetDef } from "@/types/widget";
 import { registerWidget } from "./widget-registry";
+import { createNotification } from "./notifications";
 
 /** The typed HookManager used by all plugins. */
 export type PluginHookManager = HookManager<ActionCatalogue, FilterCatalogue>;
@@ -256,7 +257,17 @@ async function _initializePlugins(
         activePlugins.push(plugin);
         console.log(`[PluginRegistry] Loaded plugin: ${plugin.name} v${plugin.version}`);
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         console.error(`[PluginRegistry] Failed to load plugin "${plugin.id}":`, err);
+        createNotification({
+          pluginId: "core",
+          type: "error",
+          message: `Plugin "${plugin.id}" failed to initialize: ${message}`,
+          href: "/admin/plugins",
+          replaceKey: `plugin:init:error:${plugin.id}`,
+        }).catch((notifyErr) => {
+          console.error("[PluginRegistry] Failed to create error notification:", notifyErr);
+        });
       }
     }
   }

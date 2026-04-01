@@ -1,10 +1,9 @@
 import { db } from "@/lib/db";
-import { posts, media, adminUsers, sessions, themeDesignConfigs } from "@/lib/db/schema";
-import { sql, gte, isNotNull, notInArray, eq } from "drizzle-orm";
+import { posts, media, adminUsers, sessions } from "@/lib/db/schema";
+import { sql, gte, isNotNull, notInArray } from "drizzle-orm";
 import { getConfig } from "@/lib/config";
 import { isDevUrl } from "@/lib/detect-site-url";
 import DashboardCharts from "@/components/admin/DashboardCharts";
-import GettingStartedCard from "@/components/admin/GettingStartedCard";
 import BotAnalyticsTeaser from "@/components/admin/BotAnalyticsTeaser";
 import { getBotTotals, getTopPaths } from "../../../plugins/bot-analytics/db";
 
@@ -31,7 +30,7 @@ export default async function AdminDashboard() {
     .from(posts)
     .where(isNotNull(posts.featuredImage));
 
-  const [config, counts, totalMediaRows, unusedMediaRows, monthlyRaw, allUsers, lastActiveSessions, publishedDesign, publishedPost, anyAuthorVoice] =
+  const [config, counts, totalMediaRows, unusedMediaRows, monthlyRaw, allUsers, lastActiveSessions] =
     await Promise.all([
       getConfig(),
       db
@@ -77,24 +76,6 @@ export default async function AdminDashboard() {
         })
         .from(sessions)
         .groupBy(sessions.userId),
-
-      // Onboarding: has a published design config (design customized)?
-      db.select({ id: themeDesignConfigs.id })
-        .from(themeDesignConfigs)
-        .where(eq(themeDesignConfigs.status, "published"))
-        .limit(1),
-
-      // Onboarding: has at least one published post?
-      db.select({ id: posts.id })
-        .from(posts)
-        .where(sql`${posts.type} = 'post' AND ${posts.published} = true`)
-        .limit(1),
-
-      // Onboarding: has any admin set their author voice?
-      db.select({ authorVoice: adminUsers.authorVoice })
-        .from(adminUsers)
-        .where(isNotNull(adminUsers.authorVoice))
-        .limit(1),
     ]);
 
   const buckets = buildMonthlyBuckets(12);
@@ -137,7 +118,6 @@ export default async function AdminDashboard() {
     lastActive: sessionMap.get(u.id) ?? null,
   }));
 
-  // Onboarding steps
   // Bot analytics teaser — wrapped in try/catch so dashboard never breaks
   // if the plugin tables haven't been created yet on a fresh install.
   const isBotAnalyticsActive = config.modules.activePlugins?.includes("bot-analytics") ?? false;
@@ -151,40 +131,6 @@ export default async function AdminDashboard() {
     }
   }
 
-  const onboardingSteps = [
-    {
-      label: "Set up your profile",
-      description: "Update your name, change your password from the default, and add your author voice — all on the My Profile page.",
-      done: anyAuthorVoice.length > 0,
-      href: "/admin/profile",
-    },
-    {
-      label: "Set your site identity",
-      description: "Add your site name, URL, and description in Settings.",
-      done: config.site.name !== "My Pugmill Site" && config.site.name.trim() !== "",
-      href: "/admin/settings",
-    },
-    {
-      label: "Configure an AI provider",
-      description: "Connect Anthropic, OpenAI, or Gemini to unlock AI-powered features.",
-      done: config.ai.provider !== null,
-      href: "/admin/settings/ai",
-    },
-    {
-      label: "Customize your design",
-      description: "Adjust colors, fonts, and layout to make Pugmill your own.",
-      done: publishedDesign.length > 0,
-      href: "/admin/design",
-    },
-    {
-      label: "Publish your first post",
-      description: "Create and publish a post to put your site on the map.",
-      done: publishedPost.length > 0,
-      href: "/admin/posts/new",
-    },
-  ];
-  const allStepsDone = onboardingSteps.every(s => s.done);
-  const showOnboarding = !config.system.onboardingDismissed && !allStepsDone;
   const showUrlWarning = isDevUrl(config.site.url);
 
   return (
@@ -207,8 +153,6 @@ export default async function AdminDashboard() {
           </p>
         </div>
       )}
-
-      {showOnboarding && <GettingStartedCard steps={onboardingSteps} />}
 
       {isBotAnalyticsActive && (
         <BotAnalyticsTeaser totals={botTotals} topPaths={botTopPaths} />

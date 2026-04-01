@@ -72,7 +72,6 @@ export const configSchema = z.object({
     version: z.string(),
     headlessMode: z.boolean().default(false),
     maintenanceMode: z.boolean().default(false),
-    onboardingDismissed: z.boolean().default(false),
   }),
   ai: z.object({
     provider: z.enum(["anthropic", "openai", "gemini"]).nullable().default(null),
@@ -111,7 +110,6 @@ const DEFAULT_CONFIG: Config = {
     version: "0.1.0",
     headlessMode: false,
     maintenanceMode: false,
-    onboardingDismissed: false,
   },
   ai: { provider: null, apiKey: "", model: "", aiRateLimit: 50 },
 };

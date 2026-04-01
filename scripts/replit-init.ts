@@ -7,15 +7,13 @@
  * What it does:
  *   1. Checks DATABASE_URL is available (provided by Replit's PostgreSQL module)
  *   2. Auto-generates NEXTAUTH_SECRET  (writes to .env.local)
- *   3. Dev:  auto-detects NEXTAUTH_URL from REPLIT_DEV_DOMAIN; logs reminder to set PRODUCTION_URL secret
- *      Prod: uses PRODUCTION_URL as NEXTAUTH_URL
+ *   3. Dev:  auto-detects NEXTAUTH_URL from REPLIT_DEV_DOMAIN or REPL_SLUG/REPL_OWNER
+ *      Prod: auto-detects NEXTAUTH_URL from REPL_SLUG/REPL_OWNER; PRODUCTION_URL secret overrides (custom domains only)
  *   4. Creates all database tables     (IF NOT EXISTS — never drops)
  *   5. Dev / fresh prod: runs migrations
  *      Existing prod install: skips migrations (run `npm run db:migrate` manually)
- *   6. Seeds admin user and default content (skipped if already present)
- *   7. Writes setup-credentials.json  (read by /admin/login, deleted on first sign-in)
- *   8. Prints credentials clearly
- *   9. Dev only: writes .replit-setup-complete (sentinel — skips this script on future restarts)
+ *   6. Prints a prompt to visit /setup to create the admin account
+ *   7. Dev only: writes .replit-setup-complete (sentinel — skips this script on future restarts)
  *
  * On non-Replit environments: exits immediately (no-op).
  * Run manually: npm run replit:init  (bypasses the sentinel)
@@ -130,24 +128,37 @@ async function main() {
   }
 
   if (isProd) {
-    // ── Production: use PRODUCTION_URL as the authoritative NEXTAUTH_URL ───
+    // ── Production: auto-detect URL, with PRODUCTION_URL as a custom-domain override ──
     // We write NEXTAUTH_URL to .env.local so the Next.js server process reads
     // it on startup — setting process.env here alone is not sufficient because
     // prestart runs in a separate process from `next start`.
-    const productionUrl = getVar("PRODUCTION_URL", envMap);
-    if (productionUrl) {
-      const url = productionUrl.startsWith("https://") ? productionUrl : `https://${productionUrl}`;
+    //
+    // Detection order:
+    //   1. PRODUCTION_URL secret — set this for custom domains only
+    //   2. REPL_SLUG + REPL_OWNER — standard Replit deployment domain (zero-config)
+    const explicitUrl = getVar("PRODUCTION_URL", envMap);
+    const autoUrl =
+      process.env.REPL_SLUG && process.env.REPL_OWNER
+        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : null;
+    const rawProductionUrl = explicitUrl || autoUrl;
+
+    if (rawProductionUrl) {
+      const url = rawProductionUrl.startsWith("https://")
+        ? rawProductionUrl
+        : `https://${rawProductionUrl}`;
       process.env.NEXTAUTH_URL = url;
       if (!getVar("NEXTAUTH_URL", envMap)) {
         envMap.set("NEXTAUTH_URL", url);
         configured.push("NEXTAUTH_URL");
       }
-      console.log(`  Production URL: ${url}`);
+      const source = explicitUrl ? "PRODUCTION_URL secret" : "auto-detected";
+      console.log(`  Production URL: ${url} (${source})`);
     } else {
       console.warn(
-        "  Warning: PRODUCTION_URL is not set.\n" +
-        "  OAuth callbacks and redirects will not work correctly.\n" +
-        "  Add PRODUCTION_URL=https://your-domain.com as a Replit secret.\n"
+        "  Warning: Could not detect production URL.\n" +
+        "  OAuth callbacks and redirect URLs may not work correctly.\n" +
+        "  Set PRODUCTION_URL=https://your-domain.com as a Replit secret to resolve.\n"
       );
     }
   } else {
@@ -173,11 +184,12 @@ async function main() {
       }
     }
 
-    // ── Dev: remind about PRODUCTION_URL if not already set ───────────────
+    // ── Dev: remind about PRODUCTION_URL only if using a custom domain ────
     if (!getVar("PRODUCTION_URL", envMap)) {
       console.log(
-        "  Note: PRODUCTION_URL is not set.\n" +
-        "  Add PRODUCTION_URL=https://your-domain.com as a Replit secret before deploying to production.\n"
+        "  Note: No PRODUCTION_URL secret found.\n" +
+        "  Standard Replit deployments will auto-detect the production URL — no action needed.\n" +
+        "  Only set PRODUCTION_URL if you are using a custom domain.\n"
       );
     }
   }
@@ -185,6 +197,28 @@ async function main() {
   if (configured.length > 0) {
     writeEnvLocal(envMap);
     console.log(`  Auto-configured: ${configured.join(", ")} — saved to .env.local\n`);
+  }
+
+  // ── Warn about NEXTAUTH_SECRET persistence in production ─────────────────
+  // In dev, .env.local persists on the Replit workspace filesystem — secret is stable.
+  // In production, each deployment gets a fresh container and .env.local is gone,
+  // so the secret would regenerate on every deploy and invalidate all active sessions.
+  // Saving it as a Replit secret pins it permanently across deployments.
+  if (!isProd && configured.includes("NEXTAUTH_SECRET")) {
+    const secret = envMap.get("NEXTAUTH_SECRET") ?? "";
+    console.log(
+      "  ┌─────────────────────────────────────────────────────────────────┐\n" +
+      "  │ ACTION REQUIRED before your first production deployment         │\n" +
+      "  │                                                                 │\n" +
+      "  │ Save NEXTAUTH_SECRET as a Replit secret so sessions survive     │\n" +
+      "  │ container restarts and deployments. Without it, every deploy    │\n" +
+      "  │ regenerates the secret and signs all users out.                 │\n" +
+      "  │                                                                 │\n" +
+      `  │ Replit → Secrets → New secret:                                  │\n` +
+      `  │   Name:  NEXTAUTH_SECRET                                        │\n` +
+      `  │   Value: ${secret.slice(0, 53).padEnd(53)} │\n` +
+      "  └─────────────────────────────────────────────────────────────────┘\n"
+    );
   }
 
   // Ensure newly written .env.local values are in process.env for the db import
@@ -236,87 +270,11 @@ async function main() {
     }
   }
 
-  // ── Step 4: Admin user + default content ────────────────────────────────────
-  console.log("\nAdmin setup");
+  console.log(
+    "\n  Visit your site URL and go to /setup to create your admin account.\n"
+  );
 
-  const { db } = await import("../src/lib/db");
-  const { adminUsers } = await import("../src/lib/db/schema");
-  const bcrypt = await import("bcryptjs");
-
-  const existing = await db.select().from(adminUsers).limit(1);
-
-  const { getConfig }          = await import("../src/lib/config");
-  const { seedDefaultContent } = await import("../seeds/default-content");
-
-  if (existing.length > 0) {
-    console.log("  Admin account already exists.");
-
-    // Still ensure config and content are seeded (safe if already done)
-    await getConfig();
-    const [admin] = await db.select().from(adminUsers).limit(1);
-    await seedDefaultContent(admin.id);
-    console.log("  Config and default content verified.\n");
-  } else {
-    const email = process.env.ADMIN_EMAIL || "admin@pugmillcms.test";
-    const name  = process.env.ADMIN_NAME  || "Admin";
-
-    let password: string;
-    let passwordNote: string;
-
-    if (process.env.ADMIN_PASSWORD) {
-      password     = process.env.ADMIN_PASSWORD;
-      passwordNote = "(from ADMIN_PASSWORD secret)";
-    } else {
-      const words = [
-        "coral", "amber", "cedar", "flint", "grove",
-        "haven", "ivory", "jasper", "maple", "onyx",
-      ];
-      const w1  = words[crypto.randomInt(words.length)];
-      const w2  = words[crypto.randomInt(words.length)];
-      const num = crypto.randomInt(1000, 9999);
-      password     = `${w1}-${w2}-${num}`;
-      passwordNote = "(auto-generated)";
-    }
-
-    // ── Write credentials file BEFORE hashing — survives any later crash ──────
-    const CREDS_FILE = path.join(ROOT, "setup-credentials.json");
-    writeFileSync(CREDS_FILE, JSON.stringify({ email, password }, null, 2) + "\n");
-    console.log("  Credentials saved to setup-credentials.json (shown on login page, deleted after first sign-in)");
-
-    const passwordHash = await bcrypt.default.hash(password, 12);
-
-    await db.insert(adminUsers).values({
-      email,
-      name,
-      passwordHash,
-      role: "admin",
-    } as typeof adminUsers.$inferInsert);
-
-    // Seed site config and default content
-    await getConfig();
-    const [admin] = await db.select().from(adminUsers).limit(1);
-    await seedDefaultContent(admin.id);
-
-    // ── Print credentials to console ─────────────────────────────────────────
-    // Fixed: Math.max(0, ...) prevents negative repeat count when strings are
-    // longer than the calculated box width (was crashing with "Invalid count").
-    const maxLen = Math.max(email.length, password.length, 34);
-    const w      = maxLen + 2;
-    const line   = "─".repeat(w + 2);
-    const pad    = (s: string) => s + " ".repeat(Math.max(0, w + 2 - s.length));
-
-    console.log(`\n  ┌${line}┐`);
-    console.log(`  │ ${pad("Admin credentials " + passwordNote)} │`);
-    console.log(`  │ ${pad("")} │`);
-    console.log(`  │ ${pad("  Email:    " + email)} │`);
-    console.log(`  │ ${pad("  Password: " + password)} │`);
-    console.log(`  │ ${pad("")} │`);
-    console.log(`  │ ${pad("  Sign in at /admin/login")} │`);
-    console.log(`  │ ${pad("  Credentials also shown on the login page.")} │`);
-    console.log(`  └${line}┘\n`);
-  }
-
-  // ── Step 5: Dev only — write sentinel so future restarts skip this ───────────
+  // ── Step 4 (dev only): write sentinel so future restarts skip this ──────────
   if (!isProd) {
     writeFileSync(SENTINEL, new Date().toISOString() + "\n");
   }

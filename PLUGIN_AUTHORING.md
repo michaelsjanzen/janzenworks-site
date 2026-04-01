@@ -247,6 +247,17 @@ hooks.addFilter("head:meta", ({ input, post }) => {
 | `head:meta` | Filter | `{ input: MetaTag[]; post?: PostPayload }` |
 | `api:post:response` | Filter | `{ input: Record<string, unknown>; post: PostPayload }` |
 
+### Proposing a new hook
+
+If none of the available hooks fit your use case, do not invent a hook name. The correct path:
+
+1. **Check first** — scan `src/lib/hook-catalogue.ts` carefully. A hook that fires at the right moment may exist under a slightly different name.
+2. **Add to the catalogue** — add the new hook name and payload type to `ActionCatalogue` or `FilterCatalogue` in `hook-catalogue.ts`. Follow the existing JSDoc pattern; mark strict actions with `@strict`.
+3. **Add the call site** — add the corresponding `hooks.doAction()` or `hooks.applyFilters()` call in the relevant core action file. Remember `await loadPlugins()` before any hook call (see §12).
+4. **Keep the name scoped** — use `namespace:event` convention (`post:after-save`, not `save` or `afterSave`). Choose a namespace that will make sense to future plugin authors.
+
+New hooks added to the catalogue become part of the public plugin API — other plugins can register listeners. Name them carefully; renaming a hook later is a breaking change for anyone depending on it.
+
 ---
 
 ## 6. Database Schema
@@ -338,9 +349,81 @@ export default function MyBanner({ settings }: { settings: PluginSettings }) {
 }
 ```
 
+### Security — sanitizing user content in slots
+
+Frontend slot components run in the site's public page layout. If a slot component renders any user-generated content (comments, form input, submitted text), that content **must** be sanitized before rendering.
+
+Use the `sanitize-html` package already present in the project:
+
+```typescript
+import sanitizeHtml from "sanitize-html";
+
+export default function MyPostFooter({ postId }: { postId: number }) {
+  // If rendering user content fetched from the DB:
+  const safeContent = sanitizeHtml(rawUserContent, {
+    allowedTags: ["b", "i", "em", "strong", "p"],
+    allowedAttributes: {},
+  });
+  return <div dangerouslySetInnerHTML={{ __html: safeContent }} />;
+}
+```
+
+**Rules:**
+- Never pass user-generated content directly to `dangerouslySetInnerHTML` without sanitizing first.
+- When user content is rendered as plain text (inside a JSX expression, not `dangerouslySetInnerHTML`), React escapes it automatically — no extra work needed.
+- Slot components that render only static text or plugin settings do not need sanitization.
+
 ---
 
-## 8. Custom Admin Page
+## 8. Public Routes
+
+Plugins that need public-facing pages or API endpoints add files to `src/app/` using the same mirrored structure that recipes use for distribution.
+
+**Prefix all paths with the plugin id** to avoid collisions with core routes and other plugins.
+
+### Public pages
+
+```
+src/app/(site)/my-plugin/          → yourdomain.com/my-plugin
+  page.tsx                         → yourdomain.com/my-plugin (index)
+  [slug]/page.tsx                  → yourdomain.com/my-plugin/some-slug
+```
+
+```tsx
+// src/app/(site)/my-plugin/page.tsx
+// Server component — renders inside the active theme layout automatically.
+
+export default async function MyPluginPage() {
+  return <div>Public plugin page</div>;
+}
+```
+
+### Public API routes
+
+```
+src/app/api/my-plugin/route.ts     → /api/my-plugin
+src/app/api/my-plugin/[id]/route.ts
+```
+
+```typescript
+// src/app/api/my-plugin/route.ts
+import { NextRequest, NextResponse } from "next/server";
+
+export async function GET(_req: NextRequest) {
+  return NextResponse.json({ ok: true });
+}
+```
+
+### Rules
+
+- **Always prefix** route paths with the plugin id: `src/app/(site)/my-plugin/`, `src/app/api/my-plugin/`. Never `src/app/(site)/contact/` or `src/app/api/submit/`.
+- Route files live in `src/`, not in `plugins/`. They are separate from the plugin directory.
+- Public pages inside `(site)/` are automatically wrapped in the active theme's `Layout.tsx` — no extra wiring needed.
+- If the plugin is deactivated, its routes still exist in `src/app/` — either guard the page content with a check, or document that routes must be removed manually on uninstall.
+
+---
+
+## 9. Custom Admin Page
 
 For plugins that need to display or manage data, providing an `adminPage` component is the right pattern. It renders at `/admin/plugins/<plugin-id>` and handles its own data fetching and server actions. `searchParams` are passed through for filter and pagination support.
 
@@ -370,7 +453,7 @@ When `adminPage` is set, the inline settings panel is hidden from the plugin car
 
 ---
 
-## 9. Sidebar Sub-Nav (`actionHref`)
+## 10. Sidebar Sub-Nav (`actionHref`)
 
 When set, `actionHref` causes the plugin to appear as a sub-section under Notifications in the admin sidebar. Use this for plugins that have a moderation queue or primary action destination.
 
@@ -382,7 +465,7 @@ The sidebar shows unread notification counts alongside the link. The admin page 
 
 ---
 
-## 10. Notifications
+## 11. Notifications
 
 Plugins can surface events to admin users via the notification feed.
 
@@ -406,9 +489,13 @@ Calling `deletePluginNotifications(pluginId)` from `teardown()` cleans up on uni
 
 ---
 
-## 11. Server Actions
+## 12. Server Actions
 
-Plugin server actions must call `await loadPlugins()` at the top of each exported function. Layouts are not re-rendered during server action requests, so `initialize()` may not have run. `loadPlugins()` is idempotent -- it returns immediately if already loaded.
+Plugin server actions must call `await loadPlugins()` in each exported function. Layouts are not re-rendered during server action requests, so `initialize()` may not have run. `loadPlugins()` is idempotent -- it returns immediately if already loaded.
+
+### Admin-only actions
+
+Auth check first (lightweight), then `loadPlugins()`:
 
 ```typescript
 // plugins/my-plugin/actions.ts
@@ -417,41 +504,59 @@ Plugin server actions must call `await loadPlugins()` at the top of each exporte
 import { loadPlugins } from "../../src/lib/plugin-loader";
 import { getCurrentUser } from "../../src/lib/get-current-user";
 
-export async function myPluginAction(formData: FormData) {
-  await loadPlugins(); // ensures hook listeners are registered on cold starts
+async function requireAdmin() {
   const user = await getCurrentUser();
-  // ... rest of action
+  if (!user || user.role !== "admin") throw new Error("Unauthorized");
+  return user;
 }
-```
 
-For admin-only actions, calling `requireAdmin()` before `loadPlugins()` is the correct order:
-
-```typescript
 export async function myAdminAction(id: number) {
   const user = await requireAdmin(); // auth first
-  await loadPlugins();
+  await loadPlugins();               // then plugins
   // ...
 }
 ```
 
+### Public-facing actions
+
+Actions callable by unauthenticated visitors — contact forms, newsletter signups, public votes — omit the auth guard but still require `loadPlugins()`. Return a typed result object rather than throwing, so errors reach the user gracefully:
+
+```typescript
+export async function submitContactForm(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  await loadPlugins(); // no auth guard — public action
+  try {
+    const name = (formData.get("name") as string ?? "").trim();
+    const email = (formData.get("email") as string ?? "").trim();
+    if (!name || !email) return { ok: false, error: "Name and email are required." };
+    // ... write to DB
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+}
+```
+
+**Do not add an auth guard to a public action** — `getCurrentUser()` returns `null` for visitors, and checking `if (!user) throw new Error("Unauthorized")` would silently block every public submission. If the action should be available to anyone, the absence of an auth guard is correct and intentional.
+
 ---
 
-## 12. Distributing as a Recipe
+## 13. Distributing as a Recipe
 
 If you want to share a plugin with the Pugmill community, package it as a recipe. A recipe is a GitHub repository containing your plugin files plus a `RECIPE.md` that tells an AI agent how to install it.
 
 The full spec is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md). The short version:
 
 1. Create a GitHub repository named `pugmill-recipe-<plugin-id>`.
-2. Place your plugin files (`index.ts`, `manifest.json`, etc.) at the repository root.
-3. If your plugin needs routes in `src/app/`, place them in a `routes/` subdirectory mirroring the `src/app/` structure.
-4. If your plugin needs a migration script, place it in `migrations/`.
-5. Write a `RECIPE.md` at the repository root using the Agent Skills frontmatter format. The body should be step-by-step installation instructions for an AI agent, referencing this guide for the 4-step installation contract.
-6. Submit a listing to the [Pugmill community directory](https://github.com/michaelsjanzen/pugmill-recipe-community).
+2. Use a **mirrored directory structure** — the repo layout matches where files land in Pugmill. Plugin files go in `plugins/<id>/`, routes in `src/app/`, lib files in `src/lib/`. An agent installs by overlaying the repo onto the Pugmill project root.
+3. If your plugin needs a migration script, place it in `migrations/`.
+4. Write a `RECIPE.md` at the repository root using the Agent Skills frontmatter format. The body should be step-by-step installation instructions for an AI agent, referencing this guide for the 4-step installation contract.
+5. Submit a listing to the [Pugmill community directory](https://github.com/michaelsjanzen/pugmill-recipe-community).
 
 ---
 
-## 13. Conventions
+## 14. Conventions
 
 - **No plugin-to-plugin imports.** Shared hooks are the mechanism for inter-plugin communication. Shared utilities belong in npm packages.
 - **Table naming:** `plugin_<plugin-id>_<tablename>` -- no exceptions.
@@ -459,3 +564,5 @@ The full spec is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md). The short ve
 - **Hook names** must come from `ActionCatalogue` / `FilterCatalogue` in `hook-catalogue.ts`. Proposing a new hook means adding it to the catalog and updating the relevant core call site.
 - **Secrets** in settings should set `secret: true`. Logging them is prohibited.
 - **`initialize()` is for registering listeners**, not for running queries on every request. Heavy startup work should be gated or cached.
+- **Public actions omit auth guards.** An action callable by unauthenticated visitors must not check `getCurrentUser()` and throw — that silently blocks all public submissions. See §12 for the correct pattern.
+- **Route paths must be prefixed with the plugin id.** `src/app/(site)/my-plugin/` not `src/app/(site)/contact/`. See §8.

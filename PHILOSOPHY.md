@@ -107,6 +107,8 @@ A recipe is a GitHub repository containing plugin or theme files plus a `RECIPE.
 
 Recipes do not change the three-tier architecture. They are a distribution and installation format for Tier 2 extensions built by the community. The full authoring guide is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md).
 
+**The trust model.** Recipes occupy a deliberate point between "human writes all code" and "agent generates code on demand." A recipe is authored once by a human, published to GitHub, and then installed by an agent on behalf of a user. The human author sets direction and takes responsibility for the code; the agent executes. This is the same human-AI team model that governs every Pugmill workflow -- applied at the ecosystem level.
+
 This is also an example of the built-in vs agent-generated pattern applied to the extension ecosystem itself: a `create-pugmill-recipe` skill ships with the project, giving any agent a just-in-time guide for packaging and publishing an extension without that knowledge living in core.
 
 ---

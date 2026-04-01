@@ -31,6 +31,12 @@ Recipes and skills are both agent-readable Markdown files in the Agent Skills fo
 
 A recipe is a deliverable. A skill is a workflow guide. Pugmill ships a `create-pugmill-recipe` skill that helps agents author recipes — a skill whose output is a recipe.
 
+### The trust model
+
+Recipes represent a deliberate point in the trust spectrum between "human writes all code" and "agent generates code on demand." A recipe is written once by a human author, reviewed by the community, and then executed by agents on behalf of users. This is fundamentally safer than a fully agent-generated approach: the code being installed was authored and published by a human, not synthesized at install time from a prompt.
+
+This matters for the agents installing recipes too. An agent reading `RECIPE.md` should still review source files before copying them — the recipe format reduces risk but does not eliminate the need for judgment. See `AGENT.md` for the security review requirement.
+
 ---
 
 ## RECIPE.md Format
@@ -215,9 +221,41 @@ Recipes are hosted on GitHub in the author's own account. Naming conventions:
 | Plugin recipe | `pugmill-recipe-<plugin-id>` |
 | Theme recipe | `pugmill-theme-<theme-id>` |
 
-To have your recipe listed in the Pugmill community directory, submit a listing to the [community plugin](https://github.com/michaelsjanzen/pugmill-recipe-community) following its submission instructions. A listing includes: recipe name, description, repository URL, type, and Pugmill version compatibility.
+### Submitting to the community directory
 
-An AI agent can install any recipe directly from a GitHub URL — share your repository URL and a compatible agent will read `RECIPE.md` and follow the instructions.
+To have your recipe listed, open a pull request against [pugmill-recipe-community](https://github.com/michaelsjanzen/pugmill-recipe-community) following the submission instructions in that repository's README. A listing includes:
+
+- Recipe name (must match your `RECIPE.md` `name` field exactly)
+- One-sentence description
+- GitHub repository URL (e.g. `https://github.com/yourname/pugmill-recipe-my-plugin`)
+- Type (`plugin` or `theme`)
+- Minimum Pugmill version
+
+An AI agent can install any recipe directly from a GitHub URL without a directory listing — share your repository URL and a compatible agent will read `RECIPE.md` and follow the instructions.
+
+---
+
+## Versioning
+
+Recipes do not have a formal version field, but breaking changes need careful handling because agents install from `RECIPE.md` instructions that users may have cached or shared.
+
+**Breaking changes** — require a clear note in `RECIPE.md` and a version bump in `metadata.pugmill-version` if the required Pugmill version increases:
+
+- Changing the plugin or theme **id** (renames tables, orphans design configs, breaks existing installations)
+- Changing or removing a **required route path** (breaks links saved by users)
+- Adding a new **required secret** (installations will fail silently at runtime until the secret is added)
+- Changing the **database schema** in a way that drops or renames columns
+
+**Non-breaking changes** — safe to make without special notice:
+
+- Adding optional routes or lib files
+- Adding optional env vars with documented defaults
+- Adding new design tokens to a theme (existing configs are unaffected)
+- Bug fixes that do not change the file structure
+
+**Guidance for incompatible changes:** If you must change the plugin id, publish a new recipe with the new id and mark the old repository as archived on GitHub with a note pointing to the replacement. Include removal instructions for the old recipe in the new recipe's RECIPE.md.
+
+**Theme id note:** Theme ids are stored as foreign keys in the `theme_design_configs` table. Changing a theme id after users have saved design configurations orphans their data permanently. Treat the theme id as immutable once published.
 
 ---
 

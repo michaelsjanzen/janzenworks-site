@@ -6,6 +6,7 @@ import { posts, postCategories, postTags } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/get-current-user";
 import { hooks } from "@/lib/hooks";
+import { loadPlugins } from "@/lib/plugin-loader";
 import type { PostPayload } from "@/lib/hook-catalogue";
 import { auditLog } from "@/lib/audit-log";
 import { z } from "zod";
@@ -79,6 +80,7 @@ async function assertParentIdAuthorized(parentId: number | null, userId: string)
 
 export async function createPost(formData: FormData) {
   const user = await requireAdminOrEditor();
+  await loadPlugins();
 
   const raw = {
     type: (formData.get("type") as string) || "post",
@@ -170,6 +172,7 @@ export async function createPost(formData: FormData) {
 
 export async function updatePost(id: number, formData: FormData) {
   const user = await requireAdminOrEditor();
+  await loadPlugins();
 
   if (user.role === "editor") {
     const existing = await db.select({ authorId: posts.authorId }).from(posts).where(eq(posts.id, id));
@@ -287,6 +290,7 @@ export async function autosavePost(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const user = await requireAdminOrEditor();
+    await loadPlugins();
 
     if (user.role === "editor") {
       const existing = await db.select({ authorId: posts.authorId }).from(posts).where(eq(posts.id, id));
@@ -325,6 +329,7 @@ export async function autosavePost(
 
 export async function deletePost(id: number) {
   const user = await requireAdminOrEditor();
+  await loadPlugins();
 
   if (user.role === "editor") {
     const existing = await db.select({ authorId: posts.authorId }).from(posts).where(eq(posts.id, id));

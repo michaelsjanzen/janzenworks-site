@@ -644,9 +644,6 @@ Same npm + private registry model as plugins (see §12.5). Themes ship two forma
 | `GITHUB_CLIENT_SECRET` | No | Enables GitHub OAuth |
 | `GOOGLE_CLIENT_ID` | No | Enables Google OAuth |
 | `GOOGLE_CLIENT_SECRET` | No | Enables Google OAuth |
-| `ADMIN_EMAIL` | Setup only | Used by `npm run setup` |
-| `ADMIN_PASSWORD` | Setup only | Used by `npm run setup` |
-| `ADMIN_NAME` | Setup only | Used by `npm run setup` |
 | `STORAGE_PROVIDER` | No | `"local"` (default) or `"s3"` |
 | `S3_BUCKET` | If S3 | |
 | `S3_REGION` | If S3 | |
@@ -770,10 +767,11 @@ Each card links to `/admin/bot-analytics`. Empty states are shown when no data e
 ### Standard (local / Vercel / Railway / Render)
 
 ```bash
-cp .env.example .env.local      # fill in DATABASE_URL, NEXTAUTH_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD at minimum
+cp .env.example .env.local      # fill in DATABASE_URL, NEXTAUTH_SECRET at minimum
 npm install
-npm run db:init                 # creates schema + seeds admin account (non-interactive if ADMIN_* env vars set)
+npm run db:init                 # creates schema + runs migrations
 npm run dev                     # start development server at http://localhost:5000
+# then visit /setup to create your admin account
 ```
 
 For existing deployments after pulling new changes:

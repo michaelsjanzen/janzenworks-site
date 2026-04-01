@@ -4,7 +4,7 @@ import { ensureCoreNotificationsSchema, createNotification } from "./notificatio
 import { ensureAuditLogSchema } from "./audit-log";
 import { ensureWidgetSettingsSchema } from "./widget-schema";
 import { validateSystem } from "./validate-system";
-import { hooks } from "./hooks";
+import { hooks, markPluginsLoaded } from "./hooks";
 
 let loadPromise: Promise<void> | null = null;
 
@@ -57,6 +57,7 @@ async function _load(): Promise<void> {
     config.modules.activePlugins,
     config.modules.pluginSettings ?? {}
   );
+  markPluginsLoaded();
 
   // Register clean shutdown handlers so plugin destroy() is called on SIGTERM/SIGINT.
   // Guards prevent double-registration if loadPlugins() is somehow called more than once

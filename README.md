@@ -109,20 +109,17 @@ DATABASE_URL=postgresql://user:password@localhost:5432/pugmill
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-here
 
-# Admin seed (first-run setup)
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=your-admin-password
 ```
 
 Optional variables (OAuth, S3, etc.) are documented in [REQUIREMENTS.md](./REQUIREMENTS.md#environment-variables).
 
-### 3. Initialize the database and create the admin account
+### 3. Initialize the database
 
 ```bash
 npm run db:init
 ```
 
-This pushes the schema and runs the setup script in one step. Setting `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` in the environment makes setup run non-interactively, which suits Replit, CI, or automated deployments. Without those variables, the script prompts interactively.
+This creates the schema and runs migrations. Admin account creation has moved to the in-app setup wizard — visit `/setup` after the server starts (or go to `/admin/login`, which redirects there automatically on a fresh install).
 
 For existing deployments after pulling new changes:
 ```bash
@@ -418,8 +415,8 @@ The full contract is in [`THEMES.md`](./THEMES.md). The [`/themes/_template/`](.
 | `npm run dev` | Start development server (port 5000 default) |
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
-| `npm run setup` | Seed admin user (first run) |
-| `npm run db:init` | Create schema and seed admin account in one step (fresh installs; non-interactive when `ADMIN_EMAIL`/`ADMIN_PASSWORD` are set) |
+| `npm run setup` | Seed default site config (non-admin) |
+| `npm run db:init` | Create schema + run migrations in one step (fresh installs) |
 | `npm run db:create` | Create all tables with IF NOT EXISTS guards (safe to re-run) |
 | `npm run db:migrate` | Apply pending migration scripts in order; tracks applied files in `schema_migrations` (safe to re-run) |
 | `npm run db:push` | Push Drizzle schema via drizzle-kit (dev only) |

@@ -1,36 +1,25 @@
 import { signIn } from "@/lib/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
-import { existsSync, readFileSync } from "fs";
-import path from "path";
 import { getCurrentUser } from "@/lib/get-current-user";
-
-function readSetupCredentials(): { email: string; password: string } | null {
-  try {
-    const filePath = path.join(process.cwd(), "setup-credentials.json");
-    if (!existsSync(filePath)) return null;
-    const raw = readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.email === "string" && typeof parsed.password === "string") {
-      return { email: parsed.email, password: parsed.password };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+import { db } from "@/lib/db";
+import { adminUsers } from "@/lib/db/schema";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; setup?: string }>;
 }) {
   const existingUser = await getCurrentUser();
   if (existingUser) redirect("/admin");
 
+  // Redirect to /setup if no admin accounts exist yet
+  const existing = await db.select({ id: adminUsers.id }).from(adminUsers).limit(1);
+  if (existing.length === 0) redirect("/setup");
+
   const params = await searchParams;
   const error = params?.error;
-  const setupCreds = readSetupCredentials();
+  const setupComplete = params?.setup === "1";
 
   async function handleCredentials(formData: FormData) {
     "use server";
@@ -85,30 +74,9 @@ export default async function LoginPage({
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-4">
 
-        {/* Setup credentials banner — shown only on first run, gone after first login */}
-        {setupCreds && (
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-5 space-y-3">
-            <div className="flex items-start gap-2">
-              <svg className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-              </svg>
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Your setup credentials</p>
-                <p className="text-xs text-amber-700 mt-0.5">Use these to sign in. This banner disappears after your first login.</p>
-              </div>
-            </div>
-            <div className="bg-white border border-amber-200 rounded-lg px-4 py-3 space-y-2 font-mono text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-zinc-400 text-xs w-16 shrink-0">Email</span>
-                <span className="text-zinc-900 font-medium select-all">{setupCreds.email}</span>
-              </div>
-              <div className="border-t border-amber-100" />
-              <div className="flex items-center gap-2">
-                <span className="text-zinc-400 text-xs w-16 shrink-0">Password</span>
-                <span className="text-zinc-900 font-medium select-all">{setupCreds.password}</span>
-              </div>
-            </div>
-            <p className="text-xs text-amber-600">Change your password after signing in via Profile settings.</p>
+        {setupComplete && (
+          <div className="bg-green-50 border border-green-300 rounded-xl p-4">
+            <p className="text-sm font-semibold text-green-800">Setup complete — sign in below.</p>
           </div>
         )}
 
@@ -180,7 +148,6 @@ export default async function LoginPage({
                 type="email"
                 required
                 autoComplete="email"
-                defaultValue={setupCreds?.email ?? ""}
                 className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="admin@example.com"
               />

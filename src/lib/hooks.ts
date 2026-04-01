@@ -76,6 +76,13 @@ export class HookManager<
    * Use this for fire-and-forget side effects where errors should not abort the operation.
    */
   async doAction<K extends keyof AC>(name: K, payload: AC[K]): Promise<void> {
+    if (!_pluginsLoaded) {
+      console.warn(
+        `[HookManager] "${String(name)}" fired before loadPlugins() completed — ` +
+        `plugin listeners may not be registered. ` +
+        `Add "await loadPlugins()" before this hook call in any server action that uses hooks.`
+      );
+    }
     const fns = this.actions.get(name) ?? [];
     for (const fn of fns) {
       try {
@@ -95,6 +102,13 @@ export class HookManager<
    * The first listener to throw aborts the remaining listeners.
    */
   async doActionStrict<K extends keyof AC>(name: K, payload: AC[K]): Promise<void> {
+    if (!_pluginsLoaded) {
+      console.warn(
+        `[HookManager] "${String(name)}" fired before loadPlugins() completed — ` +
+        `plugin listeners may not be registered. ` +
+        `Add "await loadPlugins()" before this hook call in any server action that uses hooks.`
+      );
+    }
     const fns = this.actions.get(name) ?? [];
     for (const fn of fns) {
       await fn(payload);
@@ -126,6 +140,13 @@ export class HookManager<
     name: K,
     payload: FC[K]
   ): Promise<FilterInput<FC[K]>> {
+    if (!_pluginsLoaded) {
+      console.warn(
+        `[HookManager] "${String(name)}" fired before loadPlugins() completed — ` +
+        `plugin listeners may not be registered. ` +
+        `Add "await loadPlugins()" before this hook call in any server action that uses hooks.`
+      );
+    }
     const fns = this.filters.get(name) ?? [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let value: FilterInput<FC[K]> = (payload as any).input;
@@ -158,3 +179,18 @@ export class HookManager<
 // Typed singleton — shared across the entire application.
 // Plugins receive this instance in their initialize() call.
 export const hooks = new HookManager<ActionCatalogue, FilterCatalogue>();
+
+/**
+ * Module-level flag set by plugin-loader.ts once initializePlugins() completes.
+ * Used by doAction/applyFilters to warn when hooks fire before plugins are ready.
+ * Never call this from application code — only plugin-loader.ts should call it.
+ */
+let _pluginsLoaded = false;
+
+export function markPluginsLoaded(): void {
+  _pluginsLoaded = true;
+}
+
+export function arePluginsLoaded(): boolean {
+  return _pluginsLoaded;
+}

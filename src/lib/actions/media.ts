@@ -6,6 +6,7 @@ import { media, posts } from "@/lib/db/schema";
 import { eq, like, desc, notInArray, inArray, isNotNull } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/get-current-user";
 import { hooks } from "@/lib/hooks";
+import { loadPlugins } from "@/lib/plugin-loader";
 import { auditLog } from "@/lib/audit-log";
 import { getStorage } from "@/lib/storage";
 
@@ -29,6 +30,7 @@ async function requireAdmin() {
 
 export async function uploadMedia(formData: FormData) {
   const user = await requireAdmin();
+  await loadPlugins();
 
   const file = formData.get("file") as File;
   if (!file || file.size === 0) return { error: "No file provided" };
@@ -97,6 +99,7 @@ export async function getImageMedia(): Promise<{ id: number; url: string; fileNa
 
 export async function deleteMedia(id: number) {
   const user = await requireAdmin();
+  await loadPlugins();
 
   // Fetch the record so we can clean up the stored file
   const rows = await db.select().from(media).where(eq(media.id, id));
