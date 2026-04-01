@@ -153,6 +153,12 @@ export default async function AdminDashboard() {
 
   const onboardingSteps = [
     {
+      label: "Set up your profile",
+      description: "Update your name, change your password from the default, and add your author voice — all on the My Profile page.",
+      done: anyAuthorVoice.length > 0,
+      href: "/admin/profile",
+    },
+    {
       label: "Set your site identity",
       description: "Add your site name, URL, and description in Settings.",
       done: config.site.name !== "My Pugmill Site" && config.site.name.trim() !== "",
@@ -163,12 +169,6 @@ export default async function AdminDashboard() {
       description: "Connect Anthropic, OpenAI, or Gemini to unlock AI-powered features.",
       done: config.ai.provider !== null,
       href: "/admin/settings/ai",
-    },
-    {
-      label: "Set your author voice",
-      description: "Add a writing style description so AI suggestions match your tone.",
-      done: anyAuthorVoice.length > 0,
-      href: "/admin/profile",
     },
     {
       label: "Customize your design",
