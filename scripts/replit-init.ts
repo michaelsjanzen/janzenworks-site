@@ -6,9 +6,11 @@
  *
  * STEP 1 — After the app starts, call requestEnvVar for NEXTAUTH_SECRET
  *   Use: requestEnvVar({ requestType: "secret", keys: ["NEXTAUTH_SECRET"] })
- *   Read the generated value from .env.local (grep NEXTAUTH_SECRET .env.local)
- *   and pass it to the user via the secrets dialog. Do NOT print it in chat.
- *   Use the secrets tool so the user gets a confirmation dialog to paste it in.
+ *   Get the value with: grep NEXTAUTH_SECRET .env.local
+ *   If .env.local is missing or NEXTAUTH_SECRET is absent, generate one:
+ *     openssl rand -base64 32
+ *   Do NOT print the value in chat — use the secrets tool so the user
+ *   gets a confirmation dialog to paste it in.
  *
  * STEP 2 — Immediately after, call requestEnvVar for PRODUCTION_URL
  *   Use: requestEnvVar({ requestType: "secret", keys: ["PRODUCTION_URL"] })

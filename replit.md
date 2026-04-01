@@ -7,8 +7,11 @@ When the init script runs it will print a banner listing required actions.
 telling the user setup is done.** Specifically:
 
 1. Call `requestEnvVar` with `requestType: "secret"` and `keys: ["NEXTAUTH_SECRET"]`.
-   The value is shown in the startup banner. Do NOT mention it in chat — use the
-   secrets tool so the user sees a confirmation dialog they must interact with.
+   To get the value: run `grep NEXTAUTH_SECRET .env.local` — it was written there by
+   the init script. If `.env.local` does not exist or the key is missing, generate one
+   now with `openssl rand -base64 32` and use that value.
+   Do NOT mention the value in chat — use the secrets tool so the user sees a
+   confirmation dialog they must interact with.
 2. Immediately after, call `requestEnvVar` with `requestType: "secret"` and
    `keys: ["PRODUCTION_URL"]`. This shows the user a second confirmation dialog
    asking for their production URL (e.g. `https://yourapp.replit.app`, found in
