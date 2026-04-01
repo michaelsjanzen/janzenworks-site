@@ -11,7 +11,10 @@
  *    paste the URL here (e.g. https://yourapp.replit.app)."
  *   Wait for their reply before continuing.
  *
- * STEP 2 — Save it as a Replit secret
+ * STEP 2 — Save it using the Replit secrets skill (NOT as plain text)
+ *   Use the same environment-secrets skill used for NEXTAUTH_SECRET.
+ *   This presents the user with a confirmation dialog they must interact
+ *   with — do not just mention the value in chat, that will be ignored.
  *   Name:  PRODUCTION_URL
  *   Value: (the URL the user gave you)
  *
