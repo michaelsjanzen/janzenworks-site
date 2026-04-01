@@ -238,15 +238,23 @@ async function main() {
     const secret = envMap.get("NEXTAUTH_SECRET") ?? "";
     console.log(
       "  ┌─────────────────────────────────────────────────────────────────┐\n" +
-      "  │ ACTION REQUIRED before your first production deployment         │\n" +
+      "  │ 2 ACTIONS REQUIRED before your first production deployment      │\n" +
       "  │                                                                 │\n" +
-      "  │ Save NEXTAUTH_SECRET as a Replit secret so sessions survive     │\n" +
-      "  │ container restarts and deployments. Without it, every deploy    │\n" +
-      "  │ regenerates the secret and signs all users out.                 │\n" +
+      "  │ 1. Save NEXTAUTH_SECRET as a Replit secret so sessions survive  │\n" +
+      "  │    container restarts and deployments. Without it, every deploy │\n" +
+      "  │    regenerates the secret and signs all users out.              │\n" +
       "  │                                                                 │\n" +
-      `  │ Replit → Secrets → New secret:                                  │\n` +
-      `  │   Name:  NEXTAUTH_SECRET                                        │\n` +
-      `  │   Value: ${secret.slice(0, 53).padEnd(53)} │\n` +
+      `  │    Replit → Secrets → New secret:                               │\n` +
+      `  │      Name:  NEXTAUTH_SECRET                                     │\n` +
+      `  │      Value: ${secret.slice(0, 50).padEnd(50)} │\n` +
+      "  │                                                                 │\n" +
+      "  │ 2. Save your production URL as a Replit secret so login works   │\n" +
+      "  │    after deployment. Ask the user for their production URL now. │\n" +
+      "  │    Without it, authentication will fail in production.          │\n" +
+      "  │                                                                 │\n" +
+      "  │    Replit → Secrets → New secret:                               │\n" +
+      "  │      Name:  PRODUCTION_URL                                      │\n" +
+      "  │      Value: https://your-production-domain.com                  │\n" +
       "  └─────────────────────────────────────────────────────────────────┘\n"
     );
   }

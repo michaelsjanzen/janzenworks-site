@@ -45,7 +45,9 @@ On first run, `scripts/replit-init.ts` automatically:
 ## First-Time Setup
 
 1. Start the app — the init script runs automatically
-2. Save `NEXTAUTH_SECRET` as a Replit secret (displayed in the init log)
+2. The init log will display a banner with **2 required actions**. Do both before the user deploys:
+   - Save `NEXTAUTH_SECRET` as a Replit secret
+   - **Ask the user for their production URL**, then save it as `PRODUCTION_URL` — e.g. `https://yourapp.replit.app`. The user can find this in Replit's deployment panel or domain settings. This is required for login to work after deployment.
 3. Visit **`/setup`** in the preview pane to create your admin account
 4. That's it — no manual credential files or env vars required
 
