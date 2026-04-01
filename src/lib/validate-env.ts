@@ -37,11 +37,22 @@ export function validateEnv() {
     else warnings.push(msg + " Replace before deploying.");
   }
 
-  if (!process.env.NEXTAUTH_URL) {
-    warnings.push("NEXTAUTH_URL is not set. Defaulting to http://localhost:3000");
+  const nextAuthUrl = process.env.NEXTAUTH_URL;
+  if (!nextAuthUrl) {
+    const msg = "NEXTAUTH_URL is not set. Login redirects and OAuth callbacks will fail.";
+    if (isProd) errors.push(msg + " Set PRODUCTION_URL as a Replit secret and redeploy.");
+    else warnings.push(msg + " Defaulting to http://localhost:3000");
   } else {
-    try { new URL(process.env.NEXTAUTH_URL); } catch {
-      warnings.push("NEXTAUTH_URL is not a valid URL");
+    try {
+      const parsed = new URL(nextAuthUrl);
+      if (isProd && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1")) {
+        errors.push(
+          `NEXTAUTH_URL is set to a localhost address (${nextAuthUrl}) in production. ` +
+          "Login will not work. Set PRODUCTION_URL=https://your-domain.com as a Replit secret and redeploy."
+        );
+      }
+    } catch {
+      errors.push(`NEXTAUTH_URL "${nextAuthUrl}" is not a valid URL.`);
     }
   }
 

@@ -1,5 +1,22 @@
 # Pugmill CMS
 
+## AGENT SETUP PROTOCOL — FOLLOW THIS BEFORE STARTING THE APP
+
+When the init script runs it will print a banner listing required actions.
+**After the app starts, pause and complete all items in that banner before
+telling the user setup is done.** Specifically:
+
+1. Save `NEXTAUTH_SECRET` as a Replit secret (value is shown in the banner)
+2. **Ask the user for their production URL** — say something like:
+   *"Before you deploy, I need your production URL. Check Replit's deployment
+   panel for the domain (e.g. `https://yourapp.replit.app`) and paste it here.
+   I'll save it as `PRODUCTION_URL` so login works after deployment."*
+3. Wait for the user's reply, then save `PRODUCTION_URL=https://their-url` as a secret
+4. Only after both secrets are saved, tell the user setup is complete
+
+Do not skip step 2–3. A missing `PRODUCTION_URL` causes authentication to
+fail silently in production and the site will be unusable.
+
 A self-hosted, Next.js-based CMS with admin panel, plugin system, and theme support.
 
 ## Stack
