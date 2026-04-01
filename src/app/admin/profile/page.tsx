@@ -111,7 +111,7 @@ export default async function ProfilePage({
           </div>
           <button
             type="submit"
-            className="bg-zinc-800 text-white px-5 py-2 rounded hover:bg-zinc-900 text-sm"
+            className="bg-[var(--ds-blue-1000)] text-white px-5 py-2 rounded-full hover:bg-[var(--ds-blue-900)] text-sm"
           >
             Change Password
           </button>
