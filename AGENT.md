@@ -260,25 +260,25 @@ npm run db:migrate      # Run incremental migration scripts
 
 Two steps are required before a production deployment works correctly:
 
-**1. Set `NEXTAUTH_URL` to the production domain.**
+**1. Set `PRODUCTION_URL` as a Replit secret (or environment variable).**
 
-Add it as an environment secret before deploying:
+`PRODUCTION_URL` is the canonical production domain. `replit-init.ts` reads it at startup and assigns it as `NEXTAUTH_URL` automatically. **Do not set `NEXTAUTH_URL` directly** — set `PRODUCTION_URL` instead.
 
 ```env
-NEXTAUTH_URL=https://your-domain.com
+PRODUCTION_URL=https://your-domain.com
 ```
 
-Without this, NextAuth redirects and OAuth callbacks will target the wrong host. Auto-detection from platform env vars (`REPLIT_DEV_DOMAIN`, etc.) resolves the dev domain, not the production domain — do not rely on it for a custom domain.
+If the user has not provided their production domain, ask them for it before proceeding with deployment setup. Without `PRODUCTION_URL`, OAuth callbacks and redirects will target the wrong host.
 
-**2. Run database migrations after deploying schema changes.**
+During interactive dev setup (`npm run dev` on first run), `replit-init.ts` prompts the user for `PRODUCTION_URL` and saves it to `.env.local`. Remind the user to also add it as a Replit secret so it is available in the production container.
 
-The production database is separate from dev. After any schema update (new columns, new tables), run migrations against the production database:
+**2. Database migrations on existing installs.**
+
+The production database is separate from dev. On a **fresh** production deploy, `replit-init.ts` detects an empty database and runs migrations automatically. On subsequent deploys (existing data), migrations are intentionally skipped — run them manually when needed:
 
 ```bash
 npm run db:migrate
 ```
-
-On a brand-new production deploy, `npm run start` automatically runs `replit-init.ts` via the `prestart` hook — this creates the schema and seeds the admin account. Migrations are only needed when pulling updates to an existing production install.
 
 #### Generating a Strong NEXTAUTH_SECRET
 
