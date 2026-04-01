@@ -7,7 +7,7 @@
  * What it does:
  *   1. Checks DATABASE_URL is available (provided by Replit's PostgreSQL module)
  *   2. Auto-generates NEXTAUTH_SECRET  (writes to .env.local)
- *   3. Dev:  auto-detects NEXTAUTH_URL from REPLIT_DEV_DOMAIN; prompts for PRODUCTION_URL
+ *   3. Dev:  auto-detects NEXTAUTH_URL from REPLIT_DEV_DOMAIN; logs reminder to set PRODUCTION_URL secret
  *      Prod: uses PRODUCTION_URL as NEXTAUTH_URL
  *   4. Creates all database tables     (IF NOT EXISTS — never drops)
  *   5. Dev / fresh prod: runs migrations
@@ -28,7 +28,6 @@
  */
 
 import crypto from "crypto";
-import readline from "readline";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 
@@ -79,14 +78,6 @@ function writeEnvLocal(map: Map<string, string>) {
 /** Returns value from process.env (Replit secrets) or .env.local, in that order. */
 function getVar(key: string, envMap: Map<string, string>): string | undefined {
   return process.env[key] || envMap.get(key);
-}
-
-/** Interactive prompt — only used in TTY (dev) contexts. */
-function prompt(question: string): Promise<string> {
-  return new Promise(resolve => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(question, answer => { rl.close(); resolve(answer.trim()); });
-  });
 }
 
 /**
@@ -182,38 +173,12 @@ async function main() {
       }
     }
 
-    // ── Dev: prompt for PRODUCTION_URL if not already set ──────────────────
+    // ── Dev: remind about PRODUCTION_URL if not already set ───────────────
     if (!getVar("PRODUCTION_URL", envMap)) {
-      const isTTY = process.stdin.isTTY;
-      if (isTTY) {
-        console.log(
-          "\n  Production URL setup\n" +
-          "  When you deploy this project, what domain will it live at?\n" +
-          "  This is used as NEXTAUTH_URL in production.\n" +
-          "  (Press Enter to skip and set it later as a Replit secret)\n"
-        );
-        const answer = await prompt("  Production URL (e.g. https://mysite.com): ");
-        if (answer) {
-          const url = answer.startsWith("https://") || answer.startsWith("http://")
-            ? answer
-            : `https://${answer}`;
-          envMap.set("PRODUCTION_URL", url);
-          process.env.PRODUCTION_URL = url;
-          configured.push("PRODUCTION_URL");
-          console.log(`  Saved. Also add PRODUCTION_URL=${url} as a Replit secret for production.\n`);
-        } else {
-          console.log(
-            "  Skipped. Remember to add PRODUCTION_URL=https://your-domain.com\n" +
-            "  as a Replit secret before deploying to production.\n"
-          );
-        }
-      } else {
-        // Non-interactive (CI, automated deploy)
-        console.log(
-          "  Note: PRODUCTION_URL is not set.\n" +
-          "  Add it as a Replit secret before deploying to production.\n"
-        );
-      }
+      console.log(
+        "  Note: PRODUCTION_URL is not set.\n" +
+        "  Add PRODUCTION_URL=https://your-domain.com as a Replit secret before deploying to production.\n"
+      );
     }
   }
 
