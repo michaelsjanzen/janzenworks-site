@@ -347,7 +347,16 @@ async function main() {
       mkdirSync(uploadsDir, { recursive: true });
       writeFileSync(probe, "ok");
       unlinkSync(probe);
-      console.log("  ✓ Upload storage: public/uploads/ is writable — image uploads will work.\n");
+      if (isProd) {
+        console.warn(
+          "  ⚠  Upload storage: public/uploads/ is writable but EPHEMERAL.\n" +
+          "  Uploaded files will be lost on every redeploy or container restart.\n" +
+          "  For persistent media, set STORAGE_PROVIDER=s3 with S3_* credentials\n" +
+          "  (any S3-compatible provider: AWS, Cloudflare R2, DigitalOcean Spaces).\n"
+        );
+      } else {
+        console.log("  ✓ Upload storage: public/uploads/ is writable — image uploads will work.\n");
+      }
     } catch (err) {
       console.warn(
         "  ⚠  Upload storage: could not write to public/uploads/.\n" +

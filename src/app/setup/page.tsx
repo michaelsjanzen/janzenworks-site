@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";
-import { detectSiteUrl } from "@/lib/detect-site-url";
+import { detectSiteUrl, isDevUrl } from "@/lib/detect-site-url";
 import SetupWizard from "./SetupWizard";
 import type { Metadata } from "next";
 
@@ -18,9 +18,24 @@ export default async function SetupPage() {
 
   const detectedUrl = detectSiteUrl() ?? "";
   const currentSecret = process.env.NEXTAUTH_SECRET ?? "";
+  const isDevEnvironment = isDevUrl(detectedUrl);
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      {isDevEnvironment && (
+        <div className="bg-amber-50 border-b-2 border-amber-400 px-6 py-4">
+          <p className="text-sm font-semibold text-amber-900 mb-1">
+            ⚠ You are running setup on a development environment
+          </p>
+          <p className="text-sm text-amber-800">
+            This appears to be a Replit dev preview (<code className="bg-amber-100 px-1 rounded font-mono text-xs">{detectedUrl}</code>).
+            Dev and production use <strong>separate databases</strong> — any account created here will not exist in production.
+          </p>
+          <p className="text-sm text-amber-800 mt-1">
+            <strong>Recommended:</strong> Deploy your app first, then visit <code className="bg-amber-100 px-1 rounded font-mono text-xs">/setup</code> on your production URL to create your admin account.
+          </p>
+        </div>
+      )}
       <SetupWizard detectedUrl={detectedUrl} currentSecret={currentSecret} />
     </div>
   );
