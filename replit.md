@@ -51,10 +51,21 @@ On first run, `scripts/replit-init.ts` automatically:
 
 ## Deployment
 
-1. Ensure `NEXTAUTH_SECRET` is saved as a Replit secret (step 2 above)
-2. Deploy via Replit — build and start commands are pre-configured in `.replit`
-3. For custom domains, set `PRODUCTION_URL=https://your-domain.com` as a secret before deploying
-4. The init script auto-detects the production URL from Replit env vars when no custom domain is set
+**Before deploying, ask the user for their production URL and save it as a secret.**
+Do not deploy until this is confirmed or the user explicitly says to skip it.
+
+Why this matters: `replit-init.ts` reads `PRODUCTION_URL` at first boot to set `NEXTAUTH_URL`
+in the prod container. If it is missing, the script attempts auto-detection from Replit env
+vars — but Replit's current UUID-based domain format (`*.riker.replit.dev`) may not be
+detected correctly, leaving `NEXTAUTH_URL` wrong. When `NEXTAUTH_URL` is wrong, login
+redirects and OAuth callbacks fail and the site is unusable.
+
+Steps:
+1. Ask the user: *"What is your production URL? (Check Replit's deployment panel or domain settings)"*
+2. Save it as a secret: `PRODUCTION_URL=https://their-url`
+3. Ensure `NEXTAUTH_SECRET` is also saved as a Replit secret (done automatically on first run)
+4. Deploy via Replit — build and start commands are pre-configured in `.replit`
+5. After the container boots, check the init log for: `Production URL: https://... (auto-detected)` or `(PRODUCTION_URL secret)` — confirm it matches the actual domain
 
 ## Database Scripts
 
