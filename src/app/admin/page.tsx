@@ -133,9 +133,48 @@ export default async function AdminDashboard() {
 
   const showUrlWarning = isDevUrl(config.site.url);
 
+  // Show a pre-deploy checklist on Replit dev containers where PRODUCTION_URL
+  // hasn't been saved as a secret yet. Disappears automatically once it's set.
+  const isReplitDev = !!(
+    (process.env.REPL_SLUG || process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_CLUSTER) &&
+    process.env.REPLIT_DEPLOYMENT !== "1"
+  );
+  const showReplitDeployBanner = isReplitDev && !process.env.PRODUCTION_URL;
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-zinc-800">Dashboard</h2>
+
+      {showReplitDeployBanner && (
+        <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-5">
+          <p className="text-sm font-bold text-blue-900 mb-3 text-base">
+            ⚠ Before you deploy — 2 required secrets
+          </p>
+          <p className="text-sm text-blue-800 mb-3">
+            Your app is running in the Replit dev environment. Before you click Deploy,
+            save these two values as Replit secrets (Tools → Secrets in the sidebar) so
+            login works correctly in production:
+          </p>
+          <ol className="list-decimal list-inside space-y-3 text-sm text-blue-800 mb-3">
+            <li>
+              <strong>PRODUCTION_URL</strong> — your deployment domain, e.g.{" "}
+              <code className="bg-blue-100 px-1 rounded font-mono text-xs">
+                https://yourapp.replit.app
+              </code>
+              {". "}
+              Find it in Replit&apos;s deployment panel or domain settings before deploying.
+            </li>
+            <li>
+              <strong>NEXTAUTH_SECRET</strong> — the value printed in the startup log when
+              the app first ran. If your AI agent already saved this one, you&apos;re good.
+            </li>
+          </ol>
+          <p className="text-xs text-blue-600">
+            This notice disappears automatically once <code className="font-mono">PRODUCTION_URL</code> is set.
+            You can also ask your AI agent: <em>&quot;Please save PRODUCTION_URL and NEXTAUTH_SECRET as Replit secrets now.&quot;</em>
+          </p>
+        </div>
+      )}
 
       {showUrlWarning && (
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
