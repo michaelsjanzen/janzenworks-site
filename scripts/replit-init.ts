@@ -359,9 +359,19 @@ async function main() {
     }
   }
 
-  console.log(
-    "  Visit your site URL and go to /setup to create your admin account.\n"
-  );
+  if (isProd) {
+    console.log(
+      "  ✓ Production ready — visit your production URL and go to /setup to create your admin account.\n"
+    );
+  } else {
+    console.log(
+      "  Dev environment ready.\n" +
+      "  Next steps:\n" +
+      "    1. Deploy your app (Replit → Deploy button)\n" +
+      "    2. After deploying, visit /setup on your PRODUCTION URL to create your admin account\n" +
+      "  Note: dev and production have separate databases — create your account in production.\n"
+    );
+  }
 
   // ── Step 8 (dev only): write sentinel so future restarts skip this ──────────
   if (!isProd) {
