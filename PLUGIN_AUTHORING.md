@@ -436,7 +436,22 @@ export async function myAdminAction(id: number) {
 
 ---
 
-## 12. Conventions
+## 12. Distributing as a Recipe
+
+If you want to share a plugin with the Pugmill community, package it as a recipe. A recipe is a GitHub repository containing your plugin files plus a `RECIPE.md` that tells an AI agent how to install it.
+
+The full spec is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md). The short version:
+
+1. Create a GitHub repository named `pugmill-recipe-<plugin-id>`.
+2. Place your plugin files (`index.ts`, `manifest.json`, etc.) at the repository root.
+3. If your plugin needs routes in `src/app/`, place them in a `routes/` subdirectory mirroring the `src/app/` structure.
+4. If your plugin needs a migration script, place it in `migrations/`.
+5. Write a `RECIPE.md` at the repository root using the Agent Skills frontmatter format. The body should be step-by-step installation instructions for an AI agent, referencing this guide for the 4-step installation contract.
+6. Submit a listing to the [Pugmill community directory](https://github.com/michaelsjanzen/pugmill-recipe-community).
+
+---
+
+## 13. Conventions
 
 - **No plugin-to-plugin imports.** Shared hooks are the mechanism for inter-plugin communication. Shared utilities belong in npm packages.
 - **Table naming:** `plugin_<plugin-id>_<tablename>` -- no exceptions.

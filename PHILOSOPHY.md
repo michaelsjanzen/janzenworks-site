@@ -99,6 +99,14 @@ Examples:
 
 **A concrete example:** During early development, a WordPress importer was considered for core. After applying the scope filter, it was removed. Given the Drizzle schema and a WXR export file, a capable agent can write a reliable import script in one session, tailored to the user's content. Bundling it would add complexity for every user while delivering no advantage to the audience Pugmill CMS is designed for.
 
+### Community Recipes
+
+A fourth distribution surface sits alongside the three tiers: **recipes**. Recipes are community-authored plugins and themes hosted on GitHub and discoverable through the Pugmill community directory. They are not part of core -- they are Tier 2 plugins (or themes) packaged for easy distribution and agent-driven installation.
+
+A recipe is a GitHub repository containing plugin or theme files plus a `RECIPE.md` -- an [Agent Skills](https://agentskills.io)-compatible instruction file that tells an AI agent exactly how to install it. No registry service or installer tooling is required. An agent reads `RECIPE.md` and follows the instructions.
+
+Recipes do not change the three-tier architecture. They are a distribution and installation format for Tier 2 extensions built by the community. The full authoring guide is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md).
+
 ---
 
 ## What This Means in Practice

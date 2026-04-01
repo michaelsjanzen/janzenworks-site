@@ -332,7 +332,22 @@ Using `default` as a reference implementation when building a new theme is recom
 
 ---
 
-## 8. Conventions
+## 8. Distributing as a Recipe
+
+If you want to share a theme with the Pugmill community, package it as a recipe. A recipe is a GitHub repository containing your theme files plus a `RECIPE.md` that tells an AI agent how to install it.
+
+The full spec is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md). The short version:
+
+1. Create a GitHub repository named `pugmill-theme-<theme-id>`.
+2. Place your theme files (`Layout.tsx`, `design.ts`, `manifest.json`, `views/`, etc.) at the repository root.
+3. Write a `RECIPE.md` at the repository root using the Agent Skills frontmatter format. The body should be step-by-step installation instructions for an AI agent, referencing this guide for the 6-step installation contract.
+4. Submit a listing to the [Pugmill community directory](https://github.com/michaelsjanzen/pugmill-recipe-community).
+
+The `/themes/_template/` directory includes a `RECIPE.md` template — copy and fill it in when distributing your theme.
+
+---
+
+## 9. Conventions
 
 - **Server Components by default.** Adding `"use client"` is appropriate only when interactivity is required. Layouts, views, and static components should all be server-rendered.
 - **No direct plugin imports.** Themes use `getActiveSlots()` to render plugin UI -- importing plugin modules directly is prohibited.
