@@ -4,6 +4,8 @@ Pugmill CMS is a full-stack, rebuildable content management system for developer
 
 > **v0.2.0 Public Beta.** Intended for developers working with AI agents in Claude Code, Cursor, Replit, or similar environments.
 
+> **Platform testing:** Validated on **Replit** (one-command AI agent deploy). Testing on Cursor, Claude Code, and other AI-native environments is next on the roadmap — contributions and reports welcome.
+
 ---
 
 ## Philosophy
@@ -46,7 +48,7 @@ The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canoni
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 16 (App Router, Server Components, Server Actions) |
+| Framework | Next.js 15 (App Router, Server Components, Server Actions) |
 | Language | TypeScript 5 |
 | Database | PostgreSQL 16 |
 | ORM | Drizzle ORM 0.38 |
@@ -158,7 +160,7 @@ The production database is separate from dev. After pulling updates that include
 npm run db:migrate
 ```
 
-On a **fresh** production deploy, `npm run start` handles first-run setup automatically via the `prestart` hook — schema creation and admin account seeding happen before the server boots. Your admin credentials will appear in the deployment logs.
+On a **fresh** production deploy, `npm run start` handles first-run setup automatically via the `prestart` hook — schema creation happens before the server boots. Then visit **`/setup`** to create your admin account through the in-app wizard.
 
 ---
 
