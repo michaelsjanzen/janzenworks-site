@@ -140,10 +140,17 @@ async function main() {
 
   if (isProd) {
     // ── Production: use PRODUCTION_URL as the authoritative NEXTAUTH_URL ───
+    // We write NEXTAUTH_URL to .env.local so the Next.js server process reads
+    // it on startup — setting process.env here alone is not sufficient because
+    // prestart runs in a separate process from `next start`.
     const productionUrl = getVar("PRODUCTION_URL", envMap);
     if (productionUrl) {
       const url = productionUrl.startsWith("https://") ? productionUrl : `https://${productionUrl}`;
       process.env.NEXTAUTH_URL = url;
+      if (!getVar("NEXTAUTH_URL", envMap)) {
+        envMap.set("NEXTAUTH_URL", url);
+        configured.push("NEXTAUTH_URL");
+      }
       console.log(`  Production URL: ${url}`);
     } else {
       console.warn(

@@ -172,7 +172,8 @@ CMS configuration is stored in the `site_config` PostgreSQL table (a single row,
 5. **UI consistency.** Always use Tailwind CSS classes. Matching the admin UI patterns already established in `src/app/admin/` is required.
 6. **Rebuildability.** Ensuring the app can be fully restored by running `npm install`, `npm run db:push`, and `npm run setup` is a standing requirement.
    - **Migrating from another platform (Vercel, Netlify, etc.):** node_modules from a different environment can arrive in a dirty state and cause `ENOTEMPTY` errors on `npm install`. Always do a clean reinstall in this case: `rm -rf node_modules && npm install`.
-7. **Do not create these files** — they conflict with existing infrastructure and must never exist in this project:
+7. **Always use npm scripts — never invoke `tsx` directly.** `tsx` lives in `node_modules/.bin` and is only on PATH when running via npm. Always use `npm run dev`, `npm run db:init`, etc. If `tsx` appears missing in the shell, run `npm install` and retry the npm command. **Do not change any script to use `npx tsx` or `./node_modules/.bin/tsx`** — it is unnecessary and adds noise to the codebase.
+8. **Do not create these files** — they conflict with existing infrastructure and must never exist in this project:
    - `server/db.ts` or `server/` directory — Replit's PostgreSQL blueprint scaffolds this automatically; delete it immediately if it appears. The database client lives at `src/lib/db/index.ts`.
    - `instrumentation.ts` — not used; creates startup errors in this configuration.
    - `src/middleware.ts` — the auth proxy is `src/proxy.ts` (Next.js 16 convention).
@@ -262,13 +263,13 @@ Two steps are required before a production deployment works correctly:
 
 **1. Set `PRODUCTION_URL` as a Replit secret (or environment variable).**
 
-`PRODUCTION_URL` is the canonical production domain. `replit-init.ts` reads it at startup and assigns it as `NEXTAUTH_URL` automatically. **Do not set `NEXTAUTH_URL` directly** — set `PRODUCTION_URL` instead.
+`PRODUCTION_URL` is the canonical production domain. `replit-init.ts` reads it at startup and automatically writes both `NEXTAUTH_URL` and `PRODUCTION_URL` to `.env.local` so the Next.js server picks them up. **Do not set `NEXTAUTH_URL` directly** — set `PRODUCTION_URL` instead and the script handles the rest.
 
 ```env
 PRODUCTION_URL=https://your-domain.com
 ```
 
-If the user has not provided their production domain, ask them for it before proceeding with deployment setup. Without `PRODUCTION_URL`, OAuth callbacks and redirects will target the wrong host.
+If the user has not provided their production domain, **ask them for it before proceeding with deployment setup**. Without `PRODUCTION_URL`, OAuth callbacks and redirects will target the wrong host.
 
 During interactive dev setup (`npm run dev` on first run), `replit-init.ts` prompts the user for `PRODUCTION_URL` and saves it to `.env.local`. Remind the user to also add it as a Replit secret so it is available in the production container.
 

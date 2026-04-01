@@ -125,12 +125,12 @@ The admin dashboard is at [http://localhost:3000/admin](http://localhost:3000/ad
 
 Two steps are required before a production deployment works correctly.
 
-### 1. Set `NEXTAUTH_URL` to your production domain
+### 1. Set `PRODUCTION_URL` as a Replit secret (or environment variable)
 
-Add it as an environment variable or secret before deploying:
+`PRODUCTION_URL` is the canonical production domain. `replit-init.ts` reads it at startup and automatically writes both `NEXTAUTH_URL` and `PRODUCTION_URL` to `.env.local` so the Next.js server picks them up:
 
 ```env
-NEXTAUTH_URL=https://your-domain.com
+PRODUCTION_URL=https://your-domain.com
 ```
 
 Without this, NextAuth redirects and OAuth callbacks will target the wrong host. Do not rely on auto-detection for a custom domain.
