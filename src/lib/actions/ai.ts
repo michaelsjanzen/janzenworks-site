@@ -26,7 +26,7 @@ export async function saveAiSettings(formData: FormData) {
   const rawProvider = formData.get("provider");
   const result = aiSettingsSchema.safeParse({
     provider: rawProvider === "" || rawProvider === null ? null : rawProvider,
-    apiKey: (formData.get("apiKey") as string) ?? "",
+    apiKey: ((formData.get("apiKey") as string) ?? "").trim(),
     model: (formData.get("model") as string) ?? "",
     aiRateLimit: (formData.get("aiRateLimit") as string) ?? "50",
   });
