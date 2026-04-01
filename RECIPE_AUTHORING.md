@@ -84,49 +84,78 @@ Keep the body under 5000 tokens (~3500 words). If your installation instructions
 
 ## Package Structure
 
-### Plugin Recipe
+Recipes use a **mirrored directory structure** — the repository layout matches where files will land in the Pugmill installation. An agent installs a recipe by overlaying the repo onto the Pugmill project root, skipping `RECIPE.md`, `README.md`, and `LICENSE`.
+
+### Plugin Recipe (no routes)
+
+For plugins that don't add public pages, API routes, or shared lib files:
 
 ```
 pugmill-recipe-my-plugin/   ← GitHub repository root; matches RECIPE.md name
-  RECIPE.md                 ← Required. Agent Skills-compatible installation instructions.
-  README.md                 ← Recommended. Human-readable docs (screenshots, config examples).
-  index.ts                  ← Required. PugmillPlugin export.
-  manifest.json             ← Required. Plugin metadata (id, name, version, description).
-  schema.ts                 ← Optional. Drizzle table definitions for plugin-owned tables.
-  db.ts                     ← Optional. Query helpers.
-  actions.ts                ← Optional. Next.js server actions.
-  components/               ← Optional. React components for slots or the admin page.
-  routes/                   ← Optional. Files to copy into src/app/.
-    api/
-      my-plugin/
-        route.ts
-  migrations/               ← Optional. Scripts to copy into /scripts/ and add to db:migrate.
+  RECIPE.md                 ← Required. Agent Skills-compatible. Not copied.
+  README.md                 ← Recommended. Human-readable docs. Not copied.
+  LICENSE                   ← Optional. Not copied.
+  plugins/
+    my-plugin/
+      index.ts              ← Required. PugmillPlugin export.
+      manifest.json         ← Required. Plugin metadata.
+      schema.ts             ← Optional. Drizzle table definitions.
+      db.ts                 ← Optional. Query helpers.
+      actions.ts            ← Optional. Next.js server actions.
+      components/           ← Optional. React components.
+```
+
+### Plugin Recipe (with routes or shared lib files)
+
+For plugins that add public pages, API routes, or shared library files:
+
+```
+pugmill-recipe-my-plugin/
+  RECIPE.md                 ← Required. Not copied.
+  README.md                 ← Recommended. Not copied.
+  plugins/
+    my-plugin/              ← Copied to Pugmill's plugins/my-plugin/
+      index.ts
+      manifest.json
+      schema.ts
+      components/
+  src/
+    app/
+      (site)/
+        my-plugin/          ← Public pages. Prefix with plugin id.
+          page.tsx
+      api/
+        my-plugin/          ← API routes. Prefix with plugin id.
+          route.ts
+    lib/
+      my-plugin-utils.ts    ← Shared lib files. Prefix name with plugin id.
+  migrations/               ← Optional. Scripts for /scripts/ + package.json db:migrate chain.
     migrate-NNN-my-plugin.ts
 ```
 
-**Plugin files** (`index.ts`, `manifest.json`, `schema.ts`, `components/`, etc.) sit at the repository root — this mirrors the structure they will have inside `/plugins/<plugin-id>/` after installation.
+`src/app/` and `src/lib/` files are copied to their matching paths in the Pugmill project. Prefix all paths and filenames with your plugin id to avoid conflicts with core files and other plugins.
 
-**`routes/`** maps directly to `src/app/`. Each file is copied to the same relative path. Example: `routes/api/my-plugin/route.ts` → `src/app/api/my-plugin/route.ts`. Prefix all route paths with your plugin id to avoid conflicts with core routes.
+**`migrations/`** contains Drizzle migration scripts copied to `/scripts/` and appended to the `db:migrate` command chain in `package.json`. Scripts must use `IF NOT EXISTS` / `IF EXISTS` guards.
 
-**`migrations/`** contains Drizzle migration scripts. Each file is copied to `/scripts/` and appended to the `db:migrate` command chain in `package.json`. Scripts must use `IF NOT EXISTS` / `IF EXISTS` guards — they must be safe to run multiple times.
+> **Note:** If your plugin only needs database tables, implement `schema.migrate()` in `plugins/<id>/index.ts` instead — it runs automatically on cold start and no `migrations/` directory is needed. See `PLUGIN_AUTHORING.md` section 6.
 
 ### Theme Recipe
 
 ```
 pugmill-theme-my-theme/     ← GitHub repository root; matches RECIPE.md name
-  RECIPE.md                 ← Required.
-  README.md                 ← Recommended.
-  manifest.json             ← Required.
-  Layout.tsx                ← Required.
-  design.ts                 ← Required.
-  views/
-    HomeView.tsx            ← Required.
-    PostView.tsx            ← Required.
-    PageView.tsx            ← Required.
-  components/               ← Optional. Shared UI components.
+  RECIPE.md                 ← Required. Not copied.
+  README.md                 ← Recommended. Not copied.
+  themes/
+    my-theme/               ← Copied to Pugmill's themes/my-theme/
+      manifest.json         ← Required.
+      Layout.tsx            ← Required.
+      design.ts             ← Required.
+      views/
+        HomeView.tsx        ← Required.
+        PostView.tsx        ← Required.
+        PageView.tsx        ← Required.
+      components/           ← Optional.
 ```
-
-Theme recipe files mirror the structure they will have inside `/themes/<theme-id>/` after installation.
 
 ---
 
@@ -135,9 +164,9 @@ Theme recipe files mirror the structure they will have inside `/themes/<theme-id
 When an AI agent installs a plugin recipe:
 
 1. Read `RECIPE.md` fully before taking any action.
-2. Identify the plugin id from `manifest.json` (`id` field).
-3. Copy all plugin files (everything except `RECIPE.md`, `README.md`, `routes/`, `migrations/`) into `/plugins/<plugin-id>/`.
-4. If `routes/` is present: copy each file to its corresponding path under `src/app/`.
+2. Identify the plugin id from `plugins/<id>/manifest.json` (`id` field).
+3. Copy the `plugins/` directory into the Pugmill project root.
+4. If `src/` is present: copy its contents into Pugmill's `src/`, preserving the directory structure.
 5. If `migrations/` is present: copy each script to `/scripts/` and append it to the `db:migrate` command chain in `package.json`.
 6. Follow the **4-step plugin installation contract** in `PLUGIN_AUTHORING.md`:
    - Add a static import in `src/lib/plugin-registry.ts`
@@ -151,8 +180,8 @@ When an AI agent installs a plugin recipe:
 When an AI agent installs a theme recipe:
 
 1. Read `RECIPE.md` fully before taking any action.
-2. Identify the theme id from `manifest.json` (`id` field).
-3. Copy all theme files into `/themes/<theme-id>/`.
+2. Identify the theme id from `themes/<id>/manifest.json` (`id` field).
+3. Copy the `themes/` directory into the Pugmill project root.
 4. Follow the **6-step theme installation contract** in `THEME_AUTHORING.md`:
    - Add the id to `THEME_ALLOWLIST` in `src/lib/theme-registry.ts`
    - Add static imports in `src/lib/theme-modules.ts`

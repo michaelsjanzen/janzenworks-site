@@ -21,7 +21,7 @@ This recipe installs the **your-theme-id** theme for Pugmill CMS.
 
 Follow the 6-step theme installation contract in `THEME_AUTHORING.md`:
 
-1. Copy all files from this repository into `/themes/your-theme-id/`.
+1. Copy the `themes/` directory from this repository into the Pugmill project root.
 2. Add `"your-theme-id"` to `THEME_ALLOWLIST` in `src/lib/theme-registry.ts`.
 3. Add static imports for `Layout`, `HomeView`, `PostView`, `PageView`, and all `design.ts` exports in `src/lib/theme-modules.ts`. Add an entry to `THEME_MODULES`.
 4. Import `manifest.json` and add it to `ALL_THEMES` in `src/lib/theme-registry.ts`.
