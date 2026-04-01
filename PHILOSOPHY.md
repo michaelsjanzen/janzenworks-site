@@ -107,6 +107,8 @@ A recipe is a GitHub repository containing plugin or theme files plus a `RECIPE.
 
 Recipes do not change the three-tier architecture. They are a distribution and installation format for Tier 2 extensions built by the community. The full authoring guide is in [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md).
 
+This is also an example of the built-in vs agent-generated pattern applied to the extension ecosystem itself: a `create-pugmill-recipe` skill ships with the project, giving any agent a just-in-time guide for packaging and publishing an extension without that knowledge living in core.
+
 ---
 
 ## What This Means in Practice

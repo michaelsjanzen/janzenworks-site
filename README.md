@@ -24,7 +24,8 @@ The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canoni
 
 | Capability | Description |
 |---|---|
-| **AI-Aware Documentation** | Documentation structured as active briefings for AI agents, giving each installation's agent full project context from the start |
+| **AI-Native by Design** | Every layer of the project is built for the human-AI team: documentation structured as active briefings, community recipes that any Agent Skills-aware agent can install from a URL, and built-in skills that give agents just-in-time guidance for common tasks like creating and publishing extensions |
+| **Agent Skills Integration** | Community recipes follow the [Agent Skills](https://agentskills.io) open standard — a compatible agent can install any recipe directly from a GitHub URL by reading its `RECIPE.md`. A built-in `create-pugmill-recipe` skill ships with the project to help agents package and publish new extensions |
 | **AEO-Native** | Per-post AEO metadata (summaries, Q&A pairs, entities) served via `llms.txt` spec endpoints |
 | **Integrated Frontend** | A first-class React/Next.js presentation layer -- swappable themes, server components, design token system. The frontend is yours to own, not escape from |
 | **API-Capable** | REST API (`/api/posts`, `/api/categories`, `/api/tags`, `/api/media`) with CORS, pagination, and `{ data, meta }` envelopes for external frontends or native apps |
@@ -54,6 +55,28 @@ The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canoni
 | Editor | Tiptap 3 + tiptap-markdown |
 | Storage | Local filesystem / AWS S3 (pluggable) |
 | Markdown rendering | react-markdown + remark-gfm + rehype-sanitize |
+
+---
+
+## Community & Recipes
+
+Pugmill extensions are distributed as **recipes** — GitHub repositories containing a plugin or theme plus a `RECIPE.md` written for an AI agent. Recipes follow the [Agent Skills](https://agentskills.io) open standard, which means any compatible agent (Claude Code, Cursor, and others) can install one directly from a GitHub URL.
+
+```
+# An agent can install any Pugmill recipe from a URL:
+"Install this recipe: https://github.com/author/pugmill-recipe-contact-form"
+```
+
+The distinction between recipes and skills matters:
+
+| Concept | What it is | Where it lives |
+|---|---|---|
+| **Recipe** | A packaged plugin or theme for community distribution | Author's GitHub account |
+| **Skill** | On-demand agent expertise for a specific task | `.agents/skills/` in a project |
+
+A recipe is installed once and becomes part of the codebase. A skill is activated on demand to guide an agent through a task. Pugmill ships with a built-in `create-pugmill-recipe` skill — activate it when you want an agent to package and publish an extension.
+
+Community recipes are listed at the [Pugmill community directory](https://github.com/michaelsjanzen/pugmill-recipe-community). To publish a recipe, see [`RECIPE_AUTHORING.md`](./RECIPE_AUTHORING.md).
 
 ---
 

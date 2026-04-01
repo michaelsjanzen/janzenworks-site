@@ -1,5 +1,7 @@
 # Pugmill CMS Recipe Authoring Guide
 
+**If you are an AI agent creating a recipe:** activate the `create-pugmill-recipe` skill (`.agents/skills/create-pugmill-recipe/SKILL.md`) for a task-focused workflow. This document is the full reference.
+
 Recipes are the community distribution format for Pugmill plugins and themes. A recipe is a GitHub repository containing all the files needed to install an extension, plus a `RECIPE.md` that gives an AI agent clear, unambiguous installation instructions.
 
 ---
