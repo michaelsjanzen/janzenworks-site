@@ -12,8 +12,9 @@
  *   4. Creates all database tables     (IF NOT EXISTS — never drops)
  *   5. Dev / fresh prod: runs migrations
  *      Existing prod install: skips migrations (run `npm run db:migrate` manually)
- *   6. Prints a prompt to visit /setup to create the admin account
- *   7. Dev only: writes .replit-setup-complete (sentinel — skips this script on future restarts)
+ *   6. Verifies public/uploads/ is writable (image upload smoke-test)
+ *   7. Prints a prompt to visit /setup to create the admin account
+ *   8. Dev only: writes .replit-setup-complete (sentinel — skips this script on future restarts)
  *
  * On non-Replit environments: exits immediately (no-op).
  * Run manually: npm run replit:init  (bypasses the sentinel)
@@ -270,11 +271,34 @@ async function main() {
     }
   }
 
+  // ── Step 4: Verify local upload storage is writable ─────────────────────────
+  // A quick write + delete confirms that image uploads will work at runtime.
+  // Prints a clear pass/fail the Replit agent (and humans) can see in the log.
+  {
+    const { mkdirSync, writeFileSync, unlinkSync } = await import("fs");
+    const uploadsDir = path.join(ROOT, "public", "uploads");
+    const probe = path.join(uploadsDir, ".write-probe");
+    try {
+      mkdirSync(uploadsDir, { recursive: true });
+      writeFileSync(probe, "ok");
+      unlinkSync(probe);
+      console.log("  ✓ Upload storage: public/uploads/ is writable — image uploads will work.\n");
+    } catch (err) {
+      console.warn(
+        "  ⚠  Upload storage: could not write to public/uploads/.\n" +
+        "  Images uploaded through the admin will not be served.\n" +
+        "  To fix: ensure the Replit deployment has a persistent volume, or\n" +
+        "  switch to S3-compatible storage by setting STORAGE_PROVIDER=s3.\n" +
+        `  (${(err as Error).message})\n`
+      );
+    }
+  }
+
   console.log(
-    "\n  Visit your site URL and go to /setup to create your admin account.\n"
+    "  Visit your site URL and go to /setup to create your admin account.\n"
   );
 
-  // ── Step 4 (dev only): write sentinel so future restarts skip this ──────────
+  // ── Step 8 (dev only): write sentinel so future restarts skip this ──────────
   if (!isProd) {
     writeFileSync(SENTINEL, new Date().toISOString() + "\n");
   }
