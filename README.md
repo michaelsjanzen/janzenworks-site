@@ -60,12 +60,7 @@ The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canoni
 
 ## Community & Recipes
 
-Pugmill extensions are distributed as **recipes** — GitHub repositories containing a plugin or theme plus a `RECIPE.md` written for an AI agent. Recipes follow the [Agent Skills](https://agentskills.io) open standard, which means any compatible agent (Claude Code, Cursor, and others) can install one directly from a GitHub URL.
-
-```
-# An agent can install any Pugmill recipe from a URL:
-"Install this recipe: https://github.com/author/pugmill-recipe-contact-form"
-```
+Pugmill extensions are distributed as **recipes** — GitHub repositories containing a plugin or theme plus a `RECIPE.md` written for an AI agent. Recipes follow the [Agent Skills](https://agentskills.io) open standard, which means any compatible agent (Claude Code, Cursor, and others) can install one by reading the `RECIPE.md` directly from a GitHub URL — no registry service or installer tooling required.
 
 The distinction between recipes and skills matters:
 

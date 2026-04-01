@@ -18,6 +18,19 @@ A recipe is always either a **plugin recipe** or a **theme recipe**. The format 
 
 The key idea: an AI agent can install any Pugmill recipe by reading `RECIPE.md` and following the instructions. No registry service, no installer tooling, no proprietary format.
 
+### Recipes vs Skills
+
+Recipes and skills are both agent-readable Markdown files in the Agent Skills format. The difference is in purpose and lifecycle:
+
+| | Recipe | Skill |
+|---|---|---|
+| **What** | A packaged extension to install | On-demand guidance for a task |
+| **Lifecycle** | Installed once; becomes part of the codebase | Activated on demand; leaves no permanent files |
+| **Lives** | Author's GitHub account | `.agents/skills/` in a project |
+| **Written for** | The agent doing the install | The agent doing the task |
+
+A recipe is a deliverable. A skill is a workflow guide. Pugmill ships a `create-pugmill-recipe` skill that helps agents author recipes — a skill whose output is a recipe.
+
 ---
 
 ## RECIPE.md Format
@@ -67,7 +80,7 @@ metadata:
 |---|---|
 | `license` | SPDX identifier (e.g. `MIT`, `Apache-2.0`) |
 
-> **Note on `name`:** The Agent Skills spec requires `name` to match the directory name. For Pugmill recipes, `name` is the full GitHub repository name (e.g. `pugmill-recipe-contact-form`). The plugin id inside `manifest.json` (e.g. `contact-form`) is a separate, shorter identifier used within Pugmill itself.
+> **Note on `name`:** The Agent Skills spec requires `name` to match the directory name. For Pugmill recipes, `name` is the full GitHub repository name (e.g. `pugmill-recipe-contact-form`). `git clone` defaults to a directory matching the repository name, so `skills-ref validate` works correctly when the repo is cloned with default settings. The plugin id inside `manifest.json` (e.g. `contact-form`) is a separate, shorter identifier used within Pugmill itself.
 
 ### Body
 
@@ -87,6 +100,8 @@ Keep the body under 5000 tokens (~3500 words). If your installation instructions
 ## Package Structure
 
 Recipes use a **mirrored directory structure** — the repository layout matches where files will land in the Pugmill installation. An agent installs a recipe by overlaying the repo onto the Pugmill project root, skipping `RECIPE.md`, `README.md`, and `LICENSE`.
+
+This design was chosen deliberately: rather than inventing a mapping format (`destination:`, `routes/`, etc.), the repo *is* the overlay. An agent needs no parsing logic — it copies the directory structure. Recipe authors need no mapping knowledge — they put files where they would live in Pugmill. Zero ceremony in both directions.
 
 ### Plugin Recipe (no routes)
 
@@ -161,34 +176,33 @@ pugmill-theme-my-theme/     ← GitHub repository root; matches RECIPE.md name
 
 ---
 
-## Installing a Plugin Recipe
+## What a Well-Written RECIPE.md Enables
 
-When an AI agent installs a plugin recipe:
+This section describes what happens when an agent installs your recipe — useful for understanding what your instructions need to cover.
 
-1. Read `RECIPE.md` fully before taking any action.
-2. Identify the plugin id from `plugins/<id>/manifest.json` (`id` field).
-3. Copy the `plugins/` directory into the Pugmill project root.
-4. If `src/` is present: copy its contents into Pugmill's `src/`, preserving the directory structure.
-5. If `migrations/` is present: copy each script to `/scripts/` and append it to the `db:migrate` command chain in `package.json`.
-6. Follow the **4-step plugin installation contract** in `PLUGIN_AUTHORING.md`:
-   - Add a static import in `src/lib/plugin-registry.ts`
-   - Add the plugin to `ALL_PLUGINS`
-   - Activate via Admin > Settings > Plugins (or set `config.modules.activePlugins`)
-7. If migrations were added: run `npm run db:migrate`.
-8. Restart the dev server.
+### Plugin recipe installation flow
 
-## Installing a Theme Recipe
+A complete RECIPE.md body should enable an agent to:
 
-When an AI agent installs a theme recipe:
+1. Identify the plugin id from `plugins/<id>/manifest.json`
+2. Copy `plugins/` into the Pugmill project root
+3. Copy `src/` contents (if present) into Pugmill's `src/`, preserving structure
+4. Copy `migrations/` scripts (if present) to `/scripts/` and add them to the `db:migrate` chain in `package.json`
+5. Follow the 4-step plugin installation contract in `PLUGIN_AUTHORING.md` (static import, `ALL_PLUGINS`, activate)
+6. Run `npm run db:migrate` if migrations were added
+7. Restart the dev server and verify
 
-1. Read `RECIPE.md` fully before taking any action.
-2. Identify the theme id from `themes/<id>/manifest.json` (`id` field).
-3. Copy the `themes/` directory into the Pugmill project root.
-4. Follow the **6-step theme installation contract** in `THEME_AUTHORING.md`:
-   - Add the id to `THEME_ALLOWLIST` in `src/lib/theme-registry.ts`
-   - Add static imports in `src/lib/theme-modules.ts`
-   - Import the manifest and add it to `ALL_THEMES` in `src/lib/theme-registry.ts`
-5. Activate the theme in Admin > Design > Themes.
+Your RECIPE.md body should call out steps 3–7 only when they apply to your recipe. Step 5 can be handled by referencing `PLUGIN_AUTHORING.md` steps 2–3 rather than duplicating the code.
+
+### Theme recipe installation flow
+
+A complete RECIPE.md body should enable an agent to:
+
+1. Identify the theme id from `themes/<id>/manifest.json`
+2. Copy `themes/` into the Pugmill project root
+3. Follow the 6-step theme installation contract in `THEME_AUTHORING.md` (allowlist, static imports, manifest registration, activate)
+
+Your RECIPE.md body should call out any non-standard steps or post-activation configuration. The standard contract can be handled by referencing `THEME_AUTHORING.md` steps 2–5.
 
 ---
 

@@ -15,6 +15,8 @@ compatibility: >
 
 A Pugmill recipe is a GitHub repository that packages a plugin or theme for community distribution. `RECIPE.md` follows the [Agent Skills](https://agentskills.io) open standard — any Agent Skills-aware agent (including Claude Code) can read it and install the extension. This skill is the task-execution workflow; `RECIPE_AUTHORING.md` is the full reference.
 
+This skill is itself an example of the pattern it describes: it is a skill (on-demand agent guidance, no permanent output) whose purpose is to help create a recipe (a permanent, installable artifact). The two concepts are complementary — skills guide, recipes deliver.
+
 ---
 
 ## Step 1 — Identify what you are packaging
