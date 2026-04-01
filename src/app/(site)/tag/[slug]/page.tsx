@@ -10,6 +10,7 @@ import { fetchPostPage } from "@/lib/queries/posts";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import type { HomeLayoutConfig } from "../../../../../themes/default/design";
+import { resolveSiteUrl } from "@/lib/site-url";
 
 export async function generateMetadata({
   params,
@@ -28,7 +29,7 @@ export async function generateMetadata({
 
   if (!tag) return { title: "Tag not found" };
 
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(process.env.NEXTAUTH_URL ?? "http://localhost:3000", config.site?.url ?? "");
   const siteName = config.site?.name ?? "Pugmill";
   const title = `#${tag.name} · ${siteName}`;
   const description = `Posts tagged ${tag.name}`;

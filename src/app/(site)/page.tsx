@@ -7,15 +7,19 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import type { HomeLayoutConfig } from "../../../themes/default/design";
 import { extractHeroConfig } from "../../../themes/default/design";
+import { resolveSiteUrl, toAbsoluteUrl } from "@/lib/site-url";
 
 // ─── Dynamic metadata ─────────────────────────────────────────────────────────
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getConfig();
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(
+    process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+    config.site?.url ?? "",
+  );
   const siteName = config.site?.name ?? "Pugmill";
   const description = config.site?.description || config.site?.seoDefaults?.metaDescription || undefined;
-  const ogImage = config.site?.seoDefaults?.ogImage || undefined;
+  const ogImage = toAbsoluteUrl(config.site?.seoDefaults?.ogImage, siteUrl) ?? undefined;
 
   return {
     title: siteName,

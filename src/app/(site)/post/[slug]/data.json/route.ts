@@ -22,6 +22,7 @@ import {
 import { eq } from "drizzle-orm";
 import { parseAeoMetadata } from "@/lib/aeo";
 import { getConfig } from "@/lib/config";
+import { resolveSiteUrl, toAbsoluteUrl } from "@/lib/site-url";
 
 export async function GET(
   _req: NextRequest,
@@ -54,14 +55,12 @@ export async function GET(
     getConfig(),
   ]);
 
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(
+    process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+    config.site?.url ?? "",
+  );
   const canonicalUrl = `${siteUrl}/post/${post.slug}`;
-
-  const featuredImageUrl = featuredMedia
-    ? featuredMedia.url.startsWith("http")
-      ? featuredMedia.url
-      : `${siteUrl}${featuredMedia.url}`
-    : null;
+  const featuredImageUrl = featuredMedia ? toAbsoluteUrl(featuredMedia.url, siteUrl) : null;
 
   const aeo = parseAeoMetadata(post.aeoMetadata);
 

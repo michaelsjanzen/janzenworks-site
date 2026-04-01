@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import type { Metadata } from "next";
 import type { HomeLayoutConfig } from "../../../../themes/default/design";
 import { PostFeed } from "../../../../themes/default/views/HomeView";
+import { resolveSiteUrl } from "@/lib/site-url";
 
 export async function generateMetadata({
   searchParams,
@@ -14,7 +15,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const [config, sp] = await Promise.all([getConfig(), searchParams]);
   const page = Math.max(1, parseInt(sp.page ?? "1", 10));
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(process.env.NEXTAUTH_URL ?? "http://localhost:3000", config.site?.url ?? "");
   const siteName = config.site?.name ?? "Pugmill";
   const postPage = await fetchPostPage({ page });
 

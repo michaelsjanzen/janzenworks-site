@@ -15,6 +15,7 @@ import WidgetArea from "@/components/widgets/WidgetArea";
 import { getWidgetAreaAssignment } from "@/lib/actions/widgets";
 import type { WidgetContext } from "@/types/widget";
 import type { Breadcrumb } from "../../../../themes/default/views/PageView";
+import { resolveSiteUrl, toAbsoluteUrl } from "@/lib/site-url";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -47,16 +48,20 @@ export async function generateMetadata(
   const siteName = config.site?.name ?? "Pugmill";
   if (!page) return { title: `Not found | ${siteName}` };
 
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(
+    process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+    config.site?.url ?? "",
+  );
   const seoTitle = page.seoTitle;
   const seoMetaDescription = page.seoMetaDescription;
   const defaultDescription = page.excerpt ?? config.site.seoDefaults?.metaDescription ?? undefined;
   const canonicalUrl = (page.canonicalUrl && page.canonicalUrl.trim())
     ? page.canonicalUrl
     : `${siteUrl}/${page.slug}`;
-  const ogImage = (page.ogImageUrl && page.ogImageUrl.trim())
-    ? page.ogImageUrl
-    : config.site.seoDefaults?.ogImage;
+  const ogImage =
+    toAbsoluteUrl(page.ogImageUrl, siteUrl) ??
+    toAbsoluteUrl(config.site.seoDefaults?.ogImage, siteUrl) ??
+    undefined;
 
   const robotsDirectives: string[] = [];
   if (page.robotsNoindex) robotsDirectives.push("noindex");

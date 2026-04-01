@@ -17,6 +17,7 @@ import type { PostPayload } from "@/lib/hook-catalogue";
 import WidgetArea from "@/components/widgets/WidgetArea";
 import { getWidgetAreaAssignment } from "@/lib/actions/widgets";
 import type { WidgetContext } from "@/types/widget";
+import { resolveSiteUrl, toAbsoluteUrl } from "@/lib/site-url";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -59,7 +60,10 @@ export async function generateMetadata(
   if (!post || !post.published) return { title: "Not found" };
 
   const aeoMeta = parseAeoMetadata(post.aeoMetadata);
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = resolveSiteUrl(
+    process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+    config.site?.url ?? "",
+  );
   const siteName = config.site?.name ?? "Pugmill";
   const description = buildDescription(post);
   const canonicalUrl = (post.canonicalUrl && post.canonicalUrl.trim())
@@ -69,12 +73,12 @@ export async function generateMetadata(
   const featuredMedia = post.featuredImage
     ? await db.query.media.findFirst({ where: (m, { eq }) => eq(m.id, post.featuredImage!) })
     : null;
-  const featuredImageUrl = featuredMedia
-    ? featuredMedia.url.startsWith("http") ? featuredMedia.url : `${siteUrl}${featuredMedia.url}`
-    : null;
-  const ogImage = (post.ogImageUrl && post.ogImageUrl.trim())
-    ? post.ogImageUrl
-    : featuredImageUrl ?? config.site.seoDefaults?.ogImage ?? undefined;
+  const featuredImageUrl = featuredMedia ? toAbsoluteUrl(featuredMedia.url, siteUrl) : null;
+  const ogImage =
+    toAbsoluteUrl(post.ogImageUrl, siteUrl) ??
+    featuredImageUrl ??
+    toAbsoluteUrl(config.site.seoDefaults?.ogImage, siteUrl) ??
+    undefined;
   const metaDescription = description || config.site.seoDefaults?.metaDescription || undefined;
 
   const seoTitle = post.seoTitle;
@@ -134,13 +138,15 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const post = await db.query.posts.findFirst({ where: eq(posts.slug, slug) });
   if (!post || !post.published) notFound();
 
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  const canonicalUrl = `${siteUrl}/post/${post.slug}`;
-
   const aeo = parseAeoMetadata(post.aeoMetadata);
 
   // Resolve design config for layout
   const [config, cookieStore] = await Promise.all([getConfig(), cookies()]);
+  const siteUrl = resolveSiteUrl(
+    process.env.NEXTAUTH_URL ?? "http://localhost:3000",
+    config.site?.url ?? "",
+  );
+  const canonicalUrl = `${siteUrl}/post/${post.slug}`;
   const activeTheme = sanitizeThemeName(config.appearance.activeTheme);
   const isPreview = cookieStore.get("__pugmill_design_preview")?.value === "1";
   const designConfig = await getDesignConfig(activeTheme, isPreview ? "draft" : "published");
