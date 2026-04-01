@@ -38,6 +38,42 @@ export function detectSiteUrl(): string | null {
 }
 
 /**
+ * URL detection for the /setup wizard.
+ *
+ * Same as detectSiteUrl() but checks PRODUCTION_URL before REPLIT_DEV_DOMAIN.
+ * This ensures the setup wizard pre-fills with the production domain when the
+ * user has already saved it as a secret — not the ephemeral Replit dev domain
+ * (which NEXTAUTH_URL points to on dev containers and would otherwise win).
+ *
+ * NEXTAUTH_URL still takes priority so an explicit override always wins.
+ */
+export function detectSetupUrl(): string | null {
+  const e = process.env;
+
+  if (e.NEXTAUTH_URL)
+    return e.NEXTAUTH_URL;
+
+  if (e.PRODUCTION_URL)
+    return e.PRODUCTION_URL.startsWith("https://")
+      ? e.PRODUCTION_URL
+      : `https://${e.PRODUCTION_URL}`;
+
+  if (e.REPLIT_DEV_DOMAIN)
+    return `https://${e.REPLIT_DEV_DOMAIN}`;
+
+  if (e.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${e.VERCEL_PROJECT_PRODUCTION_URL}`;
+
+  if (e.RAILWAY_PUBLIC_DOMAIN)
+    return `https://${e.RAILWAY_PUBLIC_DOMAIN}`;
+
+  if (e.RENDER_EXTERNAL_URL)
+    return e.RENDER_EXTERNAL_URL;
+
+  return null;
+}
+
+/**
  * Returns true when the given URL looks like a local dev address or
  * an uninitialized placeholder. Used to decide whether to show the
  * "configure your production URL" warning banner in the admin.

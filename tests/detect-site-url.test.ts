@@ -1,11 +1,13 @@
 /**
- * Unit tests for detectSiteUrl and isDevUrl in src/lib/detect-site-url.ts.
+ * Unit tests for detectSiteUrl, detectSetupUrl, and isDevUrl
+ * in src/lib/detect-site-url.ts.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { detectSiteUrl, isDevUrl } from "@/lib/detect-site-url";
+import { detectSiteUrl, detectSetupUrl, isDevUrl } from "@/lib/detect-site-url";
 
 function clearPlatformEnv() {
   delete process.env.NEXTAUTH_URL;
+  delete process.env.PRODUCTION_URL;
   delete process.env.REPLIT_DEV_DOMAIN;
   delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
   delete process.env.RAILWAY_PUBLIC_DOMAIN;
@@ -64,6 +66,67 @@ describe("detectSiteUrl", () => {
     process.env.RAILWAY_PUBLIC_DOMAIN = "myapp.up.railway.app";
     process.env.RENDER_EXTERNAL_URL = "https://myapp.onrender.com";
     expect(detectSiteUrl()).toBe("https://myapp.up.railway.app");
+  });
+});
+
+// ─── detectSetupUrl ───────────────────────────────────────────────────────────
+//
+// Same as detectSiteUrl but PRODUCTION_URL beats REPLIT_DEV_DOMAIN so the
+// /setup wizard pre-fills with the production URL on Replit dev containers.
+
+describe("detectSetupUrl", () => {
+  beforeEach(clearPlatformEnv);
+  afterEach(clearPlatformEnv);
+
+  it("returns null when no env vars are set", () => {
+    expect(detectSetupUrl()).toBeNull();
+  });
+
+  it("returns NEXTAUTH_URL when set (explicit override wins)", () => {
+    process.env.NEXTAUTH_URL = "https://explicit.com";
+    expect(detectSetupUrl()).toBe("https://explicit.com");
+  });
+
+  it("PRODUCTION_URL beats REPLIT_DEV_DOMAIN", () => {
+    process.env.PRODUCTION_URL = "https://myapp.replit.app";
+    process.env.REPLIT_DEV_DOMAIN = "myapp.user.replit.dev";
+    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
+  });
+
+  it("prepends https:// to PRODUCTION_URL when missing", () => {
+    process.env.PRODUCTION_URL = "myapp.replit.app";
+    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
+  });
+
+  it("does not double-prepend https:// to PRODUCTION_URL", () => {
+    process.env.PRODUCTION_URL = "https://myapp.replit.app";
+    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
+  });
+
+  it("NEXTAUTH_URL beats PRODUCTION_URL", () => {
+    process.env.NEXTAUTH_URL = "https://dev.replit.dev";
+    process.env.PRODUCTION_URL = "https://myapp.replit.app";
+    expect(detectSetupUrl()).toBe("https://dev.replit.dev");
+  });
+
+  it("falls back to REPLIT_DEV_DOMAIN when PRODUCTION_URL absent", () => {
+    process.env.REPLIT_DEV_DOMAIN = "myapp.user.replit.dev";
+    expect(detectSetupUrl()).toBe("https://myapp.user.replit.dev");
+  });
+
+  it("falls back to VERCEL_PROJECT_PRODUCTION_URL", () => {
+    process.env.VERCEL_PROJECT_PRODUCTION_URL = "myapp.vercel.app";
+    expect(detectSetupUrl()).toBe("https://myapp.vercel.app");
+  });
+
+  it("falls back to RAILWAY_PUBLIC_DOMAIN", () => {
+    process.env.RAILWAY_PUBLIC_DOMAIN = "myapp.up.railway.app";
+    expect(detectSetupUrl()).toBe("https://myapp.up.railway.app");
+  });
+
+  it("falls back to RENDER_EXTERNAL_URL as-is", () => {
+    process.env.RENDER_EXTERNAL_URL = "https://myapp.onrender.com";
+    expect(detectSetupUrl()).toBe("https://myapp.onrender.com");
   });
 });
 

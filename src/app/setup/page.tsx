@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";
-import { detectSiteUrl, isDevUrl } from "@/lib/detect-site-url";
+import { detectSetupUrl, isDevUrl } from "@/lib/detect-site-url";
 import SetupWizard from "./SetupWizard";
 import type { Metadata } from "next";
 
@@ -16,14 +16,7 @@ export default async function SetupPage() {
     redirect("/admin/login");
   }
 
-  // Prefer PRODUCTION_URL for the site URL pre-fill — NEXTAUTH_URL is the dev
-  // domain in Replit dev containers and should not be presented as the site URL.
-  const rawProductionUrl = process.env.PRODUCTION_URL;
-  const detectedUrl = rawProductionUrl
-    ? rawProductionUrl.startsWith("https://")
-      ? rawProductionUrl
-      : `https://${rawProductionUrl}`
-    : (detectSiteUrl() ?? "");
+  const detectedUrl = detectSetupUrl() ?? "";
   const currentSecret = process.env.NEXTAUTH_SECRET ?? "";
   const isDevEnvironment = isDevUrl(detectedUrl);
 
