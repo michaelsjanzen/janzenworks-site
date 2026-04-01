@@ -6,9 +6,9 @@
  *
  * STEP 1 — After the app starts, call requestEnvVar for NEXTAUTH_SECRET
  *   Use: requestEnvVar({ requestType: "secret", keys: ["NEXTAUTH_SECRET"] })
- *   The generated value is shown in the startup banner.
- *   Do NOT mention it in chat — use the secrets tool so the user gets a
- *   confirmation dialog they must interact with.
+ *   Read the generated value from .env.local (grep NEXTAUTH_SECRET .env.local)
+ *   and pass it to the user via the secrets dialog. Do NOT print it in chat.
+ *   Use the secrets tool so the user gets a confirmation dialog to paste it in.
  *
  * STEP 2 — Immediately after, call requestEnvVar for PRODUCTION_URL
  *   Use: requestEnvVar({ requestType: "secret", keys: ["PRODUCTION_URL"] })
@@ -265,7 +265,6 @@ async function main() {
   // so the secret would regenerate on every deploy and invalidate all active sessions.
   // Saving it as a Replit secret pins it permanently across deployments.
   if (!isProd && configured.includes("NEXTAUTH_SECRET")) {
-    const secret = envMap.get("NEXTAUTH_SECRET") ?? "";
     console.log(
       "  ┌─────────────────────────────────────────────────────────────────┐\n" +
       "  │ 2 ACTIONS REQUIRED before your first production deployment      │\n" +
@@ -274,17 +273,16 @@ async function main() {
       "  │    container restarts and deployments. Without it, every deploy │\n" +
       "  │    regenerates the secret and signs all users out.              │\n" +
       "  │                                                                 │\n" +
-      `  │    Replit → Secrets → New secret:                               │\n` +
-      `  │      Name:  NEXTAUTH_SECRET                                     │\n` +
-      `  │      Value: ${secret.slice(0, 50).padEnd(50)} │\n` +
+      "  │    AI AGENT: run `grep NEXTAUTH_SECRET .env.local` to get the   │\n" +
+      "  │    value, then call requestEnvVar({ requestType: 'secret',      │\n" +
+      "  │    keys: ['NEXTAUTH_SECRET'] }) — do NOT print the value here.  │\n" +
       "  │                                                                 │\n" +
       "  │ 2. Save your production URL as a Replit secret so login works   │\n" +
       "  │    after deployment. Ask the user for their production URL now. │\n" +
       "  │    Without it, authentication will fail in production.          │\n" +
       "  │                                                                 │\n" +
-      "  │    Replit → Secrets → New secret:                               │\n" +
-      "  │      Name:  PRODUCTION_URL                                      │\n" +
-      "  │      Value: https://your-production-domain.com                  │\n" +
+      "  │    AI AGENT: call requestEnvVar({ requestType: 'secret',        │\n" +
+      "  │    keys: ['PRODUCTION_URL'] }) immediately after step 1.        │\n" +
       "  └─────────────────────────────────────────────────────────────────┘\n"
     );
   }
