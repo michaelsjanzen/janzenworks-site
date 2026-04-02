@@ -13,16 +13,18 @@ telling the user setup is done.** Specifically:
    Do NOT mention the value in chat — use the secrets tool so the user sees a
    confirmation dialog they must interact with.
 2. Immediately after, call `requestEnvVar` with `requestType: "secret"` and
-   `keys: ["PRODUCTION_URL"]`. This shows the user a second confirmation dialog
-   asking for their production URL (e.g. `https://yourapp.replit.app`, found in
-   Replit's deployment panel). Do NOT skip. Do NOT mention it in chat. Use the secrets tool.
+   `keys: ["PRODUCTION_URL"]`. Do this **even if PRODUCTION_URL is already set** —
+   it may have carried over from a previous project and the user must confirm the
+   value is correct for this deployment. The production URL is found in Replit's
+   deployment panel (e.g. `https://yourapp.replit.app`).
+   Do NOT skip. Do NOT mention it in chat. Use the secrets tool.
 3. Only after both secrets are saved via `requestEnvVar`, tell the user:
    - Click **Deploy** first (dev and production use separate databases)
    - After deploying, visit **/setup** on their **production URL** to create the admin account
    - Do NOT tell them to visit /setup on the dev URL — that account will not exist in production
 
-Do not skip step 2–3. A missing `PRODUCTION_URL` causes authentication to
-fail silently in production and the site will be unusable.
+Do not skip step 2. Even if PRODUCTION_URL appears to be set, always confirm it —
+a stale value from a previous project will break authentication silently in production.
 
 A self-hosted, Next.js-based CMS with admin panel, plugin system, and theme support.
 
