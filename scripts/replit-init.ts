@@ -6,10 +6,11 @@
  *
  * STEP 1 — After the app starts, call requestEnvVar for NEXTAUTH_SECRET
  *   Use: requestEnvVar({ requestType: "secret", keys: ["NEXTAUTH_SECRET"] })
- *   Get the value with: grep NEXTAUTH_SECRET .env.local
+ *   The value is printed in the startup banner. If it did not appear,
+ *   get it with: grep NEXTAUTH_SECRET .env.local
  *   If .env.local is missing or NEXTAUTH_SECRET is absent, generate one:
  *     openssl rand -base64 32
- *   Do NOT print the value in chat — use the secrets tool so the user
+ *   Do NOT mention the value in chat — use the secrets tool so the user
  *   gets a confirmation dialog to paste it in.
  *
  * STEP 2 — Immediately after, call requestEnvVar for PRODUCTION_URL
@@ -267,6 +268,7 @@ async function main() {
   // so the secret would regenerate on every deploy and invalidate all active sessions.
   // Saving it as a Replit secret pins it permanently across deployments.
   if (!isProd && configured.includes("NEXTAUTH_SECRET")) {
+    const secret = envMap.get("NEXTAUTH_SECRET") ?? "";
     console.log(
       "  ┌─────────────────────────────────────────────────────────────────┐\n" +
       "  │ 2 ACTIONS REQUIRED before your first production deployment      │\n" +
@@ -275,9 +277,9 @@ async function main() {
       "  │    container restarts and deployments. Without it, every deploy │\n" +
       "  │    regenerates the secret and signs all users out.              │\n" +
       "  │                                                                 │\n" +
-      "  │    AI AGENT: run `grep NEXTAUTH_SECRET .env.local` to get the   │\n" +
-      "  │    value, then call requestEnvVar({ requestType: 'secret',      │\n" +
-      "  │    keys: ['NEXTAUTH_SECRET'] }) — do NOT print the value here.  │\n" +
+      "  │    AI AGENT: call requestEnvVar({ requestType: 'secret',        │\n" +
+      "  │    keys: ['NEXTAUTH_SECRET'] }) with this value (do NOT chat):  │\n" +
+      `  │      ${secret.slice(0, 61).padEnd(61)} │\n` +
       "  │                                                                 │\n" +
       "  │ 2. Save your production URL as a Replit secret so login works   │\n" +
       "  │    after deployment. Ask the user for their production URL now. │\n" +

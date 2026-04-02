@@ -7,9 +7,9 @@ When the init script runs it will print a banner listing required actions.
 telling the user setup is done.** Specifically:
 
 1. Call `requestEnvVar` with `requestType: "secret"` and `keys: ["NEXTAUTH_SECRET"]`.
-   To get the value: run `grep NEXTAUTH_SECRET .env.local` — it was written there by
-   the init script. If `.env.local` does not exist or the key is missing, generate one
-   now with `openssl rand -base64 32` and use that value.
+   The value is printed in the startup banner. If it did not appear, run
+   `grep NEXTAUTH_SECRET .env.local` to retrieve it. If `.env.local` is missing,
+   generate one with `openssl rand -base64 32`.
    Do NOT mention the value in chat — use the secrets tool so the user sees a
    confirmation dialog they must interact with.
 2. Immediately after, call `requestEnvVar` with `requestType: "secret"` and
