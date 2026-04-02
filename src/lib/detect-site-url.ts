@@ -40,17 +40,23 @@ export function detectSiteUrl(): string | null {
 /**
  * URL detection for the /setup wizard.
  *
- * Same as detectSiteUrl() but checks PRODUCTION_URL before REPLIT_DEV_DOMAIN.
- * This ensures the setup wizard pre-fills with the production domain when the
- * user has already saved it as a secret — not the ephemeral Replit dev domain
- * (which NEXTAUTH_URL points to on dev containers and would otherwise win).
+ * Same as detectSiteUrl() but checks PRODUCTION_URL before REPLIT_DEV_DOMAIN,
+ * and skips NEXTAUTH_URL when it is itself a dev URL.
  *
- * NEXTAUTH_URL still takes priority so an explicit override always wins.
+ * On Replit dev containers, replit-init.ts writes NEXTAUTH_URL = <dev-domain>
+ * to .env.local at startup. If NEXTAUTH_URL were checked unconditionally it
+ * would always win over PRODUCTION_URL, causing the setup wizard to pre-fill
+ * with the dev domain even when the production URL is known.
+ *
+ * Priority:
+ *   1. NEXTAUTH_URL — only when it is a production URL (not a dev domain)
+ *   2. PRODUCTION_URL
+ *   3. REPLIT_DEV_DOMAIN / other platform vars (fallback)
  */
 export function detectSetupUrl(): string | null {
   const e = process.env;
 
-  if (e.NEXTAUTH_URL)
+  if (e.NEXTAUTH_URL && !isDevUrl(e.NEXTAUTH_URL))
     return e.NEXTAUTH_URL;
 
   if (e.PRODUCTION_URL)

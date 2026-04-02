@@ -71,8 +71,9 @@ describe("detectSiteUrl", () => {
 
 // ─── detectSetupUrl ───────────────────────────────────────────────────────────
 //
-// Same as detectSiteUrl but PRODUCTION_URL beats REPLIT_DEV_DOMAIN so the
-// /setup wizard pre-fills with the production URL on Replit dev containers.
+// Like detectSiteUrl but skips NEXTAUTH_URL when it is a dev URL, so that
+// PRODUCTION_URL wins on Replit dev containers where replit-init.ts has
+// written the dev domain as NEXTAUTH_URL.
 
 describe("detectSetupUrl", () => {
   beforeEach(clearPlatformEnv);
@@ -82,9 +83,27 @@ describe("detectSetupUrl", () => {
     expect(detectSetupUrl()).toBeNull();
   });
 
-  it("returns NEXTAUTH_URL when set (explicit override wins)", () => {
+  it("returns a production NEXTAUTH_URL when set", () => {
     process.env.NEXTAUTH_URL = "https://explicit.com";
     expect(detectSetupUrl()).toBe("https://explicit.com");
+  });
+
+  it("skips NEXTAUTH_URL when it is a .replit.dev dev URL", () => {
+    process.env.NEXTAUTH_URL = "https://abc123.worf.replit.dev";
+    process.env.PRODUCTION_URL = "https://myapp.replit.app";
+    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
+  });
+
+  it("skips NEXTAUTH_URL when it is a localhost URL", () => {
+    process.env.NEXTAUTH_URL = "http://localhost:3000";
+    process.env.PRODUCTION_URL = "https://myapp.replit.app";
+    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
+  });
+
+  it("production NEXTAUTH_URL still beats PRODUCTION_URL", () => {
+    process.env.NEXTAUTH_URL = "https://custom-domain.com";
+    process.env.PRODUCTION_URL = "https://myapp.replit.app";
+    expect(detectSetupUrl()).toBe("https://custom-domain.com");
   });
 
   it("PRODUCTION_URL beats REPLIT_DEV_DOMAIN", () => {
@@ -101,12 +120,6 @@ describe("detectSetupUrl", () => {
   it("does not double-prepend https:// to PRODUCTION_URL", () => {
     process.env.PRODUCTION_URL = "https://myapp.replit.app";
     expect(detectSetupUrl()).toBe("https://myapp.replit.app");
-  });
-
-  it("NEXTAUTH_URL beats PRODUCTION_URL", () => {
-    process.env.NEXTAUTH_URL = "https://dev.replit.dev";
-    process.env.PRODUCTION_URL = "https://myapp.replit.app";
-    expect(detectSetupUrl()).toBe("https://dev.replit.dev");
   });
 
   it("falls back to REPLIT_DEV_DOMAIN when PRODUCTION_URL absent", () => {
