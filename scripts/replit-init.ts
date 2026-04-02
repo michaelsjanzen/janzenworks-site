@@ -225,26 +225,17 @@ async function main() {
       );
     }
   } else {
-    // ── Dev: auto-detect NEXTAUTH_URL from Replit dev domain ───────────────
-    if (!getVar("NEXTAUTH_URL", envMap)) {
-      const domain =
-        process.env.REPLIT_DEV_DOMAIN ||
-        (process.env.REPL_SLUG && process.env.REPL_OWNER
-          ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-          : null);
-
-      if (domain) {
-        const url = `https://${domain}`;
-        envMap.set("NEXTAUTH_URL", url);
-        process.env.NEXTAUTH_URL = url;
-        configured.push("NEXTAUTH_URL");
-        console.log(`  Dev URL: ${url}`);
-      } else {
-        console.log(
-          "  Warning: Could not detect dev URL.\n" +
-          "  Set NEXTAUTH_URL manually in .env.local or as a Replit secret."
-        );
-      }
+    // ── Dev: trustHost: true in auth.config.ts means NextAuth derives the URL
+    // from the incoming request — NEXTAUTH_URL must NOT be written to .env.local
+    // because that file persists into the production container and causes auth
+    // redirects to go to the dev domain instead of the production domain.
+    const domain =
+      process.env.REPLIT_DEV_DOMAIN ||
+      (process.env.REPL_SLUG && process.env.REPL_OWNER
+        ? `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+        : null);
+    if (domain) {
+      console.log(`  Dev URL: https://${domain}`);
     }
 
     // ── Dev: PRODUCTION_URL is required for production login — always prompt ──

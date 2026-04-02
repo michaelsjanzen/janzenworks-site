@@ -126,3 +126,5 @@ npm run replit:init   # Force re-run first-run setup
 - Admin accounts are created exclusively through the `/setup` wizard — there are no env vars for pre-seeding credentials
 - The `/setup` route is gated: it redirects to `/admin/login` once an admin account exists
 - Dev and production containers have separate databases — complete setup in **production**, not dev
+- **Do not create any database files** — the database layer is complete at `src/lib/db/`. Do not scaffold `server/db.ts` or any file importing `@shared/schema`. That path alias does not exist in this project.
+- **Do not modify `tsconfig.json`** — the only path alias is `@/` mapping to `./src/`. Do not add `@shared/` or any other alias.
