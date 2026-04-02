@@ -18,6 +18,14 @@ export default async function SetupPage() {
 
   const detectedUrl = detectSetupUrl() ?? "";
   const currentSecret = process.env.NEXTAUTH_SECRET ?? "";
+  // On Replit the agent saves NEXTAUTH_SECRET as a platform secret — hide the
+  // manual secret section so users don't copy a stale value or hit Regenerate
+  // (which would write a new value that isn't saved as a Replit secret).
+  const isReplit = !!(
+    process.env.REPL_SLUG ||
+    process.env.REPLIT_DEV_DOMAIN ||
+    process.env.REPLIT_CLUSTER
+  );
   // REPLIT_DEPLOYMENT="1" is set in production containers — never show the dev
   // warning there even if the URL pattern matches (Replit prod URLs also use .replit.dev).
   const isReplitProduction = process.env.REPLIT_DEPLOYMENT === "1";
@@ -39,7 +47,7 @@ export default async function SetupPage() {
           </p>
         </div>
       )}
-      <SetupWizard detectedUrl={detectedUrl} currentSecret={currentSecret} />
+      <SetupWizard detectedUrl={detectedUrl} currentSecret={currentSecret} hideSecret={isReplit} />
     </div>
   );
 }

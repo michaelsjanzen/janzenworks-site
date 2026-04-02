@@ -43,9 +43,10 @@ const DEFAULT_MODELS: Record<string, string> = {
 interface Props {
   detectedUrl: string;
   currentSecret: string;
+  hideSecret?: boolean;
 }
 
-export default function SetupWizard({ detectedUrl, currentSecret }: Props) {
+export default function SetupWizard({ detectedUrl, currentSecret, hideSecret = false }: Props) {
   // Form state
   const [authorVoice, setAuthorVoice] = useState("");
   const [aiProvider, setAiProvider] = useState("");
@@ -392,7 +393,7 @@ export default function SetupWizard({ detectedUrl, currentSecret }: Props) {
         </section>
 
         {/* ── Section 5: Security (NEXTAUTH_SECRET) ────────────────────── */}
-        {secret && (
+        {secret && !hideSecret && (
           <section className="bg-white border rounded-xl p-6 space-y-4">
             <div>
               <h2 className="text-lg font-semibold text-zinc-900">Auth Secret</h2>
