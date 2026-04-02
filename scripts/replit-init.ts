@@ -180,10 +180,12 @@ async function main() {
         ? rawProductionUrl
         : `https://${rawProductionUrl}`;
       process.env.NEXTAUTH_URL = url;
-      if (!getVar("NEXTAUTH_URL", envMap)) {
-        envMap.set("NEXTAUTH_URL", url);
-        configured.push("NEXTAUTH_URL");
-      }
+      // In production always overwrite — .env.local may contain a stale dev URL
+      // from the first-run dev container, and next start reads .env.local in a
+      // separate process where process.env changes do not carry over.
+      const isNewUrl = !getVar("NEXTAUTH_URL", envMap);
+      envMap.set("NEXTAUTH_URL", url);
+      if (isNewUrl) configured.push("NEXTAUTH_URL");
       const source = explicitUrl ? "PRODUCTION_URL secret" : "auto-detected";
       console.log(`  Production URL: ${url} (${source})`);
 
