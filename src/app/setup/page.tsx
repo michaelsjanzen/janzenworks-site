@@ -18,7 +18,10 @@ export default async function SetupPage() {
 
   const detectedUrl = detectSetupUrl() ?? "";
   const currentSecret = process.env.NEXTAUTH_SECRET ?? "";
-  const isDevEnvironment = isDevUrl(detectedUrl);
+  // REPLIT_DEPLOYMENT="1" is set in production containers — never show the dev
+  // warning there even if the URL pattern matches (Replit prod URLs also use .replit.dev).
+  const isReplitProduction = process.env.REPLIT_DEPLOYMENT === "1";
+  const isDevEnvironment = !isReplitProduction && isDevUrl(detectedUrl);
 
   return (
     <div className="min-h-screen bg-zinc-50">
