@@ -131,10 +131,8 @@ export async function POST(req: NextRequest) {
   );
   if (totalHits > 50_000) {
     // Soft-ban and reject without explanation
-    await db
-      .update(networkSites)
-      .set({ banned: true })
-      .where(eq(networkSites.siteId, site_id));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (db.update(networkSites) as any).set({ banned: true }).where(eq(networkSites.siteId, site_id));
     return NextResponse.json({ error: "Submission rejected" }, { status: 422 });
   }
 
