@@ -85,14 +85,15 @@ export async function POST(req: NextRequest) {
         pluginVersion: plugin_version ?? null,
         lastSeenAt: new Date(),
       } as any)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .onConflictDoUpdate({
         target: networkSites.siteId,
         set: {
           networkToken,
           pluginVersion: plugin_version ?? null,
           lastSeenAt: new Date(),
-          banned: false, // re-registration clears a soft-ban
-        },
+          banned: false,
+        } as any,
       });
   } catch (err) {
     console.error("[ingest/register] DB error:", err);

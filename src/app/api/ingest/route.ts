@@ -155,7 +155,8 @@ export async function POST(req: NextRequest) {
     // Update last_seen timestamp and plugin version on the site record
     await db
       .update(networkSites)
-      .set({ lastSeenAt: new Date(), pluginVersion: plugin_version ?? null })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .set({ lastSeenAt: new Date(), pluginVersion: plugin_version ?? null } as any)
       .where(eq(networkSites.siteId, site_id));
   } catch (err) {
     console.error("[ingest] DB error:", err);
