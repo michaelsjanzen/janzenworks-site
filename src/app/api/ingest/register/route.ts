@@ -78,12 +78,13 @@ export async function POST(req: NextRequest) {
     // Upsert: if the site re-registers (e.g. reinstall), refresh its token and version.
     await db
       .insert(networkSites)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .values({
         siteId: site_id,
         networkToken,
         pluginVersion: plugin_version ?? null,
         lastSeenAt: new Date(),
-      })
+      } as any)
       .onConflictDoUpdate({
         target: networkSites.siteId,
         set: {

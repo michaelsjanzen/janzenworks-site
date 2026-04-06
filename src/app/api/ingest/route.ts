@@ -142,13 +142,14 @@ export async function POST(req: NextRequest) {
   try {
     await db
       .insert(networkSubmissions)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .values({
         siteId: site_id,
         date,
         pluginVersion: plugin_version ?? null,
         aeoTier: typeof aeo_tier === "number" ? aeo_tier : 0,
         bots,
-      })
+      } as any)
       .onConflictDoNothing();
 
     // Update last_seen timestamp and plugin version on the site record
