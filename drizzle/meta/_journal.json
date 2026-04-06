@@ -8,6 +8,20 @@
       "when": 1774362268624,
       "tag": "0000_add_ai_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1743724800000,
+      "tag": "0001_add_api_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775482158198,
+      "tag": "0002_bent_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }

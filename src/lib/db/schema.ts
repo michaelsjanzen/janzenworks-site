@@ -209,6 +209,24 @@ export const widgetSettings = pgTable("widget_settings", {
   uniqueIndex("widget_settings_widget_key_idx").on(t.widgetId, t.key),
 ]);
 
+// --- API Keys Table ---
+// Developer tokens for the public REST API (/api/*).
+// The full token is shown once on creation and never stored.
+// Only a SHA-256 hash (keyHash) and a short display prefix (keyPrefix) are persisted.
+// Token format: "pm_" + 64 hex chars (32 random bytes).
+export const apiKeys = pgTable("api_keys", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  /** First 10 chars of the token (e.g. "pm_a1b2c3d4") — shown in the admin list. */
+  keyPrefix: varchar("key_prefix", { length: 16 }).notNull(),
+  /** SHA-256 hex digest of the full token. Used for constant-time validation. */
+  keyHash: text("key_hash").notNull().unique(),
+  createdBy: text("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // --- AI Usage Table ---
 // Per-user hourly AI call counter. One row per user; window resets after 1 hour.
 // userId is the PK — no FK so orphaned rows from deleted users are harmless.
@@ -248,4 +266,40 @@ export const postCategoriesRelations = relations(postCategories, ({ one }) => ({
 export const postTagsRelations = relations(postTags, ({ one }) => ({
   post: one(posts, { fields: [postTags.postId], references: [posts.id] }),
   tag: one(tags, { fields: [postTags.tagId], references: [tags.id] }),
+}));
+
+// --- Pugmill Intelligence Network ---
+
+/**
+ * One row per registered WP Pugmill site.
+ * site_id is SHA-256(home_url + instance_id) — opaque, never reversible.
+ * network_token is the HMAC secret issued at registration time; stored hashed.
+ */
+export const networkSites = pgTable("network_sites", {
+  id: serial("id").primaryKey(),
+  siteId: varchar("site_id", { length: 64 }).notNull().unique(),
+  // HMAC-SHA256(PUGMILL_NETWORK_SECRET, site_id:opted_in_at:nonce)
+  networkToken: varchar("network_token", { length: 64 }).notNull(),
+  pluginVersion: varchar("plugin_version", { length: 20 }),
+  registeredAt: timestamp("registered_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at"),
+  // Soft-ban: set true if outlier detection flags the site
+  banned: boolean("banned").default(false).notNull(),
+});
+
+/**
+ * One row per accepted daily submission.
+ * Unique constraint on (site_id, date) enforces exactly one submission per site per day.
+ */
+export const networkSubmissions = pgTable("network_submissions", {
+  id: serial("id").primaryKey(),
+  siteId: varchar("site_id", { length: 64 }).notNull(),
+  date: varchar("date", { length: 10 }).notNull(), // YYYY-MM-DD
+  pluginVersion: varchar("plugin_version", { length: 20 }),
+  aeoTier: integer("aeo_tier").default(0).notNull(),
+  bots: jsonb("bots").notNull(),
+  receivedAt: timestamp("received_at").defaultNow().notNull(),
+}, (t) => ({
+  siteDate: uniqueIndex("network_submissions_site_date_idx").on(t.siteId, t.date),
+  siteIdIdx: index("network_submissions_site_id_idx").on(t.siteId),
 }));
