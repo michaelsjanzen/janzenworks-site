@@ -12,23 +12,31 @@
 // Google-Extended matching Googlebot.
 
 export const BOT_PATTERNS: { pattern: RegExp; canonical: string }[] = [
-  { pattern: /GPTBot/i,             canonical: "ChatGPT"     },
-  { pattern: /ChatGPT-User/i,       canonical: "ChatGPT"     },
-  { pattern: /OAI-SearchBot/i,      canonical: "ChatGPT"     },
-  { pattern: /ClaudeBot/i,          canonical: "Claude"      },
-  { pattern: /claude-web/i,         canonical: "Claude"      },
-  { pattern: /anthropic-ai/i,       canonical: "Claude"      },
-  { pattern: /PerplexityBot/i,      canonical: "Perplexity"  },
-  { pattern: /Google-Extended/i,    canonical: "Gemini"      },
-  { pattern: /Amazonbot/i,          canonical: "Amazonbot"   },
-  { pattern: /meta-externalagent/i, canonical: "Meta"        },
-  { pattern: /cohere-ai/i,          canonical: "Cohere"      },
-  { pattern: /CCBot/i,              canonical: "CCBot"       },
-  { pattern: /Googlebot/i,          canonical: "Googlebot"   },
-  { pattern: /bingbot/i,            canonical: "Bingbot"     },
-  { pattern: /DuckDuckBot/i,        canonical: "DuckDuckBot" },
-  { pattern: /Bytespider/i,         canonical: "Bytespider"  },
-  { pattern: /Applebot/i,           canonical: "Applebot"    },
+  // OpenAI — three distinct crawlers; OAI-SearchBot before GPTBot to avoid prefix collisions
+  { pattern: /OAI-SearchBot/i,      canonical: "OAI-SearchBot"   }, // Real-time search grounding
+  { pattern: /ChatGPT-User/i,       canonical: "ChatGPT-User"    }, // Live user browsing
+  { pattern: /GPTBot/i,             canonical: "GPTBot"          }, // Training / web index
+  // Anthropic/Claude — three distinct crawlers
+  { pattern: /ClaudeBot/i,          canonical: "ClaudeBot"       }, // Training / web index
+  { pattern: /Claude-User/i,        canonical: "Claude-User"     }, // Live user browsing
+  { pattern: /claude-web/i,         canonical: "Claude-User"     }, // Alias for Claude-User
+  { pattern: /anthropic-ai/i,       canonical: "anthropic-ai"    }, // Direct API access
+  // Perplexity — index vs live
+  { pattern: /Perplexity-User/i,    canonical: "Perplexity-User" }, // Live user search
+  { pattern: /PerplexityBot/i,      canonical: "PerplexityBot"   }, // Index crawler
+  // Other AI — Google-Extended before Googlebot to prevent early match
+  { pattern: /Google-Extended/i,    canonical: "Gemini"          },
+  { pattern: /Amazonbot/i,          canonical: "Amazonbot"       },
+  { pattern: /meta-externalagent/i, canonical: "Meta"            },
+  { pattern: /cohere-ai/i,          canonical: "Cohere"          },
+  { pattern: /CCBot/i,              canonical: "CCBot"           },
+  // Search engines — Applebot-Extended before Applebot
+  { pattern: /Applebot-Extended/i,  canonical: "Applebot-Extended" }, // Apple Intelligence training
+  { pattern: /Googlebot/i,          canonical: "Googlebot"       },
+  { pattern: /bingbot/i,            canonical: "Bingbot"         },
+  { pattern: /DuckDuckBot/i,        canonical: "DuckDuckBot"     },
+  { pattern: /Bytespider/i,         canonical: "Bytespider"      },
+  { pattern: /Applebot/i,           canonical: "Applebot"        }, // Siri / Spotlight search
 ];
 
 /**
@@ -52,19 +60,30 @@ export interface BotInfo {
 }
 
 export const BOT_CONFIG: Record<string, BotInfo> = {
-  ChatGPT:    { label: "ChatGPT",    color: "#10a37f", type: "ai"     },
-  Claude:     { label: "Claude",     color: "#d97706", type: "ai"     },
-  Perplexity: { label: "Perplexity", color: "#6366f1", type: "ai"     },
+  // OpenAI
+  "GPTBot":          { label: "GPTBot (OpenAI training)",       color: "#10a37f", type: "ai"     },
+  "OAI-SearchBot":   { label: "OAI-SearchBot (ChatGPT search)", color: "#0d8a6a", type: "ai"     },
+  "ChatGPT-User":    { label: "ChatGPT-User (live browsing)",   color: "#1ac89e", type: "ai"     },
+  // Anthropic/Claude
+  "ClaudeBot":       { label: "ClaudeBot (Anthropic training)", color: "#d97706", type: "ai"     },
+  "Claude-User":     { label: "Claude-User (live browsing)",    color: "#f59e0b", type: "ai"     },
+  "anthropic-ai":    { label: "anthropic-ai (API access)",      color: "#fbbf24", type: "ai"     },
+  // Perplexity
+  "PerplexityBot":   { label: "PerplexityBot",                  color: "#6366f1", type: "ai"     },
+  "Perplexity-User": { label: "Perplexity-User (live)",         color: "#818cf8", type: "ai"     },
+  // Other AI
   Gemini:     { label: "Gemini",     color: "#4285f4", type: "ai"     },
   Amazonbot:  { label: "Amazonbot",  color: "#ff9900", type: "ai"     },
   Meta:       { label: "Meta",       color: "#0866ff", type: "ai"     },
   Cohere:     { label: "Cohere",     color: "#39a2c8", type: "ai"     },
   CCBot:      { label: "CCBot",      color: "#6b7280", type: "ai"     },
-  Googlebot:  { label: "Googlebot",  color: "#34a853", type: "search" },
-  Bingbot:    { label: "Bingbot",    color: "#00809d", type: "search" },
-  Applebot:   { label: "Applebot",   color: "#555555", type: "search" },
-  DuckDuckBot:{ label: "DuckDuckBot",color: "#de5833", type: "search" },
-  Bytespider: { label: "Bytespider", color: "#69c9d0", type: "search" },
+  // Search engines
+  Googlebot:           { label: "Googlebot",                             color: "#34a853", type: "search" },
+  Bingbot:             { label: "Bingbot",                               color: "#00809d", type: "search" },
+  "Applebot-Extended": { label: "Applebot-Extended (Apple Intelligence)", color: "#374151", type: "search" },
+  Applebot:            { label: "Applebot (Siri / Spotlight)",            color: "#555555", type: "search" },
+  DuckDuckBot:         { label: "DuckDuckBot",                            color: "#de5833", type: "search" },
+  Bytespider:          { label: "Bytespider",                             color: "#69c9d0", type: "search" },
 };
 
 // ── Path → resource type ──────────────────────────────────────────────────────
