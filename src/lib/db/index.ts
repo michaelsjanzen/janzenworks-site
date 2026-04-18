@@ -14,17 +14,21 @@ if (!connectionString) {
   );
 }
 
-// Many managed Postgres providers (Supabase, Neon, Railway, etc.) use
-// self-signed or intermediate certs that Node's pg driver rejects by default.
-// rejectUnauthorized: false keeps the connection encrypted while skipping
-// chain verification — safe because the connection string itself is the secret.
-// We skip SSL only for local connections where it is not needed.
 const isLocal =
   connectionString.includes("localhost") ||
   connectionString.includes("127.0.0.1");
 
+// pg v8+ treats sslmode=require/prefer/verify-ca as verify-full (full chain
+// check), which rejects Supabase's self-signed cert. Strip the sslmode query
+// param and pass our own ssl option so rejectUnauthorized:false takes effect.
+// Traffic remains encrypted — we're only skipping chain verification, which
+// is standard for managed Postgres on serverless platforms.
+const strippedUrl = connectionString
+  .replace(/([?&])sslmode=[^&]*/g, "$1")
+  .replace(/[?&]$/, "");
+
 const pool = new Pool({
-  connectionString,
+  connectionString: isLocal ? connectionString : strippedUrl,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
