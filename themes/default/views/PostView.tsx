@@ -6,6 +6,7 @@ import rehypeSlug from "rehype-slug";
 import Link from "next/link";
 import Image from "next/image";
 import type { ArticleLayoutConfig } from "../design";
+import { extractCitations } from "@/lib/aeo";
 
 // SVG elements are excluded because inline SVG has a long history of
 // sanitization bypasses via <animate>, <use>, and foreignObject. Posts don't
@@ -32,9 +33,9 @@ export interface PostTaxonomy { name: string; slug: string }
 export interface AeoMetadata {
   summary?: string;
   questions?: { q: string; a: string }[];
-  entities?: { type: string; name: string; description?: string }[];
+  entities?: { type: string; name: string; description?: string; sameAs?: string }[];
   keywords?: string[];
-  schemaType?: "HowTo" | "Product" | "Event" | "LocalBusiness" | "VideoObject";
+  schemaType?: "HowTo" | "Product" | "Event" | "LocalBusiness" | "VideoObject" | "Review";
   schemaData?: Record<string, string>;
 }
 
@@ -128,7 +129,10 @@ export default function PostView({
       "@type": toSchemaType(e.type),
       name: e.name,
       ...(e.description ? { description: e.description } : {}),
+      ...(e.sameAs ? { sameAs: e.sameAs } : {}),
     }));
+
+  const citations = extractCitations(content);
 
   const articleSchema = canonicalUrl
     ? safeJson({
@@ -148,9 +152,11 @@ export default function PostView({
               "@type": "Person",
               name: p.name,
               ...(p.description ? { description: p.description } : {}),
+              ...(p.sameAs ? { sameAs: p.sameAs } : {}),
             }))
           : (siteName ? [{ "@type": "Organization", name: siteName }] : undefined),
         ...(mentions.length > 0 ? { mentions } : {}),
+        ...(citations.length > 0 ? { citation: citations.map(c => ({ "@type": "WebPage", url: c.url, name: c.name })) } : {}),
       })
     : null;
 
@@ -226,6 +232,27 @@ export default function PostView({
         ...(sd.thumbnailUrl ? { thumbnailUrl: sd.thumbnailUrl } : {}),
         ...(sd.uploadDate ? { uploadDate: sd.uploadDate } : {}),
         ...(sd.duration ? { duration: sd.duration } : {}),
+      });
+    }
+    if (st === "Review") {
+      if (!sd.itemName) return null;
+      return safeJson({
+        "@context": "https://schema.org",
+        "@type": "Review",
+        ...(canonicalUrl ? { url: canonicalUrl } : {}),
+        itemReviewed: {
+          "@type": sd.itemType || "Thing",
+          name: sd.itemName,
+          ...(sd.itemAuthor ? { author: { "@type": "Person", name: sd.itemAuthor } } : {}),
+        },
+        ...(sd.ratingValue ? {
+          reviewRating: {
+            "@type": "Rating",
+            ratingValue: sd.ratingValue,
+            bestRating: sd.bestRating || "5",
+          },
+        } : {}),
+        ...(sd.reviewBody ? { reviewBody: sd.reviewBody } : {}),
       });
     }
     return null;

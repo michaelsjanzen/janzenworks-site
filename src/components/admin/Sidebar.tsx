@@ -36,6 +36,10 @@ const settingsSubItems = [
   { label: "Widgets", path: "/admin/settings/widgets" },
   { label: "Users", path: "/admin/users" },
   { label: "AI", path: "/admin/settings/ai" },
+  { label: "Storage", path: "/admin/settings/storage" },
+  { label: "OAuth Sign-in", path: "/admin/settings/auth" },
+  { label: "Email", path: "/admin/settings/email" },
+  { label: "API Keys", path: "/admin/settings/api-keys" },
 ];
 
 const contentSection = ["/admin/posts", "/admin/categories", "/admin/tags", "/admin/media"];

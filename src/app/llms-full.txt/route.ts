@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
     lines.push(`## ${post.title}`);
     lines.push("");
     lines.push(`URL: ${url}`);
+    lines.push(`Markdown: ${url}/llm.txt`);
     lines.push(`Type: ${post.type}`);
     if (post.excerpt) lines.push(`Summary: ${post.excerpt}`);
 

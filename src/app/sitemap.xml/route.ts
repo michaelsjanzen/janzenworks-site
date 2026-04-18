@@ -17,11 +17,14 @@ function escapeXml(str: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function urlEntry(loc: string, lastmod: Date | null, changefreq: string, priority: number): string {
+function urlEntry(loc: string, lastmod: Date | null, changefreq: string, priority: number, markdownUrl?: string): string {
   const lines = [`  <url>`, `    <loc>${escapeXml(loc)}</loc>`];
   if (lastmod) lines.push(`    <lastmod>${lastmod.toISOString()}</lastmod>`);
   lines.push(`    <changefreq>${changefreq}</changefreq>`);
   lines.push(`    <priority>${priority}</priority>`);
+  if (markdownUrl) {
+    lines.push(`    <xhtml:link rel="alternate" type="text/markdown" href="${escapeXml(markdownUrl)}"/>`);
+  }
   lines.push(`  </url>`);
   return lines.join("\n");
 }
@@ -60,6 +63,7 @@ export async function GET(req: NextRequest) {
         p.updatedAt,
         p.type === "page" ? "monthly" : "weekly",
         p.type === "page" ? 0.8 : 0.6,
+        `${siteUrl}/post/${p.slug}/llm.txt`,
       )
     ),
     ...allCategories.map(c =>
@@ -72,7 +76,7 @@ export async function GET(req: NextRequest) {
 
   const xml = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">`,
     ...entries,
     `</urlset>`,
   ].join("\n");

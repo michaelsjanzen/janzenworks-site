@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tags, postTags, posts } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { checkApiRateLimit } from "@/lib/rate-limit";
+import { authorizeApiRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +16,8 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest) {
-  const limited = checkApiRateLimit(req);
-  if (limited) return limited;
+  const auth = await authorizeApiRequest(req);
+  if (auth.ok === false) return auth.response;
 
   try {
     const rows = await db

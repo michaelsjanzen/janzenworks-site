@@ -6,7 +6,7 @@ import { z } from "zod";
  *   - Server actions (write path validation)
  *   - Site pages, llms.txt routes (read path validation)
  */
-export const EXTENDED_SCHEMA_TYPES = ["HowTo", "Product", "Event", "LocalBusiness", "VideoObject"] as const;
+export const EXTENDED_SCHEMA_TYPES = ["HowTo", "Product", "Event", "LocalBusiness", "VideoObject", "Review"] as const;
 export type ExtendedSchemaType = typeof EXTENDED_SCHEMA_TYPES[number];
 
 export const aeoSchema = z.object({
@@ -16,6 +16,7 @@ export const aeoSchema = z.object({
     type: z.string(),
     name: z.string(),
     description: z.string().optional(),
+    sameAs: z.string().url().optional(),
   })).optional(),
   keywords: z.array(z.string()).max(10).optional(),
   // Extended JSON-LD schema type and its field data
@@ -24,6 +25,26 @@ export const aeoSchema = z.object({
 }).optional();
 
 export type AeoMetadata = NonNullable<z.infer<typeof aeoSchema>>;
+
+/**
+ * Extract external citations from Markdown content.
+ * Matches [text](url) links (not images) and returns unique external URLs.
+ */
+export function extractCitations(markdown: string): { url: string; name: string }[] {
+  // Negative lookbehind excludes image syntax ![alt](url)
+  const pattern = /(?<!!)\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  const seen = new Set<string>();
+  const citations: { url: string; name: string }[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(markdown)) !== null) {
+    const [, name, url] = match;
+    if (!seen.has(url)) {
+      seen.add(url);
+      citations.push({ url, name });
+    }
+  }
+  return citations;
+}
 
 /**
  * Compute a 0–3 AEO completeness score for a post.
@@ -63,10 +84,14 @@ export function parseAeoMetadata(raw: unknown): AeoMetadata | null {
     if (qs.length > 0) partial.questions = qs;
   }
   if (Array.isArray(v.entities)) {
-    const es = (v.entities as unknown[]).filter(
-      (e): e is { type: string; name: string; description?: string } =>
-        typeof (e as Record<string, unknown>).name === "string",
-    );
+    const es = (v.entities as unknown[])
+      .filter((e): e is Record<string, unknown> => typeof (e as Record<string, unknown>).name === "string")
+      .map(e => ({
+        type: typeof e.type === "string" ? e.type : "Thing",
+        name: e.name as string,
+        ...(typeof e.description === "string" ? { description: e.description } : {}),
+        ...(typeof e.sameAs === "string" ? { sameAs: e.sameAs } : {}),
+      }));
     if (es.length > 0) partial.entities = es as AeoMetadata["entities"];
   }
   if (Array.isArray(v.keywords)) {

@@ -41,5 +41,23 @@ export const pluginBotAnalyticsRecent = pgTable("plugin_bot_analytics_recent", {
   visitedAt: timestamp("visited_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export type BotDailyRow  = typeof pluginBotAnalyticsDaily.$inferSelect;
-export type BotRecentRow = typeof pluginBotAnalyticsRecent.$inferSelect;
+/**
+ * Per-post AEO hit table.
+ * One row per (bot_name × post_slug × day). Populated when a bot hits
+ * /post/[slug]/llm.txt (resource_type = "Post Markdown").
+ * Used for the Uncovered AEO report and the discovery funnel.
+ */
+export const pluginBotAnalyticsPostAeo = pgTable(
+  "plugin_bot_analytics_post_aeo",
+  {
+    botName:  varchar("bot_name",  { length: 100 }).notNull(),
+    postSlug: varchar("post_slug", { length: 255 }).notNull(),
+    day:      date("day").notNull(),
+    count:    integer("count").notNull().default(1),
+  },
+  (t) => [primaryKey({ columns: [t.botName, t.postSlug, t.day] })],
+);
+
+export type BotDailyRow   = typeof pluginBotAnalyticsDaily.$inferSelect;
+export type BotRecentRow  = typeof pluginBotAnalyticsRecent.$inferSelect;
+export type BotPostAeoRow = typeof pluginBotAnalyticsPostAeo.$inferSelect;

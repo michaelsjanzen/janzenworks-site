@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { loadPlugins } from "@/lib/plugin-loader";
 import { hooks } from "@/lib/hooks";
 import type { PostPayload } from "@/lib/hook-catalogue";
-import { checkApiRateLimit } from "@/lib/rate-limit";
+import { authorizeApiRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +19,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const limited = checkApiRateLimit(req);
-  if (limited) return limited;
+  const auth = await authorizeApiRequest(req);
+  if (auth.ok === false) return auth.response;
 
   try {
     await loadPlugins();

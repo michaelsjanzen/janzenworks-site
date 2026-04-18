@@ -2,7 +2,7 @@ import type { PugmillPlugin } from "../../src/lib/plugin-registry";
 import { db } from "../../src/lib/db";
 import { sql } from "drizzle-orm";
 import { detectBot, classifyPath } from "../../src/lib/bot-detection";
-import { pluginBotAnalyticsDaily, pluginBotAnalyticsRecent } from "./schema";
+import { pluginBotAnalyticsDaily, pluginBotAnalyticsRecent, pluginBotAnalyticsPostAeo } from "./schema";
 import BotAnalyticsAdminPage from "./components/AdminPage";
 
 /**
@@ -11,6 +11,12 @@ import BotAnalyticsAdminPage from "./components/AdminPage";
  *  1. Upsert into plugin_bot_analytics_daily  — aggregate counter (90-day retention).
  *  2. Insert into plugin_bot_analytics_recent — ring buffer (7-day + 500-row cap).
  */
+/** Extracts the post slug from a /post/[slug]/llm.txt path, or null if no match. */
+function extractPostSlug(path: string): string | null {
+  const match = path.match(/^\/post\/(.+)\/llm\.txt$/);
+  return match ? match[1] : null;
+}
+
 async function logBotVisit(botName: string, path: string, resourceType: string) {
   // 1. Upsert aggregate row — composite PK (bot_name, resource_type, day) deduplicates.
   await db.execute(sql`
@@ -20,7 +26,20 @@ async function logBotVisit(botName: string, path: string, resourceType: string) 
     DO UPDATE SET count = plugin_bot_analytics_daily.count + 1
   `);
 
-  // 2. Append to recent ring-buffer.
+  // 2. If this is an AEO markdown hit, attribute it to the specific post.
+  if (resourceType === "Post Markdown") {
+    const postSlug = extractPostSlug(path);
+    if (postSlug) {
+      void db.execute(sql`
+        INSERT INTO plugin_bot_analytics_post_aeo (bot_name, post_slug, day, count)
+        VALUES (${botName}, ${postSlug}, CURRENT_DATE, 1)
+        ON CONFLICT (bot_name, post_slug, day)
+        DO UPDATE SET count = plugin_bot_analytics_post_aeo.count + 1
+      `);
+    }
+  }
+
+  // 3. Append to recent ring-buffer.
   await db.insert(pluginBotAnalyticsRecent).values({ botName, resourceType, path });
 
   // Prune recent: drop rows older than 7 days, then enforce 500-row hard cap.
@@ -78,10 +97,26 @@ export const botAnalyticsPlugin: PugmillPlugin = {
         CREATE INDEX IF NOT EXISTS plugin_bot_analytics_recent_visited_at_idx
           ON plugin_bot_analytics_recent (visited_at DESC)
       `);
+
+      // Per-post AEO hit table
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS plugin_bot_analytics_post_aeo (
+          bot_name  VARCHAR(100) NOT NULL,
+          post_slug VARCHAR(255) NOT NULL,
+          day       DATE         NOT NULL,
+          count     INTEGER      NOT NULL DEFAULT 1,
+          PRIMARY KEY (bot_name, post_slug, day)
+        )
+      `);
+      await db.execute(sql`
+        CREATE INDEX IF NOT EXISTS plugin_bot_analytics_post_aeo_day_idx
+          ON plugin_bot_analytics_post_aeo (day DESC)
+      `);
     },
     async teardown() {
       await db.execute(sql`DROP TABLE IF EXISTS plugin_bot_analytics_daily`);
       await db.execute(sql`DROP TABLE IF EXISTS plugin_bot_analytics_recent`);
+      await db.execute(sql`DROP TABLE IF EXISTS plugin_bot_analytics_post_aeo`);
     },
   },
 

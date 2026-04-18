@@ -29,7 +29,8 @@ export type AuditAction =
   | "post.publish_scheduled"
   | "design.draft_save" | "design.publish" | "design.draft_discard" | "design.structural_save"
   | "comment.approve" | "comment.delete"
-  | "contact.submission_delete";
+  | "contact.submission_delete"
+  | "api_key.create" | "api_key.revoke";
 
 interface AuditEntry {
   action: AuditAction;

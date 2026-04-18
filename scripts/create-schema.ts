@@ -224,6 +224,19 @@ export async function createSchema() {
   `);
 
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "api_keys" (
+      "id"           SERIAL       PRIMARY KEY,
+      "name"         TEXT         NOT NULL,
+      "key_prefix"   VARCHAR(16)  NOT NULL,
+      "key_hash"     TEXT         NOT NULL UNIQUE,
+      "created_by"   TEXT         REFERENCES "admin_users"("id") ON DELETE SET NULL,
+      "last_used_at" TIMESTAMP,
+      "revoked_at"   TIMESTAMP,
+      "created_at"   TIMESTAMP    NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "ai_usage" (
       "user_id"      TEXT      PRIMARY KEY,
       "window_start" TIMESTAMP NOT NULL DEFAULT NOW(),

@@ -1,0 +1,6 @@
+{
+  "id": "outbound-webhooks",
+  "name": "Outbound Webhooks",
+  "version": "1.0.0",
+  "description": "Delivers signed JSON payloads to external URLs when CMS events occur. Connect Zapier, Make, Slack, or any custom integration."
+}

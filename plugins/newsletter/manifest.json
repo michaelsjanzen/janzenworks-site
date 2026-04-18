@@ -1,0 +1,6 @@
+{
+  "id": "newsletter",
+  "name": "Newsletter",
+  "version": "1.0.0",
+  "description": "Self-managed subscriber list. Sends new posts to subscribers via Settings → Email when a post is published."
+}

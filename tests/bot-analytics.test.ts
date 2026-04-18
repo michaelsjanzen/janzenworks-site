@@ -142,12 +142,13 @@ describe("classifyPath — AEO endpoints", () => {
     expect(classifyPath("/llms-full.txt")).toBe("llms-full.txt");
   });
 
-  it("path with llm= param → Post Markdown", () => {
-    expect(classifyPath("/post/my-article?llm=1")).toBe("Post Markdown");
+  it("/post/[slug]/llm.txt → Post Markdown", () => {
+    expect(classifyPath("/post/my-article/llm.txt")).toBe("Post Markdown");
   });
 
-  it("path with &llm= param → Post Markdown", () => {
-    expect(classifyPath("/post/my-article?foo=bar&llm=1")).toBe("Post Markdown");
+  it("llm= query param (WPPugmill convention) → HTML Page, not Post Markdown", () => {
+    // Pugmill uses a clean URL, not a query param — this must not be misclassified
+    expect(classifyPath("/post/my-article?llm=1")).toBe("HTML Page");
   });
 
   it("/[slug]/llms.txt → llms.txt", () => {

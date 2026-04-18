@@ -174,3 +174,4 @@ Thumbs.db
 public/uploads/*
 !public/uploads/.gitkeep
 .claude/
+.vercel

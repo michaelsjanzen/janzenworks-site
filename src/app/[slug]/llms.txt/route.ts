@@ -94,7 +94,7 @@ export async function GET(
       const childAeo = parseAeoMetadata(child.aeoMetadata);
       const desc = childAeo?.summary ?? child.excerpt ?? "";
       lines.push(`- [${child.title}](${childUrl})${desc ? `: ${desc}` : ""}`);
-      // Link to child's own llms.txt
+      lines.push(`  - AI markdown: ${siteUrl}/post/${child.slug}/llm.txt`);
       lines.push(`  - AI index: ${siteUrl}/${child.slug}/llms.txt`);
     }
     lines.push("");

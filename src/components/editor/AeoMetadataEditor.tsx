@@ -1,12 +1,12 @@
 "use client";
 import { useState, forwardRef, useImperativeHandle, useRef } from "react";
 
-export type ExtendedSchemaType = "HowTo" | "Product" | "Event" | "LocalBusiness" | "VideoObject";
+export type ExtendedSchemaType = "HowTo" | "Product" | "Event" | "LocalBusiness" | "VideoObject" | "Review";
 
 export interface AeoMetadata {
   summary?: string;
   questions?: { q: string; a: string }[];
-  entities?: { type: string; name: string; description?: string }[];
+  entities?: { type: string; name: string; description?: string; sameAs?: string }[];
   keywords?: string[];
   schemaType?: ExtendedSchemaType;
   schemaData?: Record<string, string>;
@@ -14,6 +14,14 @@ export interface AeoMetadata {
 
 // Per-type field definitions: [fieldKey, label, placeholder, isTextarea?]
 const SCHEMA_FIELDS: Record<ExtendedSchemaType, [string, string, string, boolean?][]> = {
+  Review: [
+    ["itemType", "Item type", "Book, Movie, Product, Restaurant, Software, etc."],
+    ["itemName", "Item name", "The name of the thing being reviewed"],
+    ["itemAuthor", "Item author / creator", "Author, director, or brand (optional)"],
+    ["ratingValue", "Rating", "4"],
+    ["bestRating", "Best possible rating", "5"],
+    ["reviewBody", "Review body", "Your full review text...", true],
+  ],
   HowTo: [
     ["name", "Name", "How to bake sourdough bread"],
     ["totalTime", "Total time", "PT1H30M (ISO 8601 duration, e.g. PT1H for 1 hour)"],
@@ -70,7 +78,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
   const [questions, setQuestions] = useState<{ q: string; a: string }[]>(
     defaultValue?.questions ?? []
   );
-  const [entities, setEntities] = useState<{ type: string; name: string; description?: string }[]>(
+  const [entities, setEntities] = useState<{ type: string; name: string; description?: string; sameAs?: string }[]>(
     defaultValue?.entities ?? []
   );
   const [keywords, setKeywords] = useState<string[]>(defaultValue?.keywords ?? []);
@@ -82,7 +90,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
   function buildValue(
     s: string,
     qs: { q: string; a: string }[],
-    es: { type: string; name: string; description?: string }[],
+    es: { type: string; name: string; description?: string; sameAs?: string }[],
     kws: string[],
     st: ExtendedSchemaType | "",
     sd: Record<string, string>,
@@ -90,7 +98,12 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
     return {
       ...(s ? { summary: s } : {}),
       ...(qs.filter(q => q.q && q.a).length > 0 ? { questions: qs.filter(q => q.q && q.a) } : {}),
-      ...(es.filter(e => e.name).length > 0 ? { entities: es.filter(e => e.name) } : {}),
+      ...(es.filter(e => e.name).length > 0 ? { entities: es.filter(e => e.name).map(e => ({
+        type: e.type,
+        name: e.name,
+        ...(e.description ? { description: e.description } : {}),
+        ...(e.sameAs ? { sameAs: e.sameAs } : {}),
+      })) } : {}),
       ...(kws.length > 0 ? { keywords: kws } : {}),
       ...(st ? { schemaType: st, schemaData: sd } : {}),
     };
@@ -221,7 +234,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
           <button
             type="button"
             onClick={() => {
-              const next = [...entities, { type: "Thing", name: "", description: "" }];
+              const next = [...entities, { type: "Thing", name: "", description: "", sameAs: "" }];
               setEntities(next);
               onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
             }}
@@ -269,6 +282,17 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
                   onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
                 }}
                 placeholder="Short description (optional)"
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
+              />
+              <input
+                value={entity.sameAs ?? ""}
+                onChange={e => {
+                  const next = [...entities];
+                  next[i] = { ...next[i], sameAs: e.target.value };
+                  setEntities(next);
+                  onChange?.(buildValue(summary, questions, next, keywords, schemaType, schemaData));
+                }}
+                placeholder="Wikidata or Wikipedia URL (optional)"
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
               />
               <button
@@ -401,7 +425,7 @@ const AeoMetadataEditor = forwardRef<AeoMetadataEditorHandle, Props>(function Ae
           className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-zinc-400"
         >
           <option value="">— none —</option>
-          {(["HowTo", "Product", "Event", "LocalBusiness", "VideoObject"] as ExtendedSchemaType[]).map(t => (
+          {(["HowTo", "Product", "Event", "LocalBusiness", "VideoObject", "Review"] as ExtendedSchemaType[]).map(t => (
             <option key={t} value={t}>{t}</option>
           ))}
         </select>

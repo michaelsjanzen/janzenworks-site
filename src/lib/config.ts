@@ -79,6 +79,61 @@ export const configSchema = z.object({
     model: z.string().default(""),
     aiRateLimit: z.number().int().min(1).max(500).default(50),
   }).default({ provider: null, apiKey: "", model: "", aiRateLimit: 50 }),
+  storage: z.object({
+    /** "local" saves to /public/uploads (ephemeral on Replit). "s3" uses any S3-compatible store. */
+    provider: z.enum(["local", "s3"]).default("local"),
+    bucket: z.string().default(""),
+    region: z.string().default("auto"),
+    /** Access key ID — stored encrypted. */
+    accessKeyId: z.string().default(""),
+    /** Secret access key — stored encrypted. */
+    secretAccessKey: z.string().default(""),
+    /** Custom endpoint URL for R2, DigitalOcean Spaces, MinIO, etc. Leave blank for AWS. */
+    endpoint: z.string().default(""),
+    /** Base URL for public file access. Defaults to the S3 bucket URL if blank. */
+    publicUrl: z.string().default(""),
+    /** Set false for R2 / private buckets (omits ACL header). True = public-read for AWS. */
+    publicAcl: z.boolean().default(false),
+  }).default({
+    provider: "local", bucket: "", region: "auto",
+    accessKeyId: "", secretAccessKey: "", endpoint: "", publicUrl: "", publicAcl: false,
+  }),
+  auth: z.object({
+    /** Google OAuth client ID (public). */
+    googleClientId: z.string().default(""),
+    /** Google OAuth client secret — stored encrypted. */
+    googleClientSecret: z.string().default(""),
+    /** GitHub OAuth client ID (public). */
+    githubClientId: z.string().default(""),
+    /** GitHub OAuth client secret — stored encrypted. */
+    githubClientSecret: z.string().default(""),
+  }).default({ googleClientId: "", googleClientSecret: "", githubClientId: "", githubClientSecret: "" }),
+  email: z.object({
+    provider: z.enum(["resend", "smtp"]).nullable().default(null),
+    /** Display name used in the From header (e.g. "My Blog"). */
+    fromName: z.string().default(""),
+    /** Sender address (e.g. "noreply@yourdomain.com"). */
+    fromAddress: z.string().default(""),
+    /** Default destination for CMS notification emails (contact forms, etc.). */
+    toAddress: z.string().default(""),
+    /** Resend API key — stored encrypted with AI_ENCRYPTION_KEY. */
+    apiKey: z.string().default(""),
+    /** SMTP hostname */
+    smtpHost: z.string().default(""),
+    /** SMTP port (default 587) */
+    smtpPort: z.number().int().min(1).max(65535).default(587),
+    /** SMTP username */
+    smtpUser: z.string().default(""),
+    /** SMTP password — stored encrypted with AI_ENCRYPTION_KEY. */
+    smtpPassword: z.string().default(""),
+    /** Use TLS on connect (port 465). False = STARTTLS (port 587). */
+    smtpSecure: z.boolean().default(false),
+  }).default({
+    provider: null,
+    fromName: "", fromAddress: "", toAddress: "",
+    apiKey: "",
+    smtpHost: "", smtpPort: 587, smtpUser: "", smtpPassword: "", smtpSecure: false,
+  }),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -112,6 +167,17 @@ const DEFAULT_CONFIG: Config = {
     maintenanceMode: false,
   },
   ai: { provider: null, apiKey: "", model: "", aiRateLimit: 50 },
+  storage: {
+    provider: "local", bucket: "", region: "auto",
+    accessKeyId: "", secretAccessKey: "", endpoint: "", publicUrl: "", publicAcl: false,
+  },
+  auth: { googleClientId: "", googleClientSecret: "", githubClientId: "", githubClientSecret: "" },
+  email: {
+    provider: null,
+    fromName: "", fromAddress: "", toAddress: "",
+    apiKey: "",
+    smtpHost: "", smtpPort: 587, smtpUser: "", smtpPassword: "", smtpSecure: false,
+  },
 };
 
 // ─── In-memory cache ──────────────────────────────────────────────────────────

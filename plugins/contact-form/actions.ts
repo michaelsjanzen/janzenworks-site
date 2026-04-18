@@ -91,6 +91,22 @@ export async function submitContactForm(
     return { status: "error", message: "Could not send your message. Please try again." };
   }
 
+  // Send email notification — fire-and-forget, never blocks the response.
+  // Silently skipped when no email provider is configured (built-in mode).
+  import("../../src/lib/email").then(({ sendEmail }) =>
+    getConfig().then((cfg) => {
+      const to = cfg.email?.toAddress;
+      if (!to) return;
+      const phoneStr = phone ? `\nPhone: ${phone}` : "";
+      sendEmail({
+        to,
+        subject: `New contact form submission from ${name}`,
+        text: `Name: ${name}\nEmail: ${email}${phoneStr}\n\nMessage:\n${message}`,
+        replyTo: email,
+      }).catch(() => { /* non-critical */ });
+    })
+  ).catch(() => { /* non-critical */ });
+
   // Keep the unread notification badge current.
   const unread = await getUnreadCount();
   await createNotification({

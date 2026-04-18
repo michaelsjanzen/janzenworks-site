@@ -19,7 +19,7 @@ import {
   adminUsers,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { parseAeoMetadata } from "@/lib/aeo";
+import { parseAeoMetadata, extractCitations } from "@/lib/aeo";
 
 export async function GET(
   _req: NextRequest,
@@ -85,13 +85,24 @@ export async function GET(
     }
   }
 
+  // ── Citations ───────────────────────────────────────────────────────────────
+  const citations = extractCitations(post.content);
+  if (citations.length > 0) {
+    lines.push("---", "", "## Citations", "");
+    for (const { url, name } of citations) {
+      lines.push(`- [${name}](${url})`);
+    }
+    lines.push("");
+  }
+
   // ── Entities ────────────────────────────────────────────────────────────────
   const entities = aeo?.entities?.filter(e => e.name) ?? [];
   if (entities.length > 0) {
     lines.push("---", "", "## Key Entities", "");
     for (const e of entities) {
       const desc = e.description ? ` — ${e.description}` : "";
-      lines.push(`- **${e.name}** (${e.type})${desc}`);
+      const sameAs = e.sameAs ? ` <${e.sameAs}>` : "";
+      lines.push(`- **${e.name}** (${e.type})${desc}${sameAs}`);
     }
     lines.push("");
   }

@@ -195,6 +195,8 @@ import { cookieConsentPlugin } from "../../plugins/cookie-consent/index";
 import { contactFormPlugin } from "../../plugins/contact-form/index";
 import { defaultWidgetsPlugin } from "../../plugins/default-widgets/index";
 import { botAnalyticsPlugin } from "../../plugins/bot-analytics/index";
+import { outboundWebhooksPlugin } from "../../plugins/outbound-webhooks/index";
+import { newsletterPlugin } from "../../plugins/newsletter/index";
 
 const ALL_PLUGINS: PugmillPlugin[] = [
   commentsPlugin,
@@ -202,6 +204,8 @@ const ALL_PLUGINS: PugmillPlugin[] = [
   cookieConsentPlugin,
   defaultWidgetsPlugin,
   botAnalyticsPlugin,
+  outboundWebhooksPlugin,
+  newsletterPlugin,
 ];
 
 let initPromise: Promise<void> | null = null;

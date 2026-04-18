@@ -1,4 +1,4 @@
-import { getBotTotals, getRecentVisits, getDailyTotals, getByResourceType, getTopPaths } from "../db";
+import { getBotTotals, getRecentVisits, getDailyTotals, getByResourceType, getTopPaths, getUncoveredAeoPosts, getLlmsTxtScore } from "../db";
 import InsightsButton from "./InsightsButton";
 import { isAiConfigured } from "@/lib/ai";
 import { BOT_CONFIG } from "@/lib/bot-detection";
@@ -58,12 +58,14 @@ function BotBadge({ name }: { name: string }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function BotAnalyticsAdminPage() {
-  const [totals, recent, daily, byResource, topPaths, aiEnabled] = await Promise.all([
+  const [totals, recent, daily, byResource, topPaths, uncoveredAeo, llmsScore, aiEnabled] = await Promise.all([
     getBotTotals(30),
     getRecentVisits(50),
     getDailyTotals(30),
     getByResourceType(30),
     getTopPaths(10),
+    getUncoveredAeoPosts(),
+    getLlmsTxtScore(),
     isAiConfigured(),
   ]);
 
@@ -84,6 +86,31 @@ export default async function BotAnalyticsAdminPage() {
     byResource.some(r => r.resourceType === rt.id),
   );
   const displayResourceTypes = activeResourceTypes.length > 0 ? activeResourceTypes : RESOURCE_TYPES;
+
+  // Funnel stage computation — derived from byResource data
+  const FUNNEL_STAGES = [
+    { label: "Discovered",     resourceTypes: ["HTML Page", "llms.txt", "llms-full.txt", "Post Markdown", "Sitemap", "Robots.txt"] },
+    { label: "Infrastructure", resourceTypes: ["Robots.txt", "Sitemap", "llms.txt", "llms-full.txt"] },
+    { label: "HTML content",   resourceTypes: ["HTML Page"] },
+    { label: "AEO markdown",   resourceTypes: ["Post Markdown"] },
+  ];
+
+  function botFunnelStage(botName: string): number {
+    const botTypes = resourceMap[botName] ?? {};
+    for (let i = FUNNEL_STAGES.length - 1; i >= 0; i--) {
+      const reached = FUNNEL_STAGES[i].resourceTypes.some(rt => (botTypes[rt] ?? 0) > 0);
+      if (reached) return i + 1;
+    }
+    return 0;
+  }
+
+  // Bots that have any recorded visits
+  const activeBots = totals.map(r => r.botName);
+
+  // llms.txt health score (0-100)
+  const llmsHealthPct = llmsScore.total > 0
+    ? Math.round(((llmsScore.withSummary + llmsScore.withQa + llmsScore.withEntities) / (llmsScore.total * 3)) * 100)
+    : 0;
 
   // Daily chart data — collect all unique dates and build per-bot series
   const allDates = [...new Set(daily.map(r => r.day))].sort();
@@ -198,6 +225,116 @@ export default async function BotAnalyticsAdminPage() {
 
       {/* AI Insights */}
       {aiEnabled && <InsightsButton />}
+
+      {/* Discovery Funnel */}
+      {activeBots.length > 0 && (
+        <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-zinc-100">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Discovery Funnel</p>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              How far each bot has progressed — from first visit to consuming optimised AEO content.
+            </p>
+          </div>
+          <div className="divide-y divide-zinc-100">
+            {activeBots.map(bot => {
+              const stage = botFunnelStage(bot);
+              return (
+                <div key={bot} className="px-4 py-3 flex items-center gap-4">
+                  <div className="w-28 shrink-0">
+                    <BotBadge name={bot} />
+                  </div>
+                  <div className="flex items-center gap-1 flex-1">
+                    {FUNNEL_STAGES.map((s, i) => {
+                      const reached = stage > i;
+                      return (
+                        <div key={s.label} className="flex items-center gap-1 flex-1">
+                          <div className={`flex-1 h-1.5 rounded-full ${reached ? "" : "bg-zinc-100"}`}
+                            style={reached ? { background: BOT_CONFIG[bot]?.color ?? "#71717a" } : {}} />
+                          <div className={`w-2.5 h-2.5 rounded-full border-2 shrink-0 ${reached ? "border-transparent" : "border-zinc-200 bg-white"}`}
+                            style={reached ? { background: BOT_CONFIG[bot]?.color ?? "#71717a" } : {}} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="w-28 text-right">
+                    <span className="text-xs text-zinc-500">{FUNNEL_STAGES[stage - 1]?.label ?? "No visits"}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="px-4 py-2 bg-zinc-50 border-t border-zinc-100 flex gap-6">
+            {FUNNEL_STAGES.map((s, i) => (
+              <span key={s.label} className="text-[10px] text-zinc-400">
+                <span className="font-medium text-zinc-600">{i + 1}.</span> {s.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Uncovered AEO */}
+      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-zinc-100">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Uncovered AEO</p>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Posts with AEO metadata and bot traffic that have not yet been consumed as optimised markdown. Highest-leverage optimisation targets.
+          </p>
+        </div>
+        {uncoveredAeo.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <p className="text-sm text-zinc-400">
+              {grandTotal === 0
+                ? "No bot visit data yet — check back after crawlers arrive."
+                : "No uncovered posts — bots are consuming your AEO content."}
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {uncoveredAeo.map(p => (
+              <li key={p.slug} className="px-4 py-3 flex items-center justify-between gap-4">
+                <span className="text-sm text-zinc-700 truncate">{p.title}</span>
+                <span className="text-xs font-mono text-zinc-400 shrink-0">/post/{p.slug}/llm.txt</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* llms.txt Health */}
+      <div className="bg-white border border-zinc-200 rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">llms.txt Health</p>
+            <p className="text-xs text-zinc-400 mt-0.5">AEO content coverage across your published posts.</p>
+          </div>
+          <div className="text-right">
+            <span className="text-2xl font-bold text-zinc-900">{llmsHealthPct}%</span>
+            <p className="text-xs text-zinc-400">{llmsScore.total} posts</p>
+          </div>
+        </div>
+        <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden mb-3">
+          <div
+            className="h-full rounded-full bg-zinc-800 transition-all"
+            style={{ width: `${llmsHealthPct}%` }}
+          />
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          {[
+            { label: "Summary", count: llmsScore.withSummary },
+            { label: "Q&A pairs", count: llmsScore.withQa },
+            { label: "Entities", count: llmsScore.withEntities },
+          ].map(({ label, count }) => (
+            <div key={label} className="bg-zinc-50 rounded-lg p-2">
+              <p className="text-lg font-bold text-zinc-800">{count}</p>
+              <p className="text-xs text-zinc-500">{label}</p>
+              <p className="text-[10px] text-zinc-400">
+                {llmsScore.total > 0 ? `${Math.round((count / llmsScore.total) * 100)}%` : "—"}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Daily sparkline */}
       <div className="bg-white border border-zinc-200 rounded-lg p-4">

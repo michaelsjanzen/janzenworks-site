@@ -68,8 +68,8 @@ export const BOT_CONFIG: Record<string, BotInfo> = {
 };
 
 // ── Path → resource type ──────────────────────────────────────────────────────
-// Resource type categories match WP Pugmill:
-//   aeo       — llms.txt, llms-full.txt, Post Markdown (llm= param)
+// Resource type categories:
+//   aeo       — llms.txt, llms-full.txt, Post Markdown (/post/[slug]/llm.txt)
 //   discovery — Sitemap, Robots.txt
 //   crawl     — regular HTML pages (default)
 
@@ -81,7 +81,7 @@ export function classifyPath(path: string): string {
   const p = path.toLowerCase();
   if (p.includes("/llms-full.txt")) return "llms-full.txt";
   if (p.includes("/llms.txt"))      return "llms.txt";
-  if (path.includes("llm="))        return "Post Markdown";
+  if (p.endsWith("/llm.txt"))        return "Post Markdown";
   if (p.includes("sitemap"))        return "Sitemap";
   if (p.includes("robots.txt"))     return "Robots.txt";
   return "HTML Page";

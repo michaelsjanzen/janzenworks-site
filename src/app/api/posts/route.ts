@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { posts, categories, tags, postCategories, postTags } from "@/lib/db/schema";
 import { eq, and, inArray, desc, sql } from "drizzle-orm";
 import { loadPlugins } from "@/lib/plugin-loader";
-import { checkApiRateLimit } from "@/lib/rate-limit";
+import { authorizeApiRequest } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +26,8 @@ export const dynamic = "force-dynamic";
  *   (3a and 3b run in parallel via Promise.all, counting as one round-trip)
  */
 export async function GET(req: NextRequest) {
-  const limited = checkApiRateLimit(req);
-  if (limited) return limited;
+  const auth = await authorizeApiRequest(req);
+  if (auth.ok === false) return auth.response;
 
   try {
     await loadPlugins();
