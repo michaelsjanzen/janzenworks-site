@@ -9,6 +9,8 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    // For migrations, prefer the non-pooling direct connection when available
+    // (Vercel+Supabase integration injects POSTGRES_URL_NON_POOLING for this).
+    url: (process.env.DATABASE_URL ?? process.env.POSTGRES_URL_NON_POOLING ?? process.env.POSTGRES_URL)!,
   },
 });

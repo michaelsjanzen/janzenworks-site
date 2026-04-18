@@ -22,8 +22,8 @@ export function validateEnv() {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (!process.env.DATABASE_URL) {
-    errors.push("DATABASE_URL is not set.");
+  if (!process.env.DATABASE_URL && !process.env.POSTGRES_URL) {
+    errors.push("DATABASE_URL is not set (or POSTGRES_URL for Vercel+Supabase deployments).");
   }
 
   const secret = process.env.NEXTAUTH_SECRET;
