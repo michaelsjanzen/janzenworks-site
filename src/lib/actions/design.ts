@@ -73,7 +73,7 @@ export async function saveDesignDraft(formData: FormData): Promise<void> {
       set: {
         config: merged,
         updatedAt: sql`NOW()`,
-      } as Partial<typeof themeDesignConfigs.$inferInsert>,
+      } as unknown as Partial<typeof themeDesignConfigs.$inferInsert>,
     });
 
   invalidateDesignCache(themeId);
@@ -221,7 +221,7 @@ export async function savePartialDesignDraft(
       set: {
         config: merged,
         updatedAt: sql`NOW()`,
-      } as Partial<typeof themeDesignConfigs.$inferInsert>,
+      } as unknown as Partial<typeof themeDesignConfigs.$inferInsert>,
     });
 
   invalidateDesignCache(themeId);
@@ -268,7 +268,7 @@ export async function saveStructuralDesignTokens(
       .onConflictDoUpdate({
         target: [themeDesignConfigs.themeId, themeDesignConfigs.status],
         targetWhere: sql`status IN ('draft', 'published')`,
-        set: { config: mergedPublished, updatedAt: sql`NOW()` } as Partial<typeof themeDesignConfigs.$inferInsert>,
+        set: { config: mergedPublished, updatedAt: sql`NOW()` } as unknown as Partial<typeof themeDesignConfigs.$inferInsert>,
       }),
   ];
 
@@ -276,7 +276,7 @@ export async function saveStructuralDesignTokens(
     const mergedDraft = { ...(existingDraft[0].config as Record<string, string> ?? {}), ...partial };
     writes.push(
       db.update(themeDesignConfigs)
-        .set({ config: mergedDraft, updatedAt: sql`NOW()` } as Partial<typeof themeDesignConfigs.$inferInsert>)
+        .set({ config: mergedDraft, updatedAt: sql`NOW()` } as unknown as Partial<typeof themeDesignConfigs.$inferInsert>)
         .where(and(eq(themeDesignConfigs.themeId, themeId), eq(themeDesignConfigs.status, "draft")))
     );
   }
