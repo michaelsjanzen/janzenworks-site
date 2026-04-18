@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getConfig } from "@/lib/config";
 import { loadPlugins } from "@/lib/plugin-loader";
 import { sanitizeThemeName, getAllThemes, THEME_ALLOWLIST } from "@/lib/theme-registry";
