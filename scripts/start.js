@@ -22,6 +22,16 @@ if (existsSync(envFile)) {
   require('dotenv').config({ path: envFile, override: false });
 }
 
+// Replit production: if NEXTAUTH_URL still isn't set after loading .env.local,
+// derive it directly from PRODUCTION_URL (a Replit Secret injected into process.env).
+// This is a robust last-resort fallback that doesn't depend on replit-init.ts
+// having written .env.local correctly — the two scripts run in separate processes
+// so process.env mutations in prestart never carry over to this process.
+if (!process.env.NEXTAUTH_URL && process.env.PRODUCTION_URL) {
+  const raw = process.env.PRODUCTION_URL;
+  process.env.NEXTAUTH_URL = raw.startsWith('https://') ? raw : `https://${raw}`;
+}
+
 const port = process.env.PORT || '5000';
 const result = spawnSync(
   process.execPath,
