@@ -14,22 +14,21 @@ if (!connectionString) {
   );
 }
 
-// Supabase (and some other hosted Postgres providers) use a self-signed cert
-// in their certificate chain. Node's pg driver rejects it by default.
-// rejectUnauthorized: false trusts the server cert without verifying the chain —
-// safe here because the connection string itself is a secret and traffic is
-// still encrypted. On local/Railway/Neon the ssl option is ignored when the
-// server doesn't request it.
-const isSupabase =
-  connectionString.includes(".supabase.co") ||
-  connectionString.includes("supabase.com");
+// Many managed Postgres providers (Supabase, Neon, Railway, etc.) use
+// self-signed or intermediate certs that Node's pg driver rejects by default.
+// rejectUnauthorized: false keeps the connection encrypted while skipping
+// chain verification — safe because the connection string itself is the secret.
+// We skip SSL only for local connections where it is not needed.
+const isLocal =
+  connectionString.includes("localhost") ||
+  connectionString.includes("127.0.0.1");
 
 const pool = new Pool({
   connectionString,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
+  ssl: isLocal ? undefined : { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool, { schema });
