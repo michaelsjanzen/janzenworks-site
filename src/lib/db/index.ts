@@ -18,6 +18,9 @@ const isLocal =
   connectionString.includes("localhost") ||
   connectionString.includes("127.0.0.1");
 
+// Replit's managed Postgres injects sslmode=disable — honour it explicitly.
+const sslDisabled = connectionString.includes("sslmode=disable");
+
 // pg v8+ treats sslmode=require/prefer/verify-ca as verify-full (full chain
 // check), which rejects Supabase's self-signed cert. Strip the sslmode query
 // param and pass our own ssl option so rejectUnauthorized:false takes effect.
@@ -27,12 +30,14 @@ const strippedUrl = connectionString
   .replace(/([?&])sslmode=[^&]*/g, "$1")
   .replace(/[?&]$/, "");
 
+const noSsl = isLocal || sslDisabled;
+
 const pool = new Pool({
-  connectionString: isLocal ? connectionString : strippedUrl,
+  connectionString: noSsl ? connectionString : strippedUrl,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  ssl: isLocal ? undefined : { rejectUnauthorized: false },
+  ssl: noSsl ? undefined : { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool, { schema });
