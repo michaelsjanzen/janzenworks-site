@@ -71,8 +71,12 @@ export function validateEnv() {
         "Set S3_PUBLIC_URL to your CDN or R2 public URL for correct behaviour."
       );
     }
+  } else if (storageProvider === "vercel-blob") {
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      errors.push("STORAGE_PROVIDER=vercel-blob requires BLOB_READ_WRITE_TOKEN to be set.");
+    }
   } else if (storageProvider !== "local") {
-    warnings.push(`Unknown STORAGE_PROVIDER="${storageProvider}". Valid values: "local", "s3". Defaulting to local.`);
+    warnings.push(`Unknown STORAGE_PROVIDER="${storageProvider}". Valid values: "local", "s3", "vercel-blob". Defaulting to local.`);
   }
 
   // AI encryption key — required in production to avoid storing API keys as plaintext

@@ -21,11 +21,13 @@ export function getStorage(): StorageProvider {
   const providerName = (process.env.STORAGE_PROVIDER ?? "local").toLowerCase().trim();
 
   if (providerName === "s3") {
-    // Dynamic import keeps the S3 SDK out of the bundle when not used.
-    // Synchronous construction is fine here — credentials come from env, not network.
     const { S3StorageProvider } = require("./s3") as typeof import("./s3");
     _provider = new S3StorageProvider();
     console.info("[Pugmill] Storage: S3 provider active (bucket:", process.env.S3_BUCKET, ")");
+  } else if (providerName === "vercel-blob") {
+    const { VercelBlobStorageProvider } = require("./vercel-blob") as typeof import("./vercel-blob");
+    _provider = new VercelBlobStorageProvider();
+    console.info("[Pugmill] Storage: Vercel Blob provider active.");
   } else {
     if (providerName !== "local") {
       console.warn(`[Pugmill] Unknown STORAGE_PROVIDER="${providerName}", falling back to local.`);
