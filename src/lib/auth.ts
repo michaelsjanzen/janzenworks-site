@@ -91,14 +91,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   providers: [
-    GitHub({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    }),
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    // OAuth providers are only registered when credentials are present.
+    // On Replit: replit-init.ts bridges admin-UI-saved credentials into
+    // .env.local before the server starts, so these checks work correctly.
+    // On Vercel/other: set the env vars in your platform's secrets panel.
+    ...(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET
+      ? [GitHub({
+          clientId: process.env.GITHUB_CLIENT_ID,
+          clientSecret: process.env.GITHUB_CLIENT_SECRET,
+        })]
+      : []
+    ),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [Google({
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        })]
+      : []
+    ),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },

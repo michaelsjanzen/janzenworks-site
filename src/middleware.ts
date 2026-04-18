@@ -9,7 +9,7 @@ const { auth } = NextAuth(authConfig);
  * Rate limiting for /api/* is handled inside each API route handler
  * (Node.js runtime) using apiLimiter from @/lib/rate-limit.
  *
- * Named proxy.ts per the Next.js 16 convention (middleware.ts is deprecated in Next.js 16+).
+ * Must be named middleware.ts — Next.js resolves this file by name at startup.
  */
 export default auth((req) => {
   const { pathname } = req.nextUrl;

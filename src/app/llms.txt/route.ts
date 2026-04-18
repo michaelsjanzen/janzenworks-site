@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { posts } from "@/lib/db/schema";
 import { eq, isNull, and } from "drizzle-orm";
 import { getConfig } from "@/lib/config";
+import { detectSiteUrl } from "@/lib/detect-site-url";
 import { detectBot, classifyPath } from "@/lib/bot-detection";
 import { loadPlugins } from "@/lib/plugin-loader";
 import { hooks } from "@/lib/hooks";
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
 
   const config = await getConfig();
-  const siteUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const siteUrl = detectSiteUrl() ?? config.site?.url ?? "http://localhost:3000";
   const siteName = config.site?.name ?? "Pugmill";
   const aeo = config.site?.aeoDefaults ?? {};
   const siteDesc = aeo.summary || (config.site?.description ?? "");
@@ -57,9 +58,10 @@ export async function GET(req: NextRequest) {
     lines.push("## Pages", "");
     for (const p of topPages) {
       const url = `${siteUrl}/post/${p.slug}`;
+      const markdownUrl = `${siteUrl}/post/${p.slug}/llm.txt`;
       const desc = p.excerpt ? `: ${p.excerpt}` : "";
       lines.push(`- [${p.title}](${url})${desc}`);
-      // If this page has children, link to its llms.txt subsection
+      lines.push(`  - AI markdown: ${markdownUrl}`);
       lines.push(`  - AI index: ${siteUrl}/${p.slug}/llms.txt`);
     }
     lines.push("");
@@ -69,8 +71,10 @@ export async function GET(req: NextRequest) {
     lines.push("## Posts", "");
     for (const p of blogPosts) {
       const url = `${siteUrl}/post/${p.slug}`;
+      const markdownUrl = `${siteUrl}/post/${p.slug}/llm.txt`;
       const desc = p.excerpt ? `: ${p.excerpt}` : "";
       lines.push(`- [${p.title}](${url})${desc}`);
+      lines.push(`  - AI markdown: ${markdownUrl}`);
     }
     lines.push("");
   }

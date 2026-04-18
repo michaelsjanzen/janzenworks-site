@@ -333,6 +333,48 @@ async function main() {
     }
   }
 
+  // ── Step 3.5 (dev only): Bridge OAuth credentials from DB → .env.local ──────
+  // When an admin saves OAuth credentials via Settings → Auth, they are stored
+  // encrypted in site_config. On Replit dev, this step decrypts them and writes
+  // them to .env.local so the Next.js server process picks them up at startup.
+  // On Replit production: use Replit Secrets — .env.local is ephemeral in prod.
+  // On Vercel/other: set env vars in the platform secrets panel instead.
+  if (!isProd) {
+    try {
+      const { getConfig } = await import("../src/lib/config");
+      const { decryptString } = await import("../src/lib/encrypt");
+      const cfg = await getConfig();
+      const authCfg = cfg.auth;
+      const oauthEnvMap = readEnvLocal(); // re-read after DB step wrote migrations
+      let oauthUpdated = false;
+
+      const pairs: Array<[keyof typeof authCfg, string, string]> = [
+        ["githubClientId",     "GITHUB_CLIENT_ID",     ""],
+        ["githubClientSecret", "GITHUB_CLIENT_SECRET", "encrypted"],
+        ["googleClientId",     "GOOGLE_CLIENT_ID",     ""],
+        ["googleClientSecret", "GOOGLE_CLIENT_SECRET", "encrypted"],
+      ];
+
+      for (const [cfgKey, envKey, kind] of pairs) {
+        const stored = authCfg?.[cfgKey as keyof typeof authCfg] as string | undefined;
+        if (!stored) continue;
+        if (process.env[envKey] || oauthEnvMap.get(envKey)) continue; // env wins
+        const value = kind === "encrypted" ? decryptString(stored) : stored;
+        if (!value) continue;
+        oauthEnvMap.set(envKey, value);
+        process.env[envKey] = value;
+        oauthUpdated = true;
+      }
+
+      if (oauthUpdated) {
+        writeEnvLocal(oauthEnvMap);
+        console.log("  ✓ OAuth credentials loaded from admin settings → .env.local\n");
+      }
+    } catch {
+      // DB not yet seeded or config table missing — silent skip on fresh install
+    }
+  }
+
   // ── Step 4: Verify local upload storage is writable ─────────────────────────
   // A quick write + delete confirms that image uploads will work at runtime.
   // Prints a clear pass/fail the Replit agent (and humans) can see in the log.
