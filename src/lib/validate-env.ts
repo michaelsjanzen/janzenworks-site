@@ -81,7 +81,10 @@ export function validateEnv() {
     if (isProd) errors.push(msg);
     else warnings.push(msg);
   } else if (process.env.AI_ENCRYPTION_KEY.length !== 64 || !/^[0-9a-f]+$/i.test(process.env.AI_ENCRYPTION_KEY)) {
-    errors.push("AI_ENCRYPTION_KEY must be a 64-character hex string. Generate: openssl rand -hex 32");
+    errors.push(
+      `AI_ENCRYPTION_KEY is invalid (got ${process.env.AI_ENCRYPTION_KEY.length} chars, need exactly 64 hex characters). ` +
+      "Generate the correct value with: openssl rand -hex 32 — then paste it with no surrounding quotes or whitespace."
+    );
   }
 
   // OAuth provider warnings — inform but don't block startup

@@ -141,22 +141,53 @@ async function main() {
     process.exit(1);
   }
 
-  // ── Step 2: NEXTAUTH_SECRET, AI_ENCRYPTION_KEY, and NEXTAUTH_URL ───────────
+  // ── Step 2: NEXTAUTH_SECRET and AI_ENCRYPTION_KEY ───────────────────────────
   const envMap = readEnvLocal();
   const configured: string[] = [];
 
-  if (!getVar("NEXTAUTH_SECRET", envMap)) {
-    const secret = crypto.randomBytes(32).toString("base64");
-    envMap.set("NEXTAUTH_SECRET", secret);
-    process.env.NEXTAUTH_SECRET = secret;
-    configured.push("NEXTAUTH_SECRET");
-  }
+  if (isProd) {
+    // In production, NEXTAUTH_SECRET and AI_ENCRYPTION_KEY must be set as
+    // Replit Secrets — NOT written to .env.local. Replit production containers
+    // do not reliably make .env.local available to `next start` because prestart
+    // and the server run in separate processes with independent env loading.
+    const missingSecrets: Array<{ name: string; hint: string }> = [];
+    if (!process.env.NEXTAUTH_SECRET)
+      missingSecrets.push({ name: "NEXTAUTH_SECRET", hint: "openssl rand -base64 32" });
+    if (!process.env.AI_ENCRYPTION_KEY)
+      missingSecrets.push({ name: "AI_ENCRYPTION_KEY", hint: "openssl rand -hex 32 (64 hex chars)" });
 
-  if (!getVar("AI_ENCRYPTION_KEY", envMap)) {
-    const key = crypto.randomBytes(32).toString("hex");
-    envMap.set("AI_ENCRYPTION_KEY", key);
-    process.env.AI_ENCRYPTION_KEY = key;
-    configured.push("AI_ENCRYPTION_KEY");
+    if (missingSecrets.length > 0) {
+      console.error(
+        "  ┌─────────────────────────────────────────────────────────────────┐\n" +
+        "  │ ACTION REQUIRED — missing required Replit Secrets              │\n" +
+        "  │                                                                 │\n" +
+        "  │ .env.local is not reliable in production containers. Set these │\n" +
+        "  │ directly in Replit → Tools → Secrets, then click Redeploy:    │\n" +
+        "  │                                                                 │\n" +
+        missingSecrets.map(({ name, hint }) =>
+          `  │  ${name.padEnd(20)}: ${hint.padEnd(43)} │`
+        ).join("\n") + "\n" +
+        "  │                                                                 │\n" +
+        "  │ Paste the generated value exactly — no quotes, no whitespace.  │\n" +
+        "  └─────────────────────────────────────────────────────────────────┘\n"
+      );
+      process.exit(1);
+    }
+  } else {
+    // Dev: auto-generate missing secrets and persist to .env.local.
+    // The dev workspace filesystem is stable so .env.local survives restarts.
+    if (!getVar("NEXTAUTH_SECRET", envMap)) {
+      const secret = crypto.randomBytes(32).toString("base64");
+      envMap.set("NEXTAUTH_SECRET", secret);
+      process.env.NEXTAUTH_SECRET = secret;
+      configured.push("NEXTAUTH_SECRET");
+    }
+    if (!getVar("AI_ENCRYPTION_KEY", envMap)) {
+      const key = crypto.randomBytes(32).toString("hex");
+      envMap.set("AI_ENCRYPTION_KEY", key);
+      process.env.AI_ENCRYPTION_KEY = key;
+      configured.push("AI_ENCRYPTION_KEY");
+    }
   }
 
   if (isProd) {
