@@ -6,15 +6,31 @@
 
 ## ⚠ Critical: Read Before Taking Any Action on Replit
 
-**If you are setting up this project on Replit, these rules apply before anything else:**
+**If you are setting up this project on Replit, complete these steps in order before touching anything else:**
 
-1. **Delete `server/db.ts` immediately if it exists.** Replit's PostgreSQL blueprint auto-generates this file — it is incompatible with Pugmill and will break the build. The database client lives at `src/lib/db/index.ts`. No file should ever exist in `server/`.
+### Step 1 — Collect all required secrets upfront
+
+Ask the user for these three values before running `npm install` or starting the app. Do not proceed until all three are saved as Replit Secrets:
+
+| Secret | How to get it |
+|---|---|
+| `NEXTAUTH_SECRET` | Generate with: `openssl rand -base64 32` |
+| `AI_ENCRYPTION_KEY` | Generate with: `openssl rand -hex 32` |
+| `PRODUCTION_URL` | Found in Replit's Deploy panel (e.g. `https://pugmill.yourname.replit.app`). Custom domain if they have one. |
+
+If the user doesn't have a production URL yet, save the other two and continue — `PRODUCTION_URL` can be added before the first deployment.
+
+**Why upfront?** These are auto-generated for dev and saved to `.env.local`, but `.env.local` is wiped on every production deployment. Saving them as Replit Secrets first means production never crashes on a missing secret.
+
+### Step 2 — Watch for Replit blueprint interference
+
+1. **Delete `server/db.ts` immediately if it exists.** Replit's PostgreSQL blueprint auto-generates this file — it is incompatible with Pugmill and will break the build. The database client lives at `src/lib/db/index.ts`. No file should ever exist in `server/`. (The `postinstall` script handles this automatically, but verify.)
 
 2. **Never modify npm scripts to use `npx tsx`.** If `tsx` appears missing, run `npm install` and retry the npm script. Do not change any script to call `npx tsx` or `./node_modules/.bin/tsx` — it is unnecessary and breaks the established convention.
 
 3. **Use `npm run db:init` to set up the database** — do not run `tsx` directly or write custom schema creation scripts. This project has first-run setup built in.
 
-These three mistakes account for the majority of failed Replit setups. Check for them before proceeding.
+These mistakes account for the majority of failed Replit setups. Check for them before proceeding.
 
 ---
 
