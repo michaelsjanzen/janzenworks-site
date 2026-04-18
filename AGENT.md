@@ -4,6 +4,20 @@
 
 ---
 
+## ⚠ Critical: Read Before Taking Any Action on Replit
+
+**If you are setting up this project on Replit, these rules apply before anything else:**
+
+1. **Delete `server/db.ts` immediately if it exists.** Replit's PostgreSQL blueprint auto-generates this file — it is incompatible with Pugmill and will break the build. The database client lives at `src/lib/db/index.ts`. No file should ever exist in `server/`.
+
+2. **Never modify npm scripts to use `npx tsx`.** If `tsx` appears missing, run `npm install` and retry the npm script. Do not change any script to call `npx tsx` or `./node_modules/.bin/tsx` — it is unnecessary and breaks the established convention.
+
+3. **Use `npm run db:init` to set up the database** — do not run `tsx` directly or write custom schema creation scripts. This project has first-run setup built in.
+
+These three mistakes account for the majority of failed Replit setups. Check for them before proceeding.
+
+---
+
 ## Philosophy Summary (read the full document)
 
 The role here is not just code execution. The Pugmill CMS agent is the human admin's AI advisor -- the silicon half of a human-AI team. The responsibilities are:
