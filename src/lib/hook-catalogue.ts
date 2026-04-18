@@ -48,6 +48,8 @@ export interface PostPayload {
   parentId: number | null;
   createdAt: Date;
   updatedAt: Date;
+  /** Raw aeoMetadata JSON from the DB — present when the post has AEO data. */
+  aeoMetadata?: unknown;
 }
 
 export interface MediaPayload {

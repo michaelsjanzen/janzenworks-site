@@ -130,15 +130,23 @@ export const botAnalyticsPlugin: PugmillPlugin = {
     `);
 
     // Track HTML page visits via the content:render filter.
+    // Resource type is "AEO Page" when the post has AEO metadata (summary,
+    // Q&A, or entities), "HTML Page" when it does not. This mirrors the
+    // aeo_post vs html distinction in the AEO Pugmill WordPress plugin and
+    // lets the analytics report show how much of your crawled content is
+    // AEO-enriched vs plain HTML.
     hooks.addFilter("content:render", async ({ input, post }) => {
       try {
         const { headers } = await import("next/headers");
+        const { parseAeoMetadata } = await import("../../src/lib/aeo");
         const headerStore = await headers();
         const ua = headerStore.get("user-agent") ?? "";
         const botName = detectBot(ua);
         if (botName) {
           const path = post.type === "page" ? `/${post.slug}` : `/post/${post.slug}`;
-          void logBotVisit(botName, path, "HTML Page");
+          const aeo = parseAeoMetadata(post.aeoMetadata);
+          const hasAeo = !!(aeo.summary || aeo.questions?.length || aeo.entities?.length);
+          void logBotVisit(botName, path, hasAeo ? "AEO Page" : "HTML Page");
         }
       } catch {
         // Never surface analytics errors to the user

@@ -171,6 +171,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     parentId: post.parentId,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
+    aeoMetadata: post.aeoMetadata ?? undefined,
   };
 
   // Run content through registered plugin filters before handing to the theme view
