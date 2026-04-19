@@ -3,7 +3,6 @@ import { media } from "@/lib/db/schema";
 import { desc, sql } from "drizzle-orm";
 import MediaUploadForm from "./MediaUploadForm";
 import MediaDeleteButton from "./MediaDeleteButton";
-import Image from "next/image";
 
 const PAGE_SIZE = 50;
 
@@ -52,11 +51,11 @@ export default async function MediaPage() {
           <div key={item.id} className="bg-white border border-zinc-200 rounded-lg overflow-hidden group relative">
             {item.fileType?.startsWith("image/") ? (
               <div className="relative aspect-square bg-zinc-100">
-                <Image
+                {/* Plain img — admin-only, no optimization needed, avoids remotePatterns restrictions */}
+                <img
                   src={item.url}
                   alt={item.altText || item.fileName}
-                  fill
-                  className="object-cover"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
                 {!usedIds.has(item.id) && (
                   <span className="absolute top-1.5 left-1.5 bg-amber-100 text-amber-700 text-[10px] font-semibold px-1.5 py-0.5 rounded">
