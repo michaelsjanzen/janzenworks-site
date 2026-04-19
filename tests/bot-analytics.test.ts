@@ -43,28 +43,31 @@ describe("BOT_CONFIG — display config completeness", () => {
 // ── detectBot tests ───────────────────────────────────────────────────────────
 
 describe("detectBot — AI crawlers", () => {
-  it("GPTBot → ChatGPT", () => {
-    expect(detectBot("Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)")).toBe("ChatGPT");
+  // OpenAI — split into individual canonical names
+  it("GPTBot → GPTBot", () => {
+    expect(detectBot("Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)")).toBe("GPTBot");
   });
 
-  it("ChatGPT-User → ChatGPT", () => {
-    expect(detectBot("Mozilla/5.0 AppleWebKit/537.36 (compatible; ChatGPT-User/1.0)")).toBe("ChatGPT");
+  it("ChatGPT-User → ChatGPT-User", () => {
+    expect(detectBot("Mozilla/5.0 AppleWebKit/537.36 (compatible; ChatGPT-User/1.0)")).toBe("ChatGPT-User");
   });
 
-  it("OAI-SearchBot → ChatGPT", () => {
-    expect(detectBot("OAI-SearchBot/1.0 (+https://openai.com/searchbot)")).toBe("ChatGPT");
+  it("OAI-SearchBot → OAI-SearchBot", () => {
+    expect(detectBot("OAI-SearchBot/1.0 (+https://openai.com/searchbot)")).toBe("OAI-SearchBot");
   });
 
-  it("ClaudeBot → Claude", () => {
-    expect(detectBot("Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)")).toBe("Claude");
+  // Anthropic — split into individual canonical names
+  it("ClaudeBot → ClaudeBot", () => {
+    expect(detectBot("Mozilla/5.0 (compatible; ClaudeBot/1.0; +claudebot@anthropic.com)")).toBe("ClaudeBot");
   });
 
-  it("anthropic-ai → Claude", () => {
-    expect(detectBot("anthropic-ai/1.0 (+https://www.anthropic.com)")).toBe("Claude");
+  it("anthropic-ai → anthropic-ai", () => {
+    expect(detectBot("anthropic-ai/1.0 (+https://www.anthropic.com)")).toBe("anthropic-ai");
   });
 
-  it("PerplexityBot → Perplexity", () => {
-    expect(detectBot("Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)")).toBe("Perplexity");
+  // Perplexity — split into individual canonical names
+  it("PerplexityBot → PerplexityBot", () => {
+    expect(detectBot("Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://perplexity.ai/bot)")).toBe("PerplexityBot");
   });
 
   it("Google-Extended → Gemini (not Googlebot)", () => {

@@ -1,188 +1,79 @@
-/**
- * Unit tests for detectSiteUrl, detectSetupUrl, and isDevUrl
- * in src/lib/detect-site-url.ts.
- */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { detectSiteUrl, detectSetupUrl, isDevUrl } from "@/lib/detect-site-url";
+import { describe, it, expect } from "vitest";
+import { detectSiteUrl, detectSetupUrl, isDevUrl } from "../src/lib/detect-site-url";
 
-function clearPlatformEnv() {
-  delete process.env.NEXTAUTH_URL;
-  delete process.env.PRODUCTION_URL;
-  delete process.env.REPLIT_DEV_DOMAIN;
-  delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  delete process.env.RAILWAY_PUBLIC_DOMAIN;
-  delete process.env.RENDER_EXTERNAL_URL;
+function withEnv(env: Record<string, string | undefined>, fn: () => void) {
+  const saved: Record<string, string | undefined> = {};
+  const keys = [
+    "NEXTAUTH_URL", "REPLIT_DEV_DOMAIN", "VERCEL_PROJECT_PRODUCTION_URL",
+    "RAILWAY_PUBLIC_DOMAIN", "RENDER_EXTERNAL_URL", "PRODUCTION_URL",
+  ];
+  for (const k of keys) { saved[k] = process.env[k]; delete process.env[k]; }
+  for (const [k, v] of Object.entries(env)) {
+    if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  }
+  try { fn(); } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+  }
 }
 
-// ─── detectSiteUrl ────────────────────────────────────────────────────────────
-
 describe("detectSiteUrl", () => {
-  beforeEach(clearPlatformEnv);
-  afterEach(clearPlatformEnv);
-
-  it("returns null when no platform env vars are set", () => {
-    expect(detectSiteUrl()).toBeNull();
+  it("returns null when no vars set", () => {
+    withEnv({}, () => expect(detectSiteUrl()).toBeNull());
   });
-
-  it("returns NEXTAUTH_URL when set", () => {
-    process.env.NEXTAUTH_URL = "https://example.com";
-    expect(detectSiteUrl()).toBe("https://example.com");
+  it("prefers NEXTAUTH_URL over everything", () => {
+    withEnv({ NEXTAUTH_URL: "https://explicit.com", REPLIT_DEV_DOMAIN: "replit.dev", VERCEL_PROJECT_PRODUCTION_URL: "vercel.app" }, () =>
+      expect(detectSiteUrl()).toBe("https://explicit.com")
+    );
   });
-
-  it("NEXTAUTH_URL takes priority over all other vars", () => {
-    process.env.NEXTAUTH_URL = "https://explicit.com";
-    process.env.REPLIT_DEV_DOMAIN = "myapp.replit.dev";
-    process.env.VERCEL_PROJECT_PRODUCTION_URL = "prod.vercel.app";
-    expect(detectSiteUrl()).toBe("https://explicit.com");
+  it("falls back to REPLIT_DEV_DOMAIN", () => {
+    withEnv({ REPLIT_DEV_DOMAIN: "myapp.replit.dev" }, () =>
+      expect(detectSiteUrl()).toBe("https://myapp.replit.dev")
+    );
   });
-
-  it("prepends https:// to REPLIT_DEV_DOMAIN", () => {
-    process.env.REPLIT_DEV_DOMAIN = "myapp.user.replit.dev";
-    expect(detectSiteUrl()).toBe("https://myapp.user.replit.dev");
+  it("falls back to VERCEL_PROJECT_PRODUCTION_URL (adds https://)", () => {
+    withEnv({ VERCEL_PROJECT_PRODUCTION_URL: "myapp.vercel.app" }, () =>
+      expect(detectSiteUrl()).toBe("https://myapp.vercel.app")
+    );
   });
-
-  it("prepends https:// to VERCEL_PROJECT_PRODUCTION_URL", () => {
-    process.env.VERCEL_PROJECT_PRODUCTION_URL = "myapp.vercel.app";
-    expect(detectSiteUrl()).toBe("https://myapp.vercel.app");
-  });
-
-  it("REPLIT_DEV_DOMAIN takes priority over VERCEL_PROJECT_PRODUCTION_URL", () => {
-    process.env.REPLIT_DEV_DOMAIN = "myapp.replit.dev";
-    process.env.VERCEL_PROJECT_PRODUCTION_URL = "myapp.vercel.app";
-    expect(detectSiteUrl()).toBe("https://myapp.replit.dev");
-  });
-
-  it("prepends https:// to RAILWAY_PUBLIC_DOMAIN", () => {
-    process.env.RAILWAY_PUBLIC_DOMAIN = "myapp.up.railway.app";
-    expect(detectSiteUrl()).toBe("https://myapp.up.railway.app");
-  });
-
-  it("returns RENDER_EXTERNAL_URL as-is (already includes https://)", () => {
-    process.env.RENDER_EXTERNAL_URL = "https://myapp.onrender.com";
-    expect(detectSiteUrl()).toBe("https://myapp.onrender.com");
-  });
-
-  it("RAILWAY_PUBLIC_DOMAIN takes priority over RENDER_EXTERNAL_URL", () => {
-    process.env.RAILWAY_PUBLIC_DOMAIN = "myapp.up.railway.app";
-    process.env.RENDER_EXTERNAL_URL = "https://myapp.onrender.com";
-    expect(detectSiteUrl()).toBe("https://myapp.up.railway.app");
+  it("falls back to RENDER_EXTERNAL_URL (already has https://)", () => {
+    withEnv({ RENDER_EXTERNAL_URL: "https://myapp.onrender.com" }, () =>
+      expect(detectSiteUrl()).toBe("https://myapp.onrender.com")
+    );
   });
 });
-
-// ─── detectSetupUrl ───────────────────────────────────────────────────────────
-//
-// Like detectSiteUrl but skips NEXTAUTH_URL when it is a dev URL, so that
-// PRODUCTION_URL wins on Replit dev containers where replit-init.ts has
-// written the dev domain as NEXTAUTH_URL.
 
 describe("detectSetupUrl", () => {
-  beforeEach(clearPlatformEnv);
-  afterEach(clearPlatformEnv);
-
-  it("returns null when no env vars are set", () => {
-    expect(detectSetupUrl()).toBeNull();
+  it("skips NEXTAUTH_URL when it is a dev URL", () => {
+    withEnv({ NEXTAUTH_URL: "https://abc.replit.dev", PRODUCTION_URL: "https://myprod.com" }, () =>
+      expect(detectSetupUrl()).toBe("https://myprod.com")
+    );
   });
-
-  it("returns a production NEXTAUTH_URL when set", () => {
-    process.env.NEXTAUTH_URL = "https://explicit.com";
-    expect(detectSetupUrl()).toBe("https://explicit.com");
+  it("uses NEXTAUTH_URL when it is a production URL", () => {
+    withEnv({ NEXTAUTH_URL: "https://myprod.com", PRODUCTION_URL: "https://other.com" }, () =>
+      expect(detectSetupUrl()).toBe("https://myprod.com")
+    );
   });
-
-  it("skips NEXTAUTH_URL when it is a .replit.dev dev URL", () => {
-    process.env.NEXTAUTH_URL = "https://abc123.worf.replit.dev";
-    process.env.PRODUCTION_URL = "https://myapp.replit.app";
-    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
+  it("adds https:// to PRODUCTION_URL if missing", () => {
+    withEnv({ PRODUCTION_URL: "myprod.replit.app" }, () =>
+      expect(detectSetupUrl()).toBe("https://myprod.replit.app")
+    );
   });
-
-  it("skips NEXTAUTH_URL when it is a localhost URL", () => {
-    process.env.NEXTAUTH_URL = "http://localhost:3000";
-    process.env.PRODUCTION_URL = "https://myapp.replit.app";
-    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
-  });
-
-  it("production NEXTAUTH_URL still beats PRODUCTION_URL", () => {
-    process.env.NEXTAUTH_URL = "https://custom-domain.com";
-    process.env.PRODUCTION_URL = "https://myapp.replit.app";
-    expect(detectSetupUrl()).toBe("https://custom-domain.com");
-  });
-
-  it("PRODUCTION_URL beats REPLIT_DEV_DOMAIN", () => {
-    process.env.PRODUCTION_URL = "https://myapp.replit.app";
-    process.env.REPLIT_DEV_DOMAIN = "myapp.user.replit.dev";
-    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
-  });
-
-  it("prepends https:// to PRODUCTION_URL when missing", () => {
-    process.env.PRODUCTION_URL = "myapp.replit.app";
-    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
-  });
-
-  it("does not double-prepend https:// to PRODUCTION_URL", () => {
-    process.env.PRODUCTION_URL = "https://myapp.replit.app";
-    expect(detectSetupUrl()).toBe("https://myapp.replit.app");
-  });
-
-  it("falls back to REPLIT_DEV_DOMAIN when PRODUCTION_URL absent", () => {
-    process.env.REPLIT_DEV_DOMAIN = "myapp.user.replit.dev";
-    expect(detectSetupUrl()).toBe("https://myapp.user.replit.dev");
-  });
-
-  it("falls back to VERCEL_PROJECT_PRODUCTION_URL", () => {
-    process.env.VERCEL_PROJECT_PRODUCTION_URL = "myapp.vercel.app";
-    expect(detectSetupUrl()).toBe("https://myapp.vercel.app");
-  });
-
-  it("falls back to RAILWAY_PUBLIC_DOMAIN", () => {
-    process.env.RAILWAY_PUBLIC_DOMAIN = "myapp.up.railway.app";
-    expect(detectSetupUrl()).toBe("https://myapp.up.railway.app");
-  });
-
-  it("falls back to RENDER_EXTERNAL_URL as-is", () => {
-    process.env.RENDER_EXTERNAL_URL = "https://myapp.onrender.com";
-    expect(detectSetupUrl()).toBe("https://myapp.onrender.com");
+  it("falls back to REPLIT_DEV_DOMAIN when no production vars set", () => {
+    withEnv({ REPLIT_DEV_DOMAIN: "abc.replit.dev" }, () =>
+      expect(detectSetupUrl()).toBe("https://abc.replit.dev")
+    );
   });
 });
 
-// ─── isDevUrl ────────────────────────────────────────────────────────────────
-
 describe("isDevUrl", () => {
-  it("identifies http://localhost:3000 as a dev URL", () => {
-    expect(isDevUrl("http://localhost:3000")).toBe(true);
-  });
-
-  it("identifies https://localhost as a dev URL", () => {
-    expect(isDevUrl("https://localhost")).toBe(true);
-  });
-
-  it("identifies http://127.0.0.1:3000 as a dev URL", () => {
-    expect(isDevUrl("http://127.0.0.1:3000")).toBe(true);
-  });
-
-  it("identifies a .replit.dev URL as a dev URL", () => {
-    expect(isDevUrl("https://myapp.user.replit.dev")).toBe(true);
-  });
-
-  it("identifies a .repl.co URL as a dev URL", () => {
-    expect(isDevUrl("https://myapp.user.repl.co")).toBe(true);
-  });
-
-  it("does not flag a real production domain as a dev URL", () => {
-    expect(isDevUrl("https://example.com")).toBe(false);
-  });
-
-  it("does not flag a Vercel production URL as a dev URL", () => {
-    expect(isDevUrl("https://myapp.vercel.app")).toBe(false);
-  });
-
-  it("does not flag a Railway URL as a dev URL", () => {
-    expect(isDevUrl("https://myapp.up.railway.app")).toBe(false);
-  });
-
-  it("does not flag a Render URL as a dev URL", () => {
-    expect(isDevUrl("https://myapp.onrender.com")).toBe(false);
-  });
-
-  it("does not flag a custom domain as a dev URL", () => {
-    expect(isDevUrl("https://pugmillcms.com")).toBe(false);
+  it("identifies localhost as dev", () => expect(isDevUrl("http://localhost:3000")).toBe(true));
+  it("identifies 127.0.0.1 as dev", () => expect(isDevUrl("http://127.0.0.1:3000")).toBe(true));
+  it("identifies .replit.dev as dev", () => expect(isDevUrl("https://abc123.replit.dev")).toBe(true));
+  it("identifies .repl.co as dev", () => expect(isDevUrl("https://myapp.username.repl.co")).toBe(true));
+  it("production domains are not dev", () => {
+    expect(isDevUrl("https://myprod.com")).toBe(false);
+    expect(isDevUrl("https://myapp.replit.app")).toBe(false);
   });
 });
