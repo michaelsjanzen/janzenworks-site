@@ -26,15 +26,17 @@ export function validateEnv() {
     errors.push("DATABASE_URL is not set (or POSTGRES_URL for Vercel+Supabase deployments).");
   }
 
+  // NEXTAUTH_SECRET: warn but never hard-crash.
+  // replit-init.ts auto-generates it when absent, so this should only fire on
+  // non-Replit platforms where the operator forgot to set it. Crashing on every
+  // request is worse than degraded auth — the operator can still access the site.
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    errors.push("NEXTAUTH_SECRET is not set. Generate one with: openssl rand -base64 32");
+    warnings.push("NEXTAUTH_SECRET is not set. Auth will not work. Generate: openssl rand -base64 32");
   } else if (secret.length < 32) {
-    errors.push(`NEXTAUTH_SECRET is too short (${secret.length} chars). Minimum 32 characters required.`);
+    warnings.push(`NEXTAUTH_SECRET is too short (${secret.length} chars). Minimum 32 characters required.`);
   } else if (KNOWN_WEAK.has(secret.toLowerCase())) {
-    const msg = "NEXTAUTH_SECRET is set to a known weak/placeholder value.";
-    if (isProd) errors.push(msg);
-    else warnings.push(msg + " Replace before deploying.");
+    warnings.push("NEXTAUTH_SECRET is set to a known weak/placeholder value. Replace before going live.");
   }
 
   const nextAuthUrl = process.env.NEXTAUTH_URL;
@@ -83,15 +85,16 @@ export function validateEnv() {
     warnings.push(`Unknown STORAGE_PROVIDER="${storageProvider}". Valid values: "local", "s3", "vercel-blob". Defaulting to local.`);
   }
 
-  // AI encryption key — required in production to avoid storing API keys as plaintext
+  // AI encryption key: warn but never hard-crash.
+  // replit-init.ts auto-generates it when absent. On other platforms the
+  // operator should set it, but a missing key should degrade AI features
+  // gracefully rather than taking down the whole site.
   if (!process.env.AI_ENCRYPTION_KEY) {
-    const msg = "AI_ENCRYPTION_KEY is not set — AI API keys will be stored unencrypted. Generate: openssl rand -hex 32";
-    if (isProd) errors.push(msg);
-    else warnings.push(msg);
+    warnings.push("AI_ENCRYPTION_KEY is not set — AI API keys will be stored unencrypted. Generate: openssl rand -hex 32");
   } else if (process.env.AI_ENCRYPTION_KEY.length !== 64 || !/^[0-9a-f]+$/i.test(process.env.AI_ENCRYPTION_KEY)) {
-    errors.push(
+    warnings.push(
       `AI_ENCRYPTION_KEY is invalid (got ${process.env.AI_ENCRYPTION_KEY.length} chars, need exactly 64 hex characters). ` +
-      "Generate the correct value with: openssl rand -hex 32 — then paste it with no surrounding quotes or whitespace."
+      "Generate with: openssl rand -hex 32"
     );
   }
 

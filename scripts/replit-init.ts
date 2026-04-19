@@ -145,53 +145,49 @@ async function main() {
   const envMap = readEnvLocal();
   const configured: string[] = [];
 
-  if (isProd) {
-    // In production, NEXTAUTH_SECRET and AI_ENCRYPTION_KEY must be set as
-    // Replit Secrets — NOT written to .env.local. Replit production containers
-    // do not reliably make .env.local available to `next start` because prestart
-    // and the server run in separate processes with independent env loading.
-    const missingSecrets: Array<{ name: string; hint: string }> = [];
-    if (!process.env.NEXTAUTH_SECRET)
-      missingSecrets.push({ name: "NEXTAUTH_SECRET", hint: "openssl rand -base64 32" });
-    if (!process.env.AI_ENCRYPTION_KEY)
-      missingSecrets.push({ name: "AI_ENCRYPTION_KEY", hint: "openssl rand -hex 32 (64 hex chars)" });
-    // NEXTAUTH_URL must be set as a Replit Secret (same value as PRODUCTION_URL).
-    // Scripts and .env.local are unreliable in production containers — a Secret is guaranteed.
-    if (!process.env.NEXTAUTH_URL && !process.env.PRODUCTION_URL)
-      missingSecrets.push({ name: "NEXTAUTH_URL", hint: "same as PRODUCTION_URL (https://...)" });
+  // Auto-generate NEXTAUTH_SECRET and AI_ENCRYPTION_KEY in both dev and prod.
+  //
+  // Earlier approach required these to be set as Replit Secrets upfront — but
+  // Replit agents do not reliably call requestEnvVar, so secrets were often
+  // never set and the server refused to start.
+  //
+  // Now: generate them automatically if absent and persist to .env.local.
+  // start.js explicitly loads .env.local before spawning `next start`, so the
+  // values reach the running server regardless of Replit Secret state.
+  //
+  // Trade-off in production: NEXTAUTH_SECRET regenerates on each fresh
+  // container (redeploy) unless the user also pins it as a Replit Secret.
+  // This means active sessions are invalidated on redeploy — acceptable for
+  // a new install. The startup banner tells the user how to pin it.
+  if (!getVar("NEXTAUTH_SECRET", envMap)) {
+    const secret = crypto.randomBytes(32).toString("base64");
+    envMap.set("NEXTAUTH_SECRET", secret);
+    process.env.NEXTAUTH_SECRET = secret;
+    configured.push("NEXTAUTH_SECRET");
+  }
+  if (!getVar("AI_ENCRYPTION_KEY", envMap)) {
+    const key = crypto.randomBytes(32).toString("hex");
+    envMap.set("AI_ENCRYPTION_KEY", key);
+    process.env.AI_ENCRYPTION_KEY = key;
+    configured.push("AI_ENCRYPTION_KEY");
+  }
 
-    if (missingSecrets.length > 0) {
-      console.error(
-        "  ┌─────────────────────────────────────────────────────────────────┐\n" +
-        "  │ ACTION REQUIRED — missing required Replit Secrets              │\n" +
-        "  │                                                                 │\n" +
-        "  │ .env.local is not reliable in production containers. Set these │\n" +
-        "  │ directly in Replit → Tools → Secrets, then click Redeploy:    │\n" +
-        "  │                                                                 │\n" +
-        missingSecrets.map(({ name, hint }) =>
-          `  │  ${name.padEnd(20)}: ${hint.padEnd(43)} │`
-        ).join("\n") + "\n" +
-        "  │                                                                 │\n" +
-        "  │ Paste the generated value exactly — no quotes, no whitespace.  │\n" +
-        "  └─────────────────────────────────────────────────────────────────┘\n"
-      );
-      process.exit(1);
-    }
-  } else {
-    // Dev: auto-generate missing secrets and persist to .env.local.
-    // The dev workspace filesystem is stable so .env.local survives restarts.
-    if (!getVar("NEXTAUTH_SECRET", envMap)) {
-      const secret = crypto.randomBytes(32).toString("base64");
-      envMap.set("NEXTAUTH_SECRET", secret);
-      process.env.NEXTAUTH_SECRET = secret;
-      configured.push("NEXTAUTH_SECRET");
-    }
-    if (!getVar("AI_ENCRYPTION_KEY", envMap)) {
-      const key = crypto.randomBytes(32).toString("hex");
-      envMap.set("AI_ENCRYPTION_KEY", key);
-      process.env.AI_ENCRYPTION_KEY = key;
-      configured.push("AI_ENCRYPTION_KEY");
-    }
+  if (isProd && configured.includes("NEXTAUTH_SECRET")) {
+    const secret = envMap.get("NEXTAUTH_SECRET") ?? "";
+    console.warn(
+      "  ┌─────────────────────────────────────────────────────────────────┐\n" +
+      "  │ IMPORTANT — pin NEXTAUTH_SECRET to survive redeployments        │\n" +
+      "  │                                                                 │\n" +
+      "  │ A secret was auto-generated for this deployment. Sessions will  │\n" +
+      "  │ be invalidated on every redeploy unless you save it permanently │\n" +
+      "  │ in Replit → Tools → Secrets:                                    │\n" +
+      "  │                                                                 │\n" +
+      "  │   Name:  NEXTAUTH_SECRET                                        │\n" +
+      `  │   Value: ${secret.slice(0, 55).padEnd(55)} │\n` +
+      "  │                                                                 │\n" +
+      "  │ Once saved as a Secret it will survive all future redeployments │\n" +
+      "  └─────────────────────────────────────────────────────────────────┘\n"
+    );
   }
 
   if (isProd) {
