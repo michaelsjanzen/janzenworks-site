@@ -57,7 +57,10 @@ export class S3StorageProvider implements StorageProvider {
     this.client = new S3Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
-      ...(endpoint ? { endpoint, forcePathStyle: false } : {}),
+      // forcePathStyle must be true for non-AWS endpoints (Supabase, MinIO, R2, DO Spaces).
+      // Virtual-hosted style (bucket.endpoint) requires a per-bucket SSL cert which custom
+      // endpoints don't have. Only omit forcePathStyle for native AWS S3.
+      ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
     });
 
     // Build default public URL if S3_PUBLIC_URL is not set
