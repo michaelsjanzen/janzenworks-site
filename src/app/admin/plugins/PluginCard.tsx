@@ -133,12 +133,12 @@ export default function PluginCard({
             onClick={handleToggle}
             disabled={isPending}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 ${
-              active ? "bg-zinc-900" : "bg-zinc-200"
+              active ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-300 dark:bg-zinc-600"
             }`}
           >
             <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
-                active ? "translate-x-5" : "translate-x-0"
+              className={`inline-block h-5 w-5 transform rounded-full shadow ring-0 transition-transform duration-200 ${
+                active ? "translate-x-5 bg-white dark:bg-zinc-900" : "translate-x-0 bg-white dark:bg-zinc-300"
               }`}
             />
           </button>
