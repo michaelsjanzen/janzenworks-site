@@ -11,6 +11,17 @@ const remotePatterns: NextConfig["images"] extends { remotePatterns?: infer R } 
     protocol: "https",
     hostname: "lh3.googleusercontent.com",
   },
+  // Supabase Storage — covers any project using Supabase as the S3 provider
+  {
+    protocol: "https",
+    hostname: "*.supabase.co",
+    pathname: "/storage/v1/object/public/**",
+  },
+  // Vercel Blob — covers any project using Vercel Blob storage
+  {
+    protocol: "https",
+    hostname: "*.public.blob.vercel-storage.com",
+  },
 ];
 
 // If S3_PUBLIC_URL is set, parse it and allow that bucket hostname.
