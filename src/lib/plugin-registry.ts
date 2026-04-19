@@ -197,6 +197,7 @@ import { defaultWidgetsPlugin } from "../../plugins/default-widgets/index";
 import { botAnalyticsPlugin } from "../../plugins/bot-analytics/index";
 import { outboundWebhooksPlugin } from "../../plugins/outbound-webhooks/index";
 import { newsletterPlugin } from "../../plugins/newsletter/index";
+import { mcpServerPlugin } from "../../plugins/mcp-server/index";
 
 const ALL_PLUGINS: PugmillPlugin[] = [
   commentsPlugin,
@@ -206,6 +207,7 @@ const ALL_PLUGINS: PugmillPlugin[] = [
   botAnalyticsPlugin,
   outboundWebhooksPlugin,
   newsletterPlugin,
+  mcpServerPlugin,
 ];
 
 let initPromise: Promise<void> | null = null;
