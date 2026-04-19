@@ -155,6 +155,10 @@ async function main() {
       missingSecrets.push({ name: "NEXTAUTH_SECRET", hint: "openssl rand -base64 32" });
     if (!process.env.AI_ENCRYPTION_KEY)
       missingSecrets.push({ name: "AI_ENCRYPTION_KEY", hint: "openssl rand -hex 32 (64 hex chars)" });
+    // NEXTAUTH_URL must be set as a Replit Secret (same value as PRODUCTION_URL).
+    // Scripts and .env.local are unreliable in production containers — a Secret is guaranteed.
+    if (!process.env.NEXTAUTH_URL && !process.env.PRODUCTION_URL)
+      missingSecrets.push({ name: "NEXTAUTH_URL", hint: "same as PRODUCTION_URL (https://...)" });
 
     if (missingSecrets.length > 0) {
       console.error(

@@ -17,8 +17,11 @@ Ask the user for these three values before running `npm install` or starting the
 | `NEXTAUTH_SECRET` | Generate with: `openssl rand -base64 32` |
 | `AI_ENCRYPTION_KEY` | Generate with: `openssl rand -hex 32` |
 | `PRODUCTION_URL` | Found in Replit's Deploy panel (e.g. `https://pugmill.yourname.replit.app`). Custom domain if they have one. |
+| `NEXTAUTH_URL` | **Same value as `PRODUCTION_URL`** — set both. |
 
-If the user doesn't have a production URL yet, save the other two and continue — `PRODUCTION_URL` can be added before the first deployment.
+If the user doesn't have a production URL yet, save the other two and continue — `PRODUCTION_URL` and `NEXTAUTH_URL` can be added before the first deployment.
+
+**Why set `NEXTAUTH_URL` as a secret when `PRODUCTION_URL` already exists?** Replit Secrets are injected into every process unconditionally. Scripts and `.env.local` loading can silently fail; a Secret cannot. Setting `NEXTAUTH_URL` directly is the belt-and-suspenders guarantee that authentication works on first deploy. `PRODUCTION_URL` is still required for the startup scripts — set both.
 
 **Why upfront?** These are auto-generated for dev and saved to `.env.local`, but `.env.local` is wiped on every production deployment. Saving them as Replit Secrets first means production never crashes on a missing secret.
 
