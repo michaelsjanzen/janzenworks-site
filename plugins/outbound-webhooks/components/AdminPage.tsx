@@ -27,16 +27,14 @@ export default async function AdminPage(
 
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Outbound Webhooks</h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            POST a signed JSON payload to external URLs when CMS events occur.
-            Use this to connect Zapier, Make, Slack, or any custom integration.
-          </p>
-        </div>
-        <EndpointForm />
+      <div>
+        <h1 className="text-xl font-semibold text-zinc-900">Outbound Webhooks</h1>
+        <p className="text-sm text-zinc-500 mt-1">
+          POST a signed JSON payload to external URLs when CMS events occur.
+          Use this to connect Zapier, Make, Slack, or any custom integration.
+        </p>
       </div>
+      <EndpointForm />
 
       {/* Endpoint list */}
       <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
