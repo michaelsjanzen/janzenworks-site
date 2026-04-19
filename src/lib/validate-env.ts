@@ -39,16 +39,20 @@ export function validateEnv() {
 
   const nextAuthUrl = process.env.NEXTAUTH_URL;
   if (!nextAuthUrl) {
-    const msg = "NEXTAUTH_URL is not set. Login redirects and OAuth callbacks will fail.";
-    if (isProd) errors.push(msg + " Set PRODUCTION_URL as a Replit secret and redeploy.");
-    else warnings.push(msg + " Defaulting to http://localhost:3000");
+    // trustHost: true is set in auth.config.ts — NextAuth v5 derives the URL from
+    // the incoming request, so credentials login works without NEXTAUTH_URL.
+    // It IS required for OAuth callback URLs; warn but never hard-crash on it.
+    warnings.push(
+      "NEXTAUTH_URL is not set. Credentials login will still work (trustHost mode). " +
+      "OAuth callbacks (GitHub/Google) require it — set NEXTAUTH_URL or PRODUCTION_URL."
+    );
   } else {
     try {
       const parsed = new URL(nextAuthUrl);
       if (isProd && (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1")) {
         errors.push(
           `NEXTAUTH_URL is set to a localhost address (${nextAuthUrl}) in production. ` +
-          "Login will not work. Set PRODUCTION_URL=https://your-domain.com as a Replit secret and redeploy."
+          "OAuth login will not work. Set NEXTAUTH_URL=https://your-domain.com."
         );
       }
     } catch {
