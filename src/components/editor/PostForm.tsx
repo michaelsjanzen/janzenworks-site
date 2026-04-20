@@ -1025,21 +1025,9 @@ export default function PostForm({
                 </div>
               )}
 
-              <MarkdownEditor
-                ref={editorRef}
-                name="content"
-                defaultValue={initialContent}
-                placeholder="Write your content here..."
-                allMedia={sharedMedia}
-                aiEnabled={aiEnabled}
-                postTitle={title}
-                onMediaUploaded={handleMediaUploaded}
-                onContentChange={setContentForAudit}
-              />
-
-              {/* Topic Focus result — inline below editor */}
+              {/* Topic Focus result — above editor, same slot as Tone Suggestions */}
               {aiEnabled && (moreAiResults["topic-report"] || refineFocusResult !== null) && (
-                <div className="mt-4 pt-4 border-t border-zinc-100 space-y-3">
+                <div className="mb-4 space-y-3">
                   {moreAiResults["topic-report"] && renderToolResult("topic-report", moreAiResults["topic-report"])}
                   {refineFocusResult !== null && (
                     <div>
@@ -1140,12 +1128,24 @@ export default function PostForm({
                 </div>
               )}
 
-              {/* Internal Links result — inline below editor */}
+              {/* Internal Links result — above editor, same slot as Tone Suggestions */}
               {aiEnabled && moreAiResults["internal-links"] && (
-                <div className="mt-4 pt-4 border-t border-zinc-100">
+                <div className="mb-4">
                   {renderToolResult("internal-links", moreAiResults["internal-links"])}
                 </div>
               )}
+
+              <MarkdownEditor
+                ref={editorRef}
+                name="content"
+                defaultValue={initialContent}
+                placeholder="Write your content here..."
+                allMedia={sharedMedia}
+                aiEnabled={aiEnabled}
+                postTitle={title}
+                onMediaUploaded={handleMediaUploaded}
+                onContentChange={setContentForAudit}
+              />
           </div>{/* end scrolling body */}
         </div>{/* end content editor */}
 

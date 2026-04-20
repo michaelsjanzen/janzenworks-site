@@ -225,9 +225,19 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function Markdown
   }, [markdown, editor, mode]);
 
   const handleRawChange = (value: string) => {
+    // Do NOT sync to Tiptap on every keystroke. Tiptap's markdown serializer
+    // normalizes the string (trims trailing whitespace, collapses blank lines,
+    // etc.), which triggers onUpdate → setMarkdown with a *different* value,
+    // causing the controlled textarea to rerender and the cursor to jump on
+    // keystrokes like space. The useEffect below syncs Tiptap when the user
+    // switches back to Visual mode, which is the only time it matters.
     setMarkdown(value);
-    onContentChange?.(value);
-    editor?.commands.setContent(value);
+    // Debounce the parent callback for symmetry with the Tiptap path so we
+    // don't thrash the PostForm on every keystroke.
+    if (contentChangeTimer.current) clearTimeout(contentChangeTimer.current);
+    contentChangeTimer.current = setTimeout(() => {
+      onContentChangeRef.current?.(value);
+    }, 300);
   };
 
   // ── Alt text helpers ──────────────────────────────────────────────────────
