@@ -23,9 +23,10 @@ function CommandTrigger() {
 interface Props {
   user: { username: string; role: string };
   onMenuClick: () => void;
+  siteName?: string;
 }
 
-export default function TopBar({ user, onMenuClick }: Props) {
+export default function TopBar({ user, onMenuClick, siteName = "Pugmill" }: Props) {
   return (
     <header className="h-14 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 sm:px-6 shrink-0">
       {/* Left — hamburger + wordmark on mobile */}
@@ -39,7 +40,7 @@ export default function TopBar({ user, onMenuClick }: Props) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm tracking-tight">Pugmill</span>
+        <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm tracking-tight truncate" title={siteName}>{siteName}</span>
       </div>
 
       {/* Center — command palette trigger (desktop) */}

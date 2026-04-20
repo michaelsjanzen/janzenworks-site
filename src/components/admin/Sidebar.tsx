@@ -8,6 +8,7 @@ interface Props {
   plugins?: { id: string; name: string; actionHref?: string }[];
   themes?: { id: string; name: string; isActive: boolean }[];
   badges?: Record<string, number>;
+  siteName?: string;
 }
 
 const topNavItems = [
@@ -70,7 +71,7 @@ function SubNav({ items }: { items: { label: string; path: string; exact?: boole
   );
 }
 
-export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], badges = {} }: Props) {
+export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], badges = {}, siteName = "Pugmill" }: Props) {
   const pathname = usePathname();
   const inContentSection = contentSection.some(p => pathname.startsWith(p));
   const inDesignSection = designSection.some(p => pathname.startsWith(p));
@@ -95,8 +96,8 @@ export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], ba
     >
       {/* Header */}
       <div className="h-14 px-4 border-b border-violet-100 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-violet-50 dark:bg-zinc-900">
-        <Link href="/admin" className="font-semibold text-violet-700 dark:text-violet-400 tracking-tight text-base">
-          Pugmill
+        <Link href="/admin" className="font-semibold text-violet-700 dark:text-violet-400 tracking-tight text-base truncate" title={siteName}>
+          {siteName}
         </Link>
         <button
           onClick={onClose}

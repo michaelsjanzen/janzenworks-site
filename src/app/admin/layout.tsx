@@ -35,6 +35,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <AdminShell
       user={{ username: user.name || user.email || "Account", role: user.role }}
+      siteName={config.site?.name?.trim() || "Pugmill"}
       plugins={activePlugins.map(p => ({ id: p.id, name: p.name, actionHref: p.actionHref }))}
       themes={themes.map(t => ({ id: t.id, name: t.name, isActive: t.isActive }))}
       badges={badges}
