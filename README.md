@@ -319,14 +319,19 @@ Pugmill implements the [llms.txt specification](https://llmstxt.org/):
 
 ## Storage
 
-Setting `STORAGE_PROVIDER` in `.env.local` selects the storage backend:
+Pugmill auto-detects the storage backend. In most cases you don't need to set `STORAGE_PROVIDER` explicitly.
 
-| Value | Behavior |
-|---|---|
-| `local` (default) | Files saved to `public/uploads/` on the server filesystem |
-| `s3` | Files uploaded to an S3-compatible bucket |
+| Provider | When active | Setup |
+|---|---|---|
+| `vercel-blob` **(recommended on Vercel)** | `BLOB_READ_WRITE_TOKEN` is set | Create a Blob store in the Vercel dashboard; the token is injected automatically |
+| `local` (default for dev) | No other provider detected | Zero config; files saved to `public/uploads/`. Ephemeral on serverless — dev only |
+| `s3` (advanced) | `STORAGE_PROVIDER=s3` | Any S3-compatible store — AWS, R2, Supabase, DO Spaces, MinIO |
 
-Additional variables for S3:
+Vercel Blob is the recommended production provider: one env var, no bucket/region/ACL/CORS to configure, public URLs out of the box.
+
+### S3 (advanced)
+
+S3-compatible storage works but is easy to misconfigure. You need the right combination of endpoint, region, path-style addressing, bucket public policy, and public URL. Required env vars:
 
 ```env
 STORAGE_PROVIDER=s3
@@ -334,9 +339,12 @@ S3_BUCKET=my-bucket
 S3_REGION=us-east-1
 S3_ACCESS_KEY_ID=...
 S3_SECRET_ACCESS_KEY=...
-S3_ENDPOINT=          # Optional: Cloudflare R2, DO Spaces, MinIO
-S3_PUBLIC_URL=        # Optional: CDN URL prefix
+S3_ENDPOINT=          # Optional: R2, DO Spaces, Supabase, MinIO
+S3_PUBLIC_URL=        # Optional but usually required for non-AWS: the CDN/public URL prefix
+S3_PUBLIC_ACL=        # Set to "false" for R2 and CDN-fronted buckets
 ```
+
+Gotchas: Supabase S3's public URL is **not** the S3 endpoint — it's `https://<project>.supabase.co/storage/v1/object/public/<bucket>`. R2 requires `S3_PUBLIC_ACL=false`. Path-style is forced automatically for any non-AWS endpoint.
 
 ---
 

@@ -65,13 +65,18 @@ export async function uploadMedia(formData: FormData) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  // Delegate to the active StorageProvider (local or S3)
+  // Delegate to the active StorageProvider (local, vercel-blob, or s3)
   let uploadResult;
   try {
     uploadResult = await getStorage().upload(buffer, fileName, file.type);
   } catch (err) {
     console.error("[media] upload failed:", err);
-    return { error: "Upload failed. Please try again." };
+    // Surface the real error to the admin — this is a trusted, authenticated
+    // surface and generic messages make storage misconfiguration impossible to
+    // diagnose (wrong region, bad endpoint, missing bucket, etc.).
+    const name = err instanceof Error ? err.name : "Error";
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: `Upload failed (${name}): ${message}` };
   }
 
   const newMedia = await db.insert(media).values({

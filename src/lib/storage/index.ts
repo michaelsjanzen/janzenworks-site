@@ -5,20 +5,35 @@ export type { StorageProvider, UploadResult } from "./types";
 /**
  * getStorage()
  *
- * Returns the active StorageProvider based on the STORAGE_PROVIDER
- * environment variable.
+ * Returns the active StorageProvider.
  *
- *   STORAGE_PROVIDER=local  (default) — saves to /public/uploads
- *   STORAGE_PROVIDER=s3               — uploads to S3-compatible storage
+ * Selection order:
+ *   1. STORAGE_PROVIDER env var, if set: "local" | "vercel-blob" | "s3"
+ *   2. Auto-detect: if BLOB_READ_WRITE_TOKEN is set → "vercel-blob"
+ *   3. Fallback: "local" (saves to /public/uploads — dev only)
+ *
+ * Recommended providers:
+ *   - vercel-blob  — one env var, zero infra setup. Default on Vercel deploys.
+ *   - local        — zero config, dev only (ephemeral on serverless).
+ *   - s3           — advanced: any S3-compatible store (AWS, R2, Supabase, MinIO).
+ *                    Requires correct endpoint, region, path-style, public URL.
+ *                    See docs/storage-s3.md.
  *
  * The provider instance is cached per process after first call.
  */
 let _provider: StorageProvider | null = null;
 
+function detectProvider(): string {
+  const explicit = process.env.STORAGE_PROVIDER?.toLowerCase().trim();
+  if (explicit) return explicit;
+  if (process.env.BLOB_READ_WRITE_TOKEN) return "vercel-blob";
+  return "local";
+}
+
 export function getStorage(): StorageProvider {
   if (_provider) return _provider;
 
-  const providerName = (process.env.STORAGE_PROVIDER ?? "local").toLowerCase().trim();
+  const providerName = detectProvider();
 
   if (providerName === "s3") {
     const { S3StorageProvider } = require("./s3") as typeof import("./s3");
