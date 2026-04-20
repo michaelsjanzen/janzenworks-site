@@ -27,6 +27,16 @@ export interface PageViewProps {
   /** Rendered widget area for the sidebar slot — replaces the default sibling/parent sidebar. */
   sidebarContent?: React.ReactNode;
   canonicalUrl?: string;
+  /** Optional taxonomy/date. If any are present they render at the bottom of the page,
+      in the same order as single posts: categories → date → tags. */
+  categories?: { name: string; slug: string }[];
+  tags?: { name: string; slug: string }[];
+  publishedAt?: Date | null;
+}
+
+function formatDate(date: Date | null | undefined): string | null {
+  if (!date) return null;
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
 const contentWidthClass: Record<string, string> = {
@@ -54,6 +64,9 @@ export default function PageView({
   siblingPages,
   sidebarContent,
   canonicalUrl,
+  categories = [],
+  tags = [],
+  publishedAt = null,
 }: PageViewProps) {
   const contentWidth = layoutConfig?.contentWidth ?? "narrow";
   const sidebar = layoutConfig?.sidebar ?? "none";
@@ -131,6 +144,48 @@ export default function PageView({
           {stripLeadingTitleHeading(content, title)}
         </ReactMarkdown>
       </div>
+
+      {/* Page metadata — bottom of page, same order as single posts:
+          1. Categories  2. Date  3. Tags. Only rendered when any are present
+          (static pages typically have none). */}
+      {(categories.length > 0 || formatDate(publishedAt) || tags.length > 0) && (
+        <div className="space-y-3">
+          {(categories.length > 0 || formatDate(publishedAt)) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {categories.map(cat => (
+                <Link
+                  key={cat.slug}
+                  href={`/category/${cat.slug}`}
+                  className="text-xs font-medium px-2.5 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-accent)] border border-[var(--color-border)] hover:opacity-80 transition"
+                >
+                  {cat.name}
+                </Link>
+              ))}
+              {formatDate(publishedAt) && (
+                <time
+                  dateTime={publishedAt?.toISOString()}
+                  className="text-xs text-[var(--color-muted)] ml-1"
+                >
+                  {formatDate(publishedAt)}
+                </time>
+              )}
+            </div>
+          )}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map(tag => (
+                <Link
+                  key={tag.slug}
+                  href={`/tag/${tag.slug}`}
+                  className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-muted)] border border-[var(--color-border)] hover:opacity-80 transition"
+                >
+                  {tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Back to parent or home */}
       <footer className="pt-2">

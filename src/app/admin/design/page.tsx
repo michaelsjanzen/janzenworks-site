@@ -42,10 +42,12 @@ export default async function DesignPage() {
   const initialListStyle = ((draftConfig.homeListStyle ?? DESIGN_DEFAULTS.homeListStyle ?? "compact") as "compact" | "editorial" | "feature" | "text-only");
   const initialColumns = ((draftConfig.homeColumns ?? DESIGN_DEFAULTS.homeColumns ?? "1") as "1" | "2" | "3");
   const initialGap = ((draftConfig.homeGap ?? DESIGN_DEFAULTS.homeGap ?? "md") as "sm" | "md" | "lg");
+  const initialContentDisplay = ((draftConfig.homeContentDisplay ?? DESIGN_DEFAULTS.homeContentDisplay ?? "excerpt") as "excerpt" | "none");
   const initialBlogFeedStyle = ((draftConfig.blogFeedStyle ?? DESIGN_DEFAULTS.blogFeedStyle ?? "list") as "list" | "grid");
   const initialBlogListStyle = ((draftConfig.blogListStyle ?? DESIGN_DEFAULTS.blogListStyle ?? "compact") as "compact" | "editorial" | "feature" | "text-only");
   const initialBlogColumns = ((draftConfig.blogColumns ?? DESIGN_DEFAULTS.blogColumns ?? "1") as "1" | "2" | "3");
   const initialBlogGap = ((draftConfig.blogGap ?? DESIGN_DEFAULTS.blogGap ?? "md") as "sm" | "md" | "lg");
+  const initialBlogContentDisplay = ((draftConfig.blogContentDisplay ?? DESIGN_DEFAULTS.blogContentDisplay ?? "excerpt") as "excerpt" | "none");
 
   return (
     <DesignSaveProvider>
@@ -70,6 +72,7 @@ export default async function DesignPage() {
         initialListStyle={initialListStyle}
         initialColumns={initialColumns}
         initialGap={initialGap}
+        initialContentDisplay={initialContentDisplay}
         heroConfig={heroConfig}
         allMedia={allMedia}
         hasDraft={hasDraft}
@@ -82,6 +85,7 @@ export default async function DesignPage() {
         initialListStyle={initialBlogListStyle}
         initialColumns={initialBlogColumns}
         initialGap={initialBlogGap}
+        initialContentDisplay={initialBlogContentDisplay}
         hasDraft={hasDraft}
         saveAction={savePartialDesignDraft}
       />

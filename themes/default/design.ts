@@ -23,6 +23,8 @@ export interface HomeLayoutConfig {
   listStyle: "compact" | "editorial" | "feature" | "text-only";
   columns: 1 | 2 | 3;
   gap: "sm" | "md" | "lg";
+  /** Which post preview to show in each card: the excerpt, or no preview text at all. */
+  contentDisplay: "excerpt" | "none";
 }
 
 export interface HeroConfig {
@@ -306,6 +308,19 @@ export const DESIGN_TOKEN_DEFS: DesignTokenDef[] = [
     editable: true,
   },
   {
+    key: "homeContentDisplay",
+    label: "Content",
+    description: "What preview text to show in each card on the homepage.",
+    type: "select",
+    group: "layout-home",
+    options: [
+      { value: "excerpt", label: "Excerpt" },
+      { value: "none", label: "None" },
+    ],
+    default: "excerpt",
+    editable: true,
+  },
+  {
     key: "homeGap",
     label: "Gap",
     description: "Spacing between cards.",
@@ -361,6 +376,19 @@ export const DESIGN_TOKEN_DEFS: DesignTokenDef[] = [
       { value: "3", label: "3 columns" },
     ],
     default: "1",
+    editable: true,
+  },
+  {
+    key: "blogContentDisplay",
+    label: "Content",
+    description: "What preview text to show in each card on the blog archive.",
+    type: "select",
+    group: "layout-blog",
+    options: [
+      { value: "excerpt", label: "Excerpt" },
+      { value: "none", label: "None" },
+    ],
+    default: "excerpt",
     editable: true,
   },
   {

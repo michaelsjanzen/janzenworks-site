@@ -132,12 +132,15 @@ function HeroSection({ config }: { config: HeroConfig }) {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Metadata for list/loop views: categories → date. Tags are deliberately not
+ * shown in list views — they only appear at the bottom of the single post/page
+ * view so the feed stays scannable and categorical.
+ */
 function Meta({ post }: { post: PostSummary }) {
+  if (post.categories.length === 0 && !formatDate(post.publishedAt)) return null;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {formatDate(post.publishedAt) && (
-        <span className="text-xs text-[var(--color-muted)]">{formatDate(post.publishedAt)}</span>
-      )}
       {post.categories.map(cat => (
         <Link
           key={cat.slug}
@@ -147,15 +150,9 @@ function Meta({ post }: { post: PostSummary }) {
           {cat.name}
         </Link>
       ))}
-      {post.tags.map(tag => (
-        <Link
-          key={tag.slug}
-          href={`/tag/${tag.slug}`}
-          className="text-xs font-medium px-2 py-0.5 rounded-full bg-[var(--color-surface)] text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
-        >
-          {tag.name}
-        </Link>
-      ))}
+      {formatDate(post.publishedAt) && (
+        <span className="text-xs text-[var(--color-muted)]">{formatDate(post.publishedAt)}</span>
+      )}
     </div>
   );
 }
@@ -171,9 +168,18 @@ function ReadMore() {
   );
 }
 
+// ─── Card helpers ─────────────────────────────────────────────────────────────
+// All list/loop cards follow the same content order the user sees top-to-bottom:
+//   1. Title
+//   2. Content preview (excerpt, if enabled via Design > Customize → Content)
+//   3. Meta: categories → date (tags intentionally omitted — tags appear only
+//      on the single post/page view)
+// Every card accepts a `showExcerpt` prop so the surrounding page route can
+// honor the design token choice.
+
 // ─── Featured card — hero treatment above the feed ────────────────────────────
 
-function FeaturedCard({ post }: { post: PostSummary }) {
+function FeaturedCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden hover:border-[var(--color-muted)] hover:shadow-md transition-all">
       {post.featuredImageUrl && (
@@ -200,7 +206,7 @@ function FeaturedCard({ post }: { post: PostSummary }) {
             {post.title}
           </Link>
         </h2>
-        {post.excerpt && (
+        {showExcerpt && post.excerpt && (
           <p className="text-[var(--color-muted)] leading-relaxed line-clamp-3">{post.excerpt}</p>
         )}
         <div className="flex items-center justify-between pt-1">
@@ -214,11 +220,10 @@ function FeaturedCard({ post }: { post: PostSummary }) {
 
 // ─── List card — horizontal layout, thumbnail on the right ───────────────────
 
-function ListCard({ post }: { post: PostSummary }) {
+function ListCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="group py-8 first:pt-0 flex gap-6 items-start">
       <div className="flex-1 min-w-0 space-y-3">
-        <Meta post={post} />
         <h2 className="text-xl sm:text-2xl font-semibold leading-snug">
           <Link
             href={`/post/${post.slug}`}
@@ -227,11 +232,12 @@ function ListCard({ post }: { post: PostSummary }) {
             {post.title}
           </Link>
         </h2>
-        {post.excerpt && (
+        {showExcerpt && post.excerpt && (
           <p className="text-[var(--color-muted)] line-clamp-2 text-sm sm:text-base leading-relaxed">
             {post.excerpt}
           </p>
         )}
+        <Meta post={post} />
         <Link href={`/post/${post.slug}`}><ReadMore /></Link>
       </div>
       {post.featuredImageUrl && (
@@ -256,7 +262,7 @@ function ListCard({ post }: { post: PostSummary }) {
 
 // ─── Editorial card — large image left (~40%), text right ─────────────────────
 
-function EditorialCard({ post }: { post: PostSummary }) {
+function EditorialCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="group py-8 first:pt-0 flex gap-8 items-start">
       {post.featuredImageUrl && (
@@ -276,7 +282,6 @@ function EditorialCard({ post }: { post: PostSummary }) {
         </Link>
       )}
       <div className="flex-1 min-w-0 space-y-3 py-2">
-        <Meta post={post} />
         <h2 className="text-2xl sm:text-3xl font-bold leading-snug">
           <Link
             href={`/post/${post.slug}`}
@@ -285,11 +290,12 @@ function EditorialCard({ post }: { post: PostSummary }) {
             {post.title}
           </Link>
         </h2>
-        {post.excerpt && (
+        {showExcerpt && post.excerpt && (
           <p className="text-[var(--color-muted)] line-clamp-3 leading-relaxed">
             {post.excerpt}
           </p>
         )}
+        <Meta post={post} />
         <Link href={`/post/${post.slug}`}><ReadMore /></Link>
       </div>
     </article>
@@ -298,7 +304,7 @@ function EditorialCard({ post }: { post: PostSummary }) {
 
 // ─── Feature card — full-width image on top, content below ───────────────────
 
-function FeatureCard({ post }: { post: PostSummary }) {
+function FeatureCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="group rounded-xl overflow-hidden border border-[var(--color-border)] bg-[var(--color-surface)] hover:shadow-md transition-all">
       {post.featuredImageUrl && (
@@ -315,7 +321,6 @@ function FeatureCard({ post }: { post: PostSummary }) {
         </Link>
       )}
       <div className="p-6 sm:p-8 space-y-3">
-        <Meta post={post} />
         <h2 className="text-2xl sm:text-3xl font-bold leading-snug">
           <Link
             href={`/post/${post.slug}`}
@@ -324,11 +329,12 @@ function FeatureCard({ post }: { post: PostSummary }) {
             {post.title}
           </Link>
         </h2>
-        {post.excerpt && (
+        {showExcerpt && post.excerpt && (
           <p className="text-[var(--color-muted)] line-clamp-3 leading-relaxed">
             {post.excerpt}
           </p>
         )}
+        <Meta post={post} />
         <Link href={`/post/${post.slug}`}><ReadMore /></Link>
       </div>
     </article>
@@ -337,10 +343,9 @@ function FeatureCard({ post }: { post: PostSummary }) {
 
 // ─── Text-only card — no images, clean reading list ──────────────────────────
 
-function TextOnlyCard({ post }: { post: PostSummary }) {
+function TextOnlyCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="group py-6 first:pt-0 space-y-2">
-      <Meta post={post} />
       <h2 className="text-xl sm:text-2xl font-semibold leading-snug">
         <Link
           href={`/post/${post.slug}`}
@@ -349,19 +354,20 @@ function TextOnlyCard({ post }: { post: PostSummary }) {
           {post.title}
         </Link>
       </h2>
-      {post.excerpt && (
+      {showExcerpt && post.excerpt && (
         <p className="text-[var(--color-muted)] line-clamp-2 leading-relaxed">
           {post.excerpt}
         </p>
       )}
+      <Meta post={post} />
       <Link href={`/post/${post.slug}`}><ReadMore /></Link>
     </article>
   );
 }
 
-// ─── Grid card — vertical stack: title → image → excerpt → meta → read more ──
+// ─── Grid card — vertical stack: title → excerpt → meta → read more ──────────
 
-function GridCard({ post }: { post: PostSummary }) {
+function GridCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden hover:border-[var(--color-muted)] hover:shadow-sm transition-all">
       <div className="px-5 pt-5 pb-3">
@@ -388,7 +394,7 @@ function GridCard({ post }: { post: PostSummary }) {
         </Link>
       )}
       <div className="flex flex-col flex-1 gap-3 px-5 py-4">
-        {post.excerpt && (
+        {showExcerpt && post.excerpt && (
           <p className="text-[var(--color-muted)] text-sm leading-relaxed line-clamp-3">
             {post.excerpt}
           </p>
@@ -478,29 +484,30 @@ export function PostFeed({
   const listStyle = layoutConfig?.listStyle ?? "compact";
   const columns = layoutConfig?.columns ?? 1;
   const gap = layoutConfig?.gap ?? "md";
+  const showExcerpt = (layoutConfig?.contentDisplay ?? "excerpt") !== "none";
   const isGrid = feedStyle === "grid" && columns > 1;
 
   return (
     <>
       {isGrid ? (
         <div className={`grid ${gridColsClass[columns] ?? "grid-cols-2"} ${gapClass[gap] ?? "gap-6"}`}>
-          {posts.map(post => <GridCard key={post.id} post={post} />)}
+          {posts.map(post => <GridCard key={post.id} post={post} showExcerpt={showExcerpt} />)}
         </div>
       ) : listStyle === "editorial" ? (
         <div className="divide-y divide-[var(--color-border)]">
-          {posts.map(post => <EditorialCard key={post.id} post={post} />)}
+          {posts.map(post => <EditorialCard key={post.id} post={post} showExcerpt={showExcerpt} />)}
         </div>
       ) : listStyle === "feature" ? (
         <div className={`flex flex-col ${gapClass[gap] ?? "gap-8"}`}>
-          {posts.map(post => <FeatureCard key={post.id} post={post} />)}
+          {posts.map(post => <FeatureCard key={post.id} post={post} showExcerpt={showExcerpt} />)}
         </div>
       ) : listStyle === "text-only" ? (
         <div className="divide-y divide-[var(--color-border)]">
-          {posts.map(post => <TextOnlyCard key={post.id} post={post} />)}
+          {posts.map(post => <TextOnlyCard key={post.id} post={post} showExcerpt={showExcerpt} />)}
         </div>
       ) : (
         <div className="divide-y divide-[var(--color-border)]">
-          {posts.map(post => <ListCard key={post.id} post={post} />)}
+          {posts.map(post => <ListCard key={post.id} post={post} showExcerpt={showExcerpt} />)}
         </div>
       )}
       {pagination && (
@@ -526,6 +533,7 @@ export default function HomeView({
   featuredPost?: PostSummary;
 }) {
   const heroEnabled = heroConfig?.enabled ?? false;
+  const showExcerpt = (layoutConfig?.contentDisplay ?? "excerpt") !== "none";
 
   return (
     <div className="space-y-16">
@@ -534,7 +542,7 @@ export default function HomeView({
 
 
       {/* Featured post */}
-      {featuredPost && <FeaturedCard post={featuredPost} />}
+      {featuredPost && <FeaturedCard post={featuredPost} showExcerpt={showExcerpt} />}
 
       {/* Feed — id="posts" allows CTA buttons to deep-link here */}
       <div id="posts">

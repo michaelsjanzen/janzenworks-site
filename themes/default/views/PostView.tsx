@@ -280,7 +280,8 @@ export default function PostView({
         />
       )}
 
-      {/* Article header */}
+      {/* Article header — metadata (category → date → tags) is rendered at the
+          bottom of the article so the reader sees title and lede first. */}
       <header className="space-y-4 pb-8 border-b border-[var(--color-border)]">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--color-foreground)] leading-tight">
           {title}
@@ -290,12 +291,6 @@ export default function PostView({
           <p className="text-lg text-[var(--color-muted)] leading-relaxed">
             {excerpt || aeoMetadata?.summary}
           </p>
-        )}
-
-        {formatDate(publishedAt) && (
-          <div className="text-xs text-[var(--color-muted)]">
-            <time dateTime={publishedAt?.toISOString()}>{formatDate(publishedAt)}</time>
-          </div>
         )}
       </header>
 
@@ -360,27 +355,44 @@ export default function PostView({
         </div>
       )}
 
-      {/* Categories and tags */}
-      {(categories.length > 0 || tags.length > 0) && (
-        <div className="flex flex-wrap gap-1.5">
-          {categories.map(cat => (
-            <Link
-              key={cat.slug}
-              href={`/category/${cat.slug}`}
-              className="text-xs font-medium px-2.5 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-accent)] border border-[var(--color-border)] hover:opacity-80 transition"
-            >
-              {cat.name}
-            </Link>
-          ))}
-          {tags.map(tag => (
-            <Link
-              key={tag.slug}
-              href={`/tag/${tag.slug}`}
-              className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-muted)] border border-[var(--color-border)] hover:opacity-80 transition"
-            >
-              {tag.name}
-            </Link>
-          ))}
+      {/* Post metadata — bottom of article, rendered in order:
+          1. Categories  2. Date  3. Tags */}
+      {(categories.length > 0 || formatDate(publishedAt) || tags.length > 0) && (
+        <div className="space-y-3">
+          {(categories.length > 0 || formatDate(publishedAt)) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {categories.map(cat => (
+                <Link
+                  key={cat.slug}
+                  href={`/category/${cat.slug}`}
+                  className="text-xs font-medium px-2.5 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-accent)] border border-[var(--color-border)] hover:opacity-80 transition"
+                >
+                  {cat.name}
+                </Link>
+              ))}
+              {formatDate(publishedAt) && (
+                <time
+                  dateTime={publishedAt?.toISOString()}
+                  className="text-xs text-[var(--color-muted)] ml-1"
+                >
+                  {formatDate(publishedAt)}
+                </time>
+              )}
+            </div>
+          )}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map(tag => (
+                <Link
+                  key={tag.slug}
+                  href={`/tag/${tag.slug}`}
+                  className="text-xs px-2.5 py-1 rounded-full bg-[var(--color-surface)] text-[var(--color-muted)] border border-[var(--color-border)] hover:opacity-80 transition"
+                >
+                  {tag.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

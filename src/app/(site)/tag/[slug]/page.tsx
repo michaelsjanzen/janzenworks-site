@@ -74,6 +74,7 @@ export default async function TagArchivePage({
     listStyle: (designConfig.homeListStyle as "compact" | "editorial" | "feature" | "text-only") ?? "compact",
     columns: (Number(designConfig.homeColumns) as 1 | 2 | 3) ?? 1,
     gap: (designConfig.homeGap as "sm" | "md" | "lg") ?? "md",
+    contentDisplay: (designConfig.homeContentDisplay as "excerpt" | "none") ?? "excerpt",
   };
 
   const postPage = await fetchPostPage({ page, tagSlug: slug });

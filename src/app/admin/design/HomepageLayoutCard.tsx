@@ -11,6 +11,7 @@ interface Props {
   initialListStyle: "compact" | "editorial" | "feature" | "text-only";
   initialColumns: "1" | "2" | "3";
   initialGap: "sm" | "md" | "lg";
+  initialContentDisplay: "excerpt" | "none";
   heroConfig: HeroConfig;
   allMedia: MediaItem[];
   hasDraft: boolean;
@@ -29,6 +30,7 @@ export default function HomepageLayoutCard({
   initialListStyle,
   initialColumns,
   initialGap,
+  initialContentDisplay,
   heroConfig,
   allMedia,
   hasDraft,
@@ -38,6 +40,7 @@ export default function HomepageLayoutCard({
   const [listStyle, setListStyle] = useState(initialListStyle);
   const [columns, setColumns] = useState(initialColumns);
   const [gap, setGap] = useState(initialGap);
+  const [contentDisplay, setContentDisplay] = useState(initialContentDisplay);
   const [, startTransition] = useTransition();
   const { setIsSaving } = useDesignSave();
 
@@ -52,8 +55,9 @@ export default function HomepageLayoutCard({
       setListStyle(initialListStyle);
       setColumns(initialColumns);
       setGap(initialGap);
+      setContentDisplay(initialContentDisplay);
     }
-  }, [hasDraft, initialFeedStyle, initialListStyle, initialColumns, initialGap]);
+  }, [hasDraft, initialFeedStyle, initialListStyle, initialColumns, initialGap, initialContentDisplay]);
 
   function saveFeed(partial: Record<string, string>) {
     // Always persist all 4 layout values so a partial save never leaves the
@@ -63,6 +67,7 @@ export default function HomepageLayoutCard({
       homeListStyle: listStyle,
       homeColumns: columns,
       homeGap: gap,
+      homeContentDisplay: contentDisplay,
       ...partial, // overwrite with the value that just changed
     };
     setIsSaving(true);
@@ -167,6 +172,27 @@ export default function HomepageLayoutCard({
                 }`}
               >
                 {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <span className="text-sm font-medium text-zinc-700">Content</span>
+            <p className="text-xs text-zinc-600 mt-0.5">Preview text shown in each card.</p>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            {(["excerpt", "none"] as const).map(v => (
+              <button
+                key={v} type="button"
+                onClick={() => { setContentDisplay(v); saveFeed({ homeContentDisplay: v }); }}
+                className={`px-4 py-1.5 text-xs rounded-lg capitalize font-medium transition-colors ${
+                  contentDisplay === v ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                }`}
+              >
+                {v === "excerpt" ? "Excerpt" : "None"}
               </button>
             ))}
           </div>

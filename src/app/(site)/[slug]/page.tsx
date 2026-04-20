@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { posts } from "@/lib/db/schema";
+import { posts, postCategories, postTags, categories, tags } from "@/lib/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { getConfig } from "@/lib/config";
@@ -118,9 +118,19 @@ export default async function GenericPage(
     updatedAt: page.updatedAt,
   };
 
-  const [filteredContent, breadcrumbs] = await Promise.all([
+  const [filteredContent, breadcrumbs, pageCategories, pageTags] = await Promise.all([
     hooks.applyFilters("content:render", { input: page.content, post: postPayload }),
     resolveBreadcrumbs(page.parentId),
+    db
+      .select({ id: categories.id, name: categories.name, slug: categories.slug })
+      .from(postCategories)
+      .innerJoin(categories, eq(categories.id, postCategories.categoryId))
+      .where(eq(postCategories.postId, page.id)),
+    db
+      .select({ id: tags.id, name: tags.name, slug: tags.slug })
+      .from(postTags)
+      .innerJoin(tags, eq(tags.id, postTags.tagId))
+      .where(eq(postTags.postId, page.id)),
   ]);
 
   // Sibling pages for sidebar navigation (only relevant when there is a parent)
@@ -145,8 +155,8 @@ export default async function GenericPage(
     postId: page.id,
     slug: page.slug,
     content: page.content,
-    categoryIds: [],
-    tagIds: [],
+    categoryIds: pageCategories.map(c => c.id),
+    tagIds: pageTags.map(t => t.id),
     parentId: page.parentId,
     designConfig,
   };
@@ -169,6 +179,9 @@ export default async function GenericPage(
       layoutConfig={layoutConfig}
       siblingPages={siblingPages}
       sidebarContent={sidebarContent}
+      categories={pageCategories}
+      tags={pageTags}
+      publishedAt={page.publishedAt}
     />
   );
 }

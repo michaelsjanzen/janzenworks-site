@@ -7,6 +7,7 @@ interface Props {
   initialListStyle: "compact" | "editorial" | "feature" | "text-only";
   initialColumns: "1" | "2" | "3";
   initialGap: "sm" | "md" | "lg";
+  initialContentDisplay: "excerpt" | "none";
   hasDraft: boolean;
   saveAction: (partial: Record<string, string>) => Promise<void>;
 }
@@ -23,6 +24,7 @@ export default function BlogLayoutCard({
   initialListStyle,
   initialColumns,
   initialGap,
+  initialContentDisplay,
   hasDraft,
   saveAction,
 }: Props) {
@@ -30,6 +32,7 @@ export default function BlogLayoutCard({
   const [listStyle, setListStyle] = useState(initialListStyle);
   const [columns, setColumns] = useState(initialColumns);
   const [gap, setGap] = useState(initialGap);
+  const [contentDisplay, setContentDisplay] = useState(initialContentDisplay);
   const [, startTransition] = useTransition();
   const { setIsSaving } = useDesignSave();
 
@@ -43,8 +46,9 @@ export default function BlogLayoutCard({
       setListStyle(initialListStyle);
       setColumns(initialColumns);
       setGap(initialGap);
+      setContentDisplay(initialContentDisplay);
     }
-  }, [hasDraft, initialFeedStyle, initialListStyle, initialColumns, initialGap]);
+  }, [hasDraft, initialFeedStyle, initialListStyle, initialColumns, initialGap, initialContentDisplay]);
 
   function saveFeed(partial: Record<string, string>) {
     const full = {
@@ -52,6 +56,7 @@ export default function BlogLayoutCard({
       blogListStyle: listStyle,
       blogColumns: columns,
       blogGap: gap,
+      blogContentDisplay: contentDisplay,
       ...partial,
     };
     setIsSaving(true);
@@ -156,6 +161,27 @@ export default function BlogLayoutCard({
                 }`}
               >
                 {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <span className="text-sm font-medium text-zinc-700">Content</span>
+            <p className="text-xs text-zinc-600 mt-0.5">Preview text shown in each card.</p>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            {(["excerpt", "none"] as const).map(v => (
+              <button
+                key={v} type="button"
+                onClick={() => { setContentDisplay(v); saveFeed({ blogContentDisplay: v }); }}
+                className={`px-4 py-1.5 text-xs rounded-lg capitalize font-medium transition-colors ${
+                  contentDisplay === v ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+                }`}
+              >
+                {v === "excerpt" ? "Excerpt" : "None"}
               </button>
             ))}
           </div>

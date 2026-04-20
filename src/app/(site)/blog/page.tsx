@@ -56,6 +56,7 @@ export default async function BlogPage({
     listStyle: (designConfig.blogListStyle as "compact" | "editorial" | "feature" | "text-only") ?? "compact",
     columns: (Number(designConfig.blogColumns) as 1 | 2 | 3) ?? 1,
     gap: (designConfig.blogGap as "sm" | "md" | "lg") ?? "md",
+    contentDisplay: (designConfig.blogContentDisplay as "excerpt" | "none") ?? "excerpt",
   };
 
   const postPage = await fetchPostPage({ page });
