@@ -56,30 +56,41 @@ export function detectBot(userAgent: string): string | null {
 export interface BotInfo {
   label: string;
   color: string;
-  type:  "ai" | "search";
+  /**
+   * "answer"   — AI answer engines that use content to respond to live user queries
+   *              (OAI-SearchBot, ChatGPT-User, Claude-User, Perplexity-User, Gemini)
+   * "training" — Crawlers that index content for model training or background indexing
+   *              (GPTBot, ClaudeBot, CCBot, Amazonbot, etc.)
+   * "search"   — Traditional search engine spiders
+   */
+  type: "answer" | "training" | "search";
 }
 
 export const BOT_CONFIG: Record<string, BotInfo> = {
-  // OpenAI
-  "GPTBot":          { label: "GPTBot (OpenAI training)",       color: "#10a37f", type: "ai"     },
-  "OAI-SearchBot":   { label: "OAI-SearchBot (ChatGPT search)", color: "#0d8a6a", type: "ai"     },
-  "ChatGPT-User":    { label: "ChatGPT-User (live browsing)",   color: "#1ac89e", type: "ai"     },
-  // Anthropic/Claude
-  "ClaudeBot":       { label: "ClaudeBot (Anthropic training)", color: "#d97706", type: "ai"     },
-  "Claude-User":     { label: "Claude-User (live browsing)",    color: "#f59e0b", type: "ai"     },
-  "anthropic-ai":    { label: "anthropic-ai (API access)",      color: "#fbbf24", type: "ai"     },
-  // Perplexity
-  "PerplexityBot":   { label: "PerplexityBot",                  color: "#6366f1", type: "ai"     },
-  "Perplexity-User": { label: "Perplexity-User (live)",         color: "#818cf8", type: "ai"     },
-  // Other AI
-  Gemini:     { label: "Gemini",     color: "#4285f4", type: "ai"     },
-  Amazonbot:  { label: "Amazonbot",  color: "#ff9900", type: "ai"     },
-  Meta:       { label: "Meta",       color: "#0866ff", type: "ai"     },
-  Cohere:     { label: "Cohere",     color: "#39a2c8", type: "ai"     },
-  CCBot:      { label: "CCBot",      color: "#6b7280", type: "ai"     },
+  // OpenAI — answer engines (live user queries)
+  "OAI-SearchBot":   { label: "OAI-SearchBot (ChatGPT search)", color: "#0d8a6a", type: "answer"   },
+  "ChatGPT-User":    { label: "ChatGPT-User (live browsing)",   color: "#1ac89e", type: "answer"   },
+  // OpenAI — training
+  "GPTBot":          { label: "GPTBot (OpenAI training)",       color: "#10a37f", type: "training" },
+  // Anthropic/Claude — answer engines
+  "Claude-User":     { label: "Claude-User (live browsing)",    color: "#f59e0b", type: "answer"   },
+  // Anthropic/Claude — training
+  "ClaudeBot":       { label: "ClaudeBot (Anthropic training)", color: "#d97706", type: "training" },
+  "anthropic-ai":    { label: "anthropic-ai (API access)",      color: "#fbbf24", type: "training" },
+  // Perplexity — answer engine (live search)
+  "Perplexity-User": { label: "Perplexity-User (live)",         color: "#818cf8", type: "answer"   },
+  // Perplexity — training/indexing
+  "PerplexityBot":   { label: "PerplexityBot",                  color: "#6366f1", type: "training" },
+  // Other AI answer engines
+  Gemini:     { label: "Gemini",     color: "#4285f4", type: "answer"   },
+  // Other AI training crawlers
+  Amazonbot:  { label: "Amazonbot",  color: "#ff9900", type: "training" },
+  Meta:       { label: "Meta",       color: "#0866ff", type: "training" },
+  Cohere:     { label: "Cohere",     color: "#39a2c8", type: "training" },
+  CCBot:      { label: "CCBot",      color: "#6b7280", type: "training" },
   // Search engines
-  Googlebot:           { label: "Googlebot",                             color: "#34a853", type: "search" },
-  Bingbot:             { label: "Bingbot",                               color: "#00809d", type: "search" },
+  Googlebot:           { label: "Googlebot",                              color: "#34a853", type: "search" },
+  Bingbot:             { label: "Bingbot",                                color: "#00809d", type: "search" },
   "Applebot-Extended": { label: "Applebot-Extended (Apple Intelligence)", color: "#374151", type: "search" },
   Applebot:            { label: "Applebot (Siri / Spotlight)",            color: "#555555", type: "search" },
   DuckDuckBot:         { label: "DuckDuckBot",                            color: "#de5833", type: "search" },
