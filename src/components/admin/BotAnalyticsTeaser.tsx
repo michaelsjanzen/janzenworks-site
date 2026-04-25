@@ -17,7 +17,7 @@ interface Props {
 }
 
 export default function BotAnalyticsTeaser({ totals, topPaths }: Props) {
-  const aiBots    = totals.filter(r => BOT_CONFIG[r.botName]?.type === "ai");
+  const aiBots    = totals.filter(r => BOT_CONFIG[r.botName]?.type === "answer" || BOT_CONFIG[r.botName]?.type === "training");
   const searchBots= totals.filter(r => BOT_CONFIG[r.botName]?.type === "search");
   const grandTotal= totals.reduce((s, r) => s + r.total, 0);
 

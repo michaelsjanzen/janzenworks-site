@@ -1,38 +1,50 @@
-import { getBotTotals, getPriorTotals, getRecentVisits, getDailyTotals, getByResourceType, getTopPaths, getUncoveredAeoPosts, getLlmsTxtScore } from "../db";
+import {
+  getBotTotals, getPriorTotals, getRecentVisits, getDailyTotals,
+  getByResourceType, getTopPaths, getUncoveredAeoPosts, getLlmsTxtScore,
+} from "../db";
 import InsightsButton from "./InsightsButton";
 import { isAiConfigured } from "@/lib/ai";
 import { BOT_CONFIG } from "@/lib/bot-detection";
 import { getConfig } from "@/lib/config";
 import Link from "next/link";
 
-const AI_BOTS     = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "ai");
-const SEARCH_BOTS = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "search");
+// ── Bot category groupings ────────────────────────────────────────────────────
+
+const ANSWER_BOTS   = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "answer");
+const TRAINING_BOTS = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "training");
+const SEARCH_BOTS   = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "search");
+
+const BOT_CATEGORIES = [
+  { key: "answer",   label: "AI Answer Engines", bots: ANSWER_BOTS,   accent: "#a78bfa" },
+  { key: "training", label: "Training Crawlers",  bots: TRAINING_BOTS, accent: "#f9a8d4" },
+  { key: "search",   label: "Search Engines",     bots: SEARCH_BOTS,   accent: "#93c5fd" },
+] as const;
+
+// ── AEO Infrastructure endpoints ──────────────────────────────────────────────
+
+const AEO_ENDPOINTS = [
+  { id: "llms.txt",      label: "llms.txt",       category: "AEO"       },
+  { id: "llms-full.txt", label: "llms-full.txt",  category: "AEO"       },
+  { id: "Post Markdown", label: "Post Markdown",  category: "AEO"       },
+  { id: "Sitemap",       label: "Sitemap",         category: "Discovery" },
+  { id: "Robots.txt",    label: "Robots.txt",      category: "Discovery" },
+  { id: "RSS Feed",      label: "RSS Feed",         category: "Discovery" },
+  { id: "HTML Page",     label: "HTML Pages",       category: "Crawl"    },
+];
+
+// ── AEO Content Coverage fields ───────────────────────────────────────────────
+
+const AEO_FIELDS = [
+  { key: "withSummary",  label: "Summary",         desc: "AI-readable summary paragraph" },
+  { key: "withQa",       label: "Q&A / FAQPage",   desc: "Question and answer pairs"      },
+  { key: "withEntities", label: "Entities",         desc: "Named entities with types"      },
+  { key: "withKeywords", label: "Keywords",         desc: "Topical keyword tags"           },
+  { key: "withSchema",   label: "Extended Schema",  desc: "HowTo, Product, Event, etc."   },
+] as const;
+
+// ── Resource types present in data ───────────────────────────────────────────
 
 const AEO_RESOURCE_TYPES = new Set(["llms.txt", "llms-full.txt", "Post Markdown"]);
-
-type ResourceCategory = "aeo" | "discovery" | "crawl";
-
-const RESOURCE_TYPES: { id: string; label: string; category: ResourceCategory }[] = [
-  { id: "llms.txt",       label: "llms.txt",       category: "aeo"       },
-  { id: "llms-full.txt",  label: "llms-full.txt",  category: "aeo"       },
-  { id: "Post Markdown",  label: "Post Markdown",  category: "aeo"       },
-  { id: "Sitemap",        label: "Sitemap",         category: "discovery" },
-  { id: "Robots.txt",     label: "Robots.txt",      category: "discovery" },
-  { id: "HTML Page",      label: "HTML Page",       category: "crawl"     },
-];
-
-const CATEGORY_LABELS: Record<ResourceCategory, string> = {
-  aeo:       "AEO Endpoints",
-  discovery: "Discovery",
-  crawl:     "Page Crawls",
-};
-
-const FUNNEL_STAGES = [
-  { label: "Discovered",     resourceTypes: ["HTML Page", "llms.txt", "llms-full.txt", "Post Markdown", "Sitemap", "Robots.txt"] },
-  { label: "Infrastructure", resourceTypes: ["Robots.txt", "Sitemap", "llms.txt", "llms-full.txt"] },
-  { label: "HTML content",   resourceTypes: ["HTML Page"] },
-  { label: "AEO markdown",   resourceTypes: ["Post Markdown"] },
-];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -46,12 +58,7 @@ function timeAgo(date: Date | string): string {
 
 function BotDot({ name }: { name: string }) {
   const color = BOT_CONFIG[name]?.color ?? "#9ca3af";
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-      style={{ background: color }}
-    />
-  );
+  return <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />;
 }
 
 function BotBadge({ name }: { name: string }) {
@@ -64,7 +71,7 @@ function BotBadge({ name }: { name: string }) {
   );
 }
 
-// ── Shared style tokens ───────────────────────────────────────────────────────
+// ── Style tokens (aeopugmill.com–aligned) ─────────────────────────────────────
 
 const card      = "bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl overflow-hidden";
 const cardPad   = "bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl p-4";
@@ -75,6 +82,15 @@ const mutedText = "text-zinc-500 dark:text-[#8b949e]";
 const tableHead = "bg-zinc-50 dark:bg-[#0d1117] text-xs text-zinc-500 dark:text-[#8b949e]";
 const tableRow  = "hover:bg-zinc-50 dark:hover:bg-[#21262d]";
 const divider   = "divide-y divide-zinc-100 dark:divide-[#30363d]";
+
+// ── Funnel stages ─────────────────────────────────────────────────────────────
+
+const FUNNEL_STAGES = [
+  { label: "Discovered",     resourceTypes: ["HTML Page", "llms.txt", "llms-full.txt", "Post Markdown", "Sitemap", "Robots.txt"] },
+  { label: "Infrastructure", resourceTypes: ["Robots.txt", "Sitemap", "llms.txt", "llms-full.txt"] },
+  { label: "HTML content",   resourceTypes: ["HTML Page"] },
+  { label: "AEO markdown",   resourceTypes: ["Post Markdown"] },
+];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -96,14 +112,15 @@ export default async function BotAnalyticsAdminPage() {
   const priorTotal = priorTotals.reduce((s, r) => s + r.total, 0);
   const trendPct   = priorTotal > 0 ? Math.round(((grandTotal - priorTotal) / priorTotal) * 100) : null;
 
-  // AEO Appetite — visits to AEO endpoints as % of all visits
-  const aeoTotal        = byResource.filter(r => AEO_RESOURCE_TYPES.has(r.resourceType)).reduce((s, r) => s + r.total, 0);
-  const aeoAppetitePct  = grandTotal > 0 ? Math.round((aeoTotal / grandTotal) * 100) : 0;
+  // AEO Appetite
+  const aeoTotal       = byResource.filter(r => AEO_RESOURCE_TYPES.has(r.resourceType)).reduce((s, r) => s + r.total, 0);
+  const aeoAppetitePct = grandTotal > 0 ? Math.round((aeoTotal / grandTotal) * 100) : 0;
 
   // Network participation
   const networkActive = config.network?.participateInNetwork ?? false;
 
-  const summaryMap = Object.fromEntries(totals.map(r => [r.botName, r.total]));
+  // Summary and resource maps
+  const summaryMap: Record<string, number> = Object.fromEntries(totals.map(r => [r.botName, r.total]));
 
   const resourceMap: Record<string, Record<string, number>> = {};
   for (const row of byResource) {
@@ -111,26 +128,23 @@ export default async function BotAnalyticsAdminPage() {
     resourceMap[row.botName][row.resourceType] = row.total;
   }
 
-  const activeResourceTypes = RESOURCE_TYPES.filter(rt =>
-    byResource.some(r => r.resourceType === rt.id),
-  );
-  const displayResourceTypes = activeResourceTypes.length > 0 ? activeResourceTypes : RESOURCE_TYPES;
-
-  function botFunnelStage(botName: string): number {
-    const botTypes = resourceMap[botName] ?? {};
-    for (let i = FUNNEL_STAGES.length - 1; i >= 0; i--) {
-      const reached = FUNNEL_STAGES[i].resourceTypes.some(rt => (botTypes[rt] ?? 0) > 0);
-      if (reached) return i + 1;
-    }
-    return 0;
+  // Endpoint totals (across all bots)
+  const endpointTotals: Record<string, number> = {};
+  for (const row of byResource) {
+    endpointTotals[row.resourceType] = (endpointTotals[row.resourceType] ?? 0) + row.total;
   }
 
   const activeBots = totals.map(r => r.botName);
 
-  const llmsHealthPct = llmsScore.total > 0
-    ? Math.round(((llmsScore.withSummary + llmsScore.withQa + llmsScore.withEntities) / (llmsScore.total * 3)) * 100)
-    : 0;
+  function botFunnelStage(botName: string): number {
+    const botTypes = resourceMap[botName] ?? {};
+    for (let i = FUNNEL_STAGES.length - 1; i >= 0; i--) {
+      if (FUNNEL_STAGES[i].resourceTypes.some(rt => (botTypes[rt] ?? 0) > 0)) return i + 1;
+    }
+    return 0;
+  }
 
+  // Daily chart
   const allDates = [...new Set(daily.map(r => r.day))].sort();
   const dailyIndex: Record<string, Record<string, number>> = {};
   for (const row of daily) {
@@ -138,42 +152,40 @@ export default async function BotAnalyticsAdminPage() {
     dailyIndex[row.botName][row.day] = row.total;
   }
   const maxDailyTotal = allDates.length > 0
-    ? Math.max(...allDates.map(d =>
-        Object.values(dailyIndex).reduce((s, botDays) => s + (botDays[d] ?? 0), 0)
-      ), 1)
+    ? Math.max(...allDates.map(d => Object.values(dailyIndex).reduce((s, b) => s + (b[d] ?? 0), 0)), 1)
     : 1;
   const dailyTotals = allDates.map(d =>
-    Object.values(dailyIndex).reduce((s, botDays) => s + (botDays[d] ?? 0), 0)
+    Object.values(dailyIndex).reduce((s, b) => s + (b[d] ?? 0), 0)
   );
 
+  // llms.txt health score
+  const llmsHealthPct = llmsScore.total > 0
+    ? Math.round(((llmsScore.withSummary + llmsScore.withQa + llmsScore.withEntities + llmsScore.withKeywords + llmsScore.withSchema) / (llmsScore.total * AEO_FIELDS.length)) * 100)
+    : 0;
+
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
+    <div className="p-6 max-w-6xl mx-auto space-y-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className={`text-xl font-semibold ${bodyText}`}>AEO Analytics</h1>
-        <p className={`text-sm ${mutedText} mt-0.5`}>
-          AI crawler and search engine bot visits — last 30 days
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className={`text-xl font-semibold ${bodyText}`}>AEO Analytics</h1>
+          <p className={`text-sm ${mutedText} mt-0.5`}>AI crawler and search engine bot visits — last 30 days</p>
+        </div>
+        {aiEnabled && <InsightsButton />}
       </div>
 
       {/* ── Summary cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-
-        {/* Total visits + trend */}
         <div className={cardPad}>
           <p className={`text-xs ${mutedText} mb-1`}>Total visits</p>
-          <p className={`text-2xl font-bold ${bodyText}`}>
-            {grandTotal > 0 ? grandTotal.toLocaleString() : "—"}
-          </p>
+          <p className={`text-2xl font-bold ${bodyText}`}>{grandTotal > 0 ? grandTotal.toLocaleString() : "—"}</p>
           {trendPct !== null && grandTotal > 0 && (
             <p className={`text-xs mt-1 font-semibold ${trendPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
               {trendPct >= 0 ? `↑ ${trendPct}%` : `↓ ${Math.abs(trendPct)}%`} vs prior 30d
             </p>
           )}
         </div>
-
-        {/* AEO Appetite */}
         <div className={cardPad}>
           <p className={`text-xs ${mutedText} mb-1`}>AEO appetite</p>
           <p className={`text-2xl font-bold ${aeoAppetitePct > 0 ? "text-violet-600 dark:text-violet-400" : bodyText}`}>
@@ -181,78 +193,155 @@ export default async function BotAnalyticsAdminPage() {
           </p>
           <p className={`text-xs ${mutedText} mt-1`}>visits to AEO endpoints</p>
         </div>
-
-        {/* Unique bots */}
         <div className={cardPad}>
           <p className={`text-xs ${mutedText} mb-1`}>Unique bots</p>
-          <p className={`text-2xl font-bold ${bodyText}`}>
-            {totals.length > 0 ? totals.length : "—"}
-          </p>
+          <p className={`text-2xl font-bold ${bodyText}`}>{totals.length > 0 ? totals.length : "—"}</p>
         </div>
-
-        {/* Last visit */}
         <div className={cardPad}>
           <p className={`text-xs ${mutedText} mb-1`}>Last visit</p>
-          <p className={`text-sm font-semibold ${bodyText}`}>
-            {recent[0] ? timeAgo(recent[0].visitedAt) : "—"}
-          </p>
+          <p className={`text-sm font-semibold ${bodyText}`}>{recent[0] ? timeAgo(recent[0].visitedAt) : "—"}</p>
         </div>
       </div>
 
-      {/* ── AI Crawlers ────────────────────────────────────────────────────── */}
-      <div>
-        <p className={`${eyebrow} mb-3`}>AI Crawlers</p>
-        <div className="flex flex-wrap gap-3">
-          {AI_BOTS.map(([key, info]) => {
-            const count = summaryMap[key] ?? 0;
-            return (
-              <div
-                key={key}
-                className={`bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl p-4 min-w-[110px] flex-1 text-center`}
-                style={{ borderTop: `3px solid ${info.color}` }}
-              >
+      {/* ── 3-column: Bot Activity | AEO Content Coverage | AEO Infrastructure */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Col 1 — Bot Activity ─────────────────────────────────────────── */}
+        <div className={`${card} flex flex-col`}>
+          <div className={cardHead}>
+            <p className={eyebrow}>Bot Activity</p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>All visits by category — last 30 days</p>
+          </div>
+          <div className="p-3 space-y-2 flex-1">
+            {BOT_CATEGORIES.map(cat => {
+              const catTotal = cat.bots.reduce((s, [key]) => s + (summaryMap[key] ?? 0), 0);
+              const catShare = grandTotal > 0 ? Math.round((catTotal / grandTotal) * 100) : 0;
+              const activeCatBots = cat.bots.filter(([key]) => (summaryMap[key] ?? 0) > 0);
+              return (
                 <div
-                  className="text-2xl font-bold leading-tight"
-                  style={{ color: count > 0 ? info.color : "#6b7280" }}
+                  key={cat.key}
+                  className="rounded-lg p-3 bg-zinc-50 dark:bg-[#0d1117] border border-zinc-100 dark:border-[#21262d]"
+                  style={{ borderLeft: `3px solid ${cat.accent}` }}
                 >
-                  {count > 0 ? count.toLocaleString() : "0"}
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider"
+                      style={{ color: cat.accent }}
+                    >
+                      {cat.label}
+                    </span>
+                    <span className={`text-xs font-bold ${bodyText}`}>
+                      {catTotal > 0 ? catTotal.toLocaleString() : "—"}
+                      {catTotal > 0 && <span className={`ml-1 font-normal ${mutedText}`}>{catShare}%</span>}
+                    </span>
+                  </div>
+                  {activeCatBots.length === 0 ? (
+                    <p className={`text-[10px] ${mutedText} italic`}>No visits recorded</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {activeCatBots.map(([key, info]) => {
+                        const count = summaryMap[key] ?? 0;
+                        const share = catTotal > 0 ? Math.round((count / catTotal) * 100) : 0;
+                        return (
+                          <div key={key} className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: info.color }} />
+                            <span className={`text-[10px] ${mutedText} flex-1 truncate`}>{info.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-10 h-1 bg-zinc-200 dark:bg-[#30363d] rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${share}%`, background: info.color }} />
+                              </div>
+                              <span className={`text-[10px] font-semibold ${bodyText} w-6 text-right`}>{count}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div className={`text-xs ${mutedText} mt-1`}>{info.label}</div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Col 2 — AEO Content Coverage ─────────────────────────────────── */}
+        <div className={`${card} flex flex-col`}>
+          <div className={cardHead}>
+            <p className={eyebrow}>AEO Content Coverage</p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>AEO field adoption across your {llmsScore.total} published posts</p>
+          </div>
+          <div className="p-4 flex-1 space-y-3">
+            {/* Overall score */}
+            <div className="flex items-center justify-between mb-1">
+              <span className={`text-xs ${mutedText}`}>Overall coverage</span>
+              <span className={`text-lg font-bold ${bodyText}`}>{llmsHealthPct}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-zinc-100 dark:bg-[#21262d] rounded-full overflow-hidden mb-4">
+              <div className="h-full rounded-full bg-violet-500 dark:bg-violet-600 transition-all" style={{ width: `${llmsHealthPct}%` }} />
+            </div>
+            {/* Per-field bars */}
+            {AEO_FIELDS.map(field => {
+              const count = llmsScore[field.key] as number;
+              const pct   = llmsScore.total > 0 ? Math.round((count / llmsScore.total) * 100) : 0;
+              return (
+                <div key={field.key}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className={`text-xs ${bodyText}`}>{field.label}</span>
+                    <span className={`text-xs font-semibold ${bodyText}`}>{pct}%
+                      <span className={`ml-1 font-normal ${mutedText}`}>{count}/{llmsScore.total}</span>
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-100 dark:bg-[#21262d] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${pct}%`,
+                        background: pct >= 75 ? "#22c55e" : pct >= 40 ? "#a78bfa" : "#f59e0b",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Col 3 — AEO Infrastructure ───────────────────────────────────── */}
+        <div className={`${card} flex flex-col`}>
+          <div className={cardHead}>
+            <p className={eyebrow}>AEO Infrastructure</p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>Active AEO subjects, endpoints, and routes. Bot visit counts last 30 days.</p>
+          </div>
+          <div className={`${divider} flex-1`}>
+            {AEO_ENDPOINTS.map(ep => {
+              const visits = endpointTotals[ep.id] ?? 0;
+              return (
+                <div key={ep.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ background: ep.category === "AEO" ? "#a78bfa" : ep.category === "Discovery" ? "#93c5fd" : "#8b949e" }}
+                    />
+                    <span className={`text-xs font-mono ${bodyText} truncate`}>{ep.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-green-100 dark:bg-[#0d2b1a] text-green-700 dark:text-green-400">
+                      Enabled
+                    </span>
+                    {visits > 0 && (
+                      <span className={`text-xs font-semibold ${bodyText}`}>{visits.toLocaleString()}</span>
+                    )}
+                    {visits === 0 && (
+                      <span className={`text-xs ${mutedText}`}>—</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* ── Search Spiders ─────────────────────────────────────────────────── */}
-      <div>
-        <p className={`${eyebrow} mb-3`}>Search Spiders</p>
-        <div className="flex flex-wrap gap-3">
-          {SEARCH_BOTS.map(([key, info]) => {
-            const count = summaryMap[key] ?? 0;
-            return (
-              <div
-                key={key}
-                className={`bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl p-3 min-w-[100px] flex-1 text-center`}
-                style={{ borderTop: `3px solid ${info.color}` }}
-              >
-                <div
-                  className="text-xl font-bold leading-tight"
-                  style={{ color: count > 0 ? info.color : "#6b7280" }}
-                >
-                  {count > 0 ? count.toLocaleString() : "0"}
-                </div>
-                <div className={`text-xs ${mutedText} mt-1`}>{info.label}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── AI Insights ────────────────────────────────────────────────────── */}
-      {aiEnabled && <InsightsButton />}
-
-      {/* ── Uncovered AEO — moved up, most actionable ──────────────────────── */}
+      {/* ── Uncovered AEO ──────────────────────────────────────────────────── */}
       <div className={card}>
         <div className={cardHead}>
           <p className={eyebrow}>Uncovered AEO</p>
@@ -269,15 +358,10 @@ export default async function BotAnalyticsAdminPage() {
             </p>
           </div>
         ) : (
-          <ul className={`${divider}`}>
+          <ul className={divider}>
             {uncoveredAeo.map(p => (
               <li key={p.slug} className="px-4 py-3 flex items-center justify-between gap-4">
-                <Link
-                  href={`/admin/posts`}
-                  className={`text-sm ${bodyText} hover:text-violet-600 dark:hover:text-violet-400 transition-colors truncate`}
-                >
-                  {p.title}
-                </Link>
+                <span className={`text-sm ${bodyText} truncate`}>{p.title}</span>
                 <span className={`text-xs font-mono ${mutedText} shrink-0`}>/post/{p.slug}/llm.txt</span>
               </li>
             ))}
@@ -299,7 +383,7 @@ export default async function BotAnalyticsAdminPage() {
               const stage = botFunnelStage(bot);
               return (
                 <div key={bot} className="px-4 py-3 flex items-center gap-4">
-                  <div className="w-28 shrink-0">
+                  <div className="w-36 shrink-0">
                     <BotBadge name={bot} />
                   </div>
                   <div className="flex items-center gap-1 flex-1">
@@ -336,44 +420,9 @@ export default async function BotAnalyticsAdminPage() {
         </div>
       )}
 
-      {/* ── llms.txt Health ────────────────────────────────────────────────── */}
-      <div className={cardPad}>
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className={eyebrow}>llms.txt Health</p>
-            <p className={`text-xs ${mutedText} mt-0.5`}>AEO content coverage across your published posts.</p>
-          </div>
-          <div className="text-right">
-            <span className={`text-2xl font-bold ${bodyText}`}>{llmsHealthPct}%</span>
-            <p className={`text-xs ${mutedText}`}>{llmsScore.total} posts</p>
-          </div>
-        </div>
-        <div className="w-full h-2 bg-zinc-100 dark:bg-[#21262d] rounded-full overflow-hidden mb-3">
-          <div
-            className="h-full rounded-full bg-violet-600 dark:bg-violet-500 transition-all"
-            style={{ width: `${llmsHealthPct}%` }}
-          />
-        </div>
-        <div className="grid grid-cols-3 gap-3 text-center">
-          {[
-            { label: "Summary",   count: llmsScore.withSummary },
-            { label: "Q&A pairs", count: llmsScore.withQa },
-            { label: "Entities",  count: llmsScore.withEntities },
-          ].map(({ label, count }) => (
-            <div key={label} className="bg-zinc-50 dark:bg-[#0d1117] rounded-lg p-2">
-              <p className={`text-lg font-bold ${bodyText}`}>{count}</p>
-              <p className={`text-xs ${mutedText}`}>{label}</p>
-              <p className={`text-[10px] ${mutedText}`}>
-                {llmsScore.total > 0 ? `${Math.round((count / llmsScore.total) * 100)}%` : "—"}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* ── Daily sparkline ────────────────────────────────────────────────── */}
       <div className={cardPad}>
-        <p className={`${eyebrow} mb-3`}>Daily visits (30 days)</p>
+        <p className={`${eyebrow} mb-3`}>Daily visits — last 30 days</p>
         {grandTotal === 0 ? (
           <div className="h-16 flex items-center justify-center">
             <p className={`text-xs ${mutedText}`}>No visits recorded yet — chart will appear once bots arrive.</p>
@@ -398,7 +447,7 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* ── Content Reach ──────────────────────────────────────────────────── */}
+      {/* ── Content Reach — bots as rows, resource types as columns ────────── */}
       <div className={card}>
         <div className={cardHead}>
           <p className={eyebrow}>Content Reach</p>
@@ -413,36 +462,36 @@ export default async function BotAnalyticsAdminPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead className={tableHead}>
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium">Resource Type</th>
-                  <th className="text-left px-4 py-2 font-medium">Category</th>
-                  {Object.keys(BOT_CONFIG).map(bot => (
-                    <th key={bot} className="text-center px-3 py-2 font-medium">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="w-2 h-2 rounded-full" style={{ background: BOT_CONFIG[bot].color }} />
-                        <span className="whitespace-nowrap">{BOT_CONFIG[bot].label}</span>
-                      </div>
+                  <th className="text-left px-4 py-2 font-medium">Bot</th>
+                  {AEO_ENDPOINTS.map(ep => (
+                    <th key={ep.id} className="text-center px-2 py-2 font-medium whitespace-nowrap">
+                      {ep.label}
                     </th>
                   ))}
+                  <th className="text-right px-4 py-2 font-medium">Total</th>
                 </tr>
               </thead>
               <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
-                {(["aeo", "discovery", "crawl"] as ResourceCategory[]).map(category => {
-                  const typeRows = displayResourceTypes.filter(rt => rt.category === category);
-                  return typeRows.map((rt, i) => (
-                    <tr key={rt.id} className={tableRow}>
-                      <td className={`px-4 py-2 font-mono text-xs ${bodyText}`}>{rt.label}</td>
-                      <td className={`px-4 py-2 text-xs ${mutedText}`}>
-                        {i === 0 ? CATEGORY_LABELS[category] : ""}
+                {activeBots.map(bot => {
+                  const botResources = resourceMap[bot] ?? {};
+                  const botTotal = summaryMap[bot] ?? 0;
+                  return (
+                    <tr key={bot} className={tableRow}>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <BotDot name={bot} />
+                          <span className={`${bodyText} whitespace-nowrap`}>{BOT_CONFIG[bot]?.label ?? bot}</span>
+                        </div>
                       </td>
-                      {Object.keys(BOT_CONFIG).map(bot => {
-                        const cnt = resourceMap[bot]?.[rt.id] ?? 0;
+                      {AEO_ENDPOINTS.map(ep => {
+                        const cnt = botResources[ep.id] ?? 0;
                         return (
-                          <td key={bot} className="px-3 py-2 text-center text-xs">
+                          <td key={ep.id} className="px-2 py-2.5 text-center">
                             {cnt > 0 ? (
-                              <span className="font-semibold" style={{ color: BOT_CONFIG[bot].color }}>
+                              <span className="font-semibold" style={{ color: BOT_CONFIG[bot]?.color ?? "#71717a" }}>
                                 {cnt.toLocaleString()}
                               </span>
                             ) : (
@@ -451,8 +500,11 @@ export default async function BotAnalyticsAdminPage() {
                           </td>
                         );
                       })}
+                      <td className={`px-4 py-2.5 text-right font-semibold ${bodyText}`}>
+                        {botTotal.toLocaleString()}
+                      </td>
                     </tr>
-                  ));
+                  );
                 })}
               </tbody>
             </table>
@@ -469,7 +521,6 @@ export default async function BotAnalyticsAdminPage() {
         {topPaths.length === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className={`text-sm ${mutedText}`}>No page visits recorded yet.</p>
-            <p className={`text-xs ${mutedText} mt-1`}>Top pages will appear here once bots start crawling your content.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -483,12 +534,8 @@ export default async function BotAnalyticsAdminPage() {
             <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
               {topPaths.map(row => (
                 <tr key={row.path} className={tableRow}>
-                  <td className={`px-4 py-2.5 font-mono text-xs ${mutedText} truncate max-w-xs`}>
-                    {row.path}
-                  </td>
-                  <td className={`px-4 py-2.5 text-right font-semibold ${bodyText}`}>
-                    {row.total.toLocaleString()}
-                  </td>
+                  <td className={`px-4 py-2.5 font-mono text-xs ${mutedText} truncate max-w-xs`}>{row.path}</td>
+                  <td className={`px-4 py-2.5 text-right font-semibold ${bodyText}`}>{row.total.toLocaleString()}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
                       {Object.entries(row.bots).map(([bot, cnt]) => {
@@ -513,15 +560,14 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* ── By Bot ─────────────────────────────────────────────────────────── */}
+      {/* ── By Bot (30 days) ───────────────────────────────────────────────── */}
       <div className={card}>
         <div className={cardHead}>
-          <p className={eyebrow}>By Bot (30 days)</p>
+          <p className={eyebrow}>By Bot — 30 days</p>
         </div>
         {grandTotal === 0 ? (
           <div className="px-4 py-8 text-center">
             <p className={`text-sm ${mutedText}`}>No bot visits recorded yet.</p>
-            <p className={`text-xs ${mutedText} mt-1`}>Visits will appear here once crawlers index your content.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -536,12 +582,8 @@ export default async function BotAnalyticsAdminPage() {
             <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
               {totals.map(row => (
                 <tr key={row.botName} className={tableRow}>
-                  <td className="px-4 py-2.5">
-                    <BotBadge name={row.botName} />
-                  </td>
-                  <td className={`px-4 py-2.5 text-right font-medium ${bodyText}`}>
-                    {row.total.toLocaleString()}
-                  </td>
+                  <td className="px-4 py-2.5"><BotBadge name={row.botName} /></td>
+                  <td className={`px-4 py-2.5 text-right font-medium ${bodyText}`}>{row.total.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <div className="w-16 h-1.5 bg-zinc-100 dark:bg-[#21262d] rounded-full overflow-hidden">
@@ -558,9 +600,7 @@ export default async function BotAnalyticsAdminPage() {
                       </span>
                     </div>
                   </td>
-                  <td className={`px-4 py-2.5 text-right text-xs ${mutedText}`}>
-                    {timeAgo(row.lastDay)}
-                  </td>
+                  <td className={`px-4 py-2.5 text-right text-xs ${mutedText}`}>{timeAgo(row.lastDay)}</td>
                 </tr>
               ))}
             </tbody>
@@ -590,23 +630,15 @@ export default async function BotAnalyticsAdminPage() {
             <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
               {recent.map(row => (
                 <tr key={row.id} className={tableRow}>
-                  <td className={`px-4 py-2 text-xs ${mutedText} whitespace-nowrap`}>
-                    {timeAgo(row.visitedAt)}
-                  </td>
+                  <td className={`px-4 py-2 text-xs ${mutedText} whitespace-nowrap`}>{timeAgo(row.visitedAt)}</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1.5">
                       <BotDot name={row.botName} />
-                      <span className={`text-xs ${bodyText}`}>
-                        {BOT_CONFIG[row.botName]?.label ?? row.botName}
-                      </span>
+                      <span className={`text-xs ${bodyText}`}>{BOT_CONFIG[row.botName]?.label ?? row.botName}</span>
                     </div>
                   </td>
-                  <td className={`px-4 py-2 text-xs ${mutedText} whitespace-nowrap`}>
-                    {row.resourceType}
-                  </td>
-                  <td className={`px-4 py-2 text-xs ${mutedText} font-mono truncate max-w-xs`}>
-                    {row.path}
-                  </td>
+                  <td className={`px-4 py-2 text-xs ${mutedText} whitespace-nowrap`}>{row.resourceType}</td>
+                  <td className={`px-4 py-2 text-xs ${mutedText} font-mono truncate max-w-xs`}>{row.path}</td>
                 </tr>
               ))}
             </tbody>
@@ -618,12 +650,8 @@ export default async function BotAnalyticsAdminPage() {
       {networkActive && (
         <div className="border border-violet-200 dark:border-[#1d1535] bg-violet-50 dark:bg-[#1d1535] rounded-xl px-4 py-3 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">
-              Contributing to the AEO Intelligence Network
-            </p>
-            <p className={`text-xs ${mutedText} mt-0.5`}>
-              Your anonymised bot data is included in the network. See how the web compares.
-            </p>
+            <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">Contributing to the AEO Intelligence Network</p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>Your anonymised bot data is included in the network. See how the web compares.</p>
           </div>
           <a
             href="https://aeopugmill.com"
@@ -638,10 +666,9 @@ export default async function BotAnalyticsAdminPage() {
 
       {/* ── Footer note ────────────────────────────────────────────────────── */}
       <p className={`text-xs ${mutedText} pb-4`}>
-        AI crawlers: ChatGPT (GPTBot, ChatGPT-User, OAI-SearchBot), Claude (ClaudeBot, anthropic-ai),
-        Perplexity (PerplexityBot), Gemini (Google-Extended), Amazonbot, Meta (meta-externalagent),
-        Cohere (cohere-ai), CCBot.{" "}
-        Search spiders: Googlebot, Bingbot, Applebot (Apple Intelligence), DuckDuckBot, Bytespider (ByteDance).
+        AI answer engines: OAI-SearchBot, ChatGPT-User (OpenAI), Claude-User (Anthropic), Perplexity-User, Gemini.{" "}
+        Training crawlers: GPTBot (OpenAI), ClaudeBot, anthropic-ai, PerplexityBot, Amazonbot, Meta, Cohere, CCBot.{" "}
+        Search engines: Googlebot, Bingbot, Applebot (Siri/Spotlight), Applebot-Extended (Apple Intelligence), DuckDuckBot, Bytespider.
       </p>
     </div>
   );

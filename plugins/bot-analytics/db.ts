@@ -139,20 +139,24 @@ export async function getLlmsTxtScore() {
     .from(posts)
     .where(eq(posts.published, true));
 
-  const total     = allPosts.length;
-  let withSummary = 0;
-  let withQa      = 0;
-  let withEntities = 0;
+  const total          = allPosts.length;
+  let withSummary      = 0;
+  let withQa           = 0;
+  let withEntities     = 0;
+  let withKeywords     = 0;
+  let withSchema       = 0;
 
   for (const p of allPosts) {
     const raw = p.aeoMetadata as Record<string, unknown> | null;
     if (!raw) continue;
-    if (typeof raw.summary === "string" && raw.summary.trim()) withSummary++;
-    if (Array.isArray(raw.questions) && raw.questions.length > 0)   withQa++;
-    if (Array.isArray(raw.entities)  && raw.entities.length > 0)    withEntities++;
+    if (typeof raw.summary === "string" && raw.summary.trim())         withSummary++;
+    if (Array.isArray(raw.questions)  && raw.questions.length > 0)     withQa++;
+    if (Array.isArray(raw.entities)   && raw.entities.length > 0)      withEntities++;
+    if (Array.isArray(raw.keywords)   && raw.keywords.length > 0)      withKeywords++;
+    if (typeof raw.schemaType === "string" && raw.schemaType.trim())   withSchema++;
   }
 
-  return { total, withSummary, withQa, withEntities };
+  return { total, withSummary, withQa, withEntities, withKeywords, withSchema };
 }
 
 /**
