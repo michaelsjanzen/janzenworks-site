@@ -107,17 +107,17 @@ function Snippet({ text, token, lang = "json" }: { text: string; token: string; 
     if (isPlaceholder) return <span className="text-zinc-400">{content}</span>;
     const needle = token;
     const idx = content.indexOf(needle);
-    if (idx === -1) return <span>{content}</span>;
+    if (idx === -1) return <span className="text-zinc-700">{content}</span>;
     return (
       <>
-        <span>{content.slice(0, idx)}</span>
+        <span className="text-zinc-700">{content.slice(0, idx)}</span>
         <span className="bg-amber-100 text-amber-800 rounded px-0.5">{needle}</span>
-        <span>{content.slice(idx + needle.length)}</span>
+        <span className="text-zinc-700">{content.slice(idx + needle.length)}</span>
       </>
     );
   };
   return (
-    <pre className={`rounded-lg p-4 font-mono text-xs overflow-x-auto border transition-colors ${
+    <pre className={`rounded-lg p-4 font-mono text-xs overflow-x-auto border transition-colors text-zinc-700 ${
       isPlaceholder ? "bg-zinc-50 border-zinc-200" : "bg-zinc-50 border-amber-200"
     }`} data-lang={lang}>
       {highlight(text)}

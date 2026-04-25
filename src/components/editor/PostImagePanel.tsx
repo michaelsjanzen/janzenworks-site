@@ -190,10 +190,10 @@ function ImageThumb({
       <button
         type="button"
         onClick={e => { e.stopPropagation(); onFeatured(); }}
-        className={`absolute top-1 right-1 text-[10px] font-semibold px-2 py-0.5 rounded-full leading-none transition-all ${
+        className={`absolute top-1.5 right-1.5 text-xs font-semibold px-3 py-1.5 rounded-full leading-none transition-all shadow-sm ${
           isFeatured
             ? "bg-amber-400 text-white opacity-100"
-            : "bg-black/50 text-white opacity-0 group-hover:opacity-100"
+            : "bg-black/60 text-white opacity-0 group-hover:opacity-100"
         }`}
         title={isFeatured ? "Remove as featured image" : "Set as featured image"}
       >
