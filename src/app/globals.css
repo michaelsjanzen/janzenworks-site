@@ -81,6 +81,11 @@
   color: rgb(228 228 231);           /* zinc-200 */
   --tw-prose-body: rgb(228 228 231); /* ensure prose-slate body var resolves light */
   --tw-prose-links: rgb(96 165 250); /* override prose-slate's dark #1e40af */
+  --tw-prose-bold: rgb(244 244 245); /* zinc-100 — prevent bold from going black */
+}
+[data-admin].dark .ProseMirror strong,
+[data-admin].dark .ProseMirror b {
+  color: inherit;
 }
 [data-admin].dark .ProseMirror h1,
 [data-admin].dark .ProseMirror h2,
