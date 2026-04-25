@@ -1,4 +1,7 @@
 import { detectSiteUrl } from "../../../src/lib/detect-site-url";
+import { db } from "../../../src/lib/db";
+import { apiKeys } from "../../../src/lib/db/schema";
+import { isNull, desc } from "drizzle-orm";
 import { ALL_TOOLS } from "../tools";
 import McpKeyGenerator from "./McpKeyGenerator";
 
@@ -6,9 +9,7 @@ import McpKeyGenerator from "./McpKeyGenerator";
  * Resolves the canonical URL for the MCP endpoint by following any redirect.
  * Common case: a custom domain redirects non-www → www (or vice versa).
  * MCP clients don't follow redirects when POSTing, so we must use the final URL.
- *
- * Returns the resolved URL and whether a redirect was detected.
- * Times out after 3 s and falls back to the original URL on any error.
+ * Times out after 3s and falls back to the original URL on any error.
  */
 async function resolveCanonicalMcpUrl(url: string): Promise<{
   resolvedUrl: string;
@@ -17,25 +18,13 @@ async function resolveCanonicalMcpUrl(url: string): Promise<{
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(url, {
-      method: "HEAD",
-      redirect: "manual",
-      signal: controller.signal,
-    });
+    const res = await fetch(url, { method: "HEAD", redirect: "manual", signal: controller.signal });
     clearTimeout(timer);
-
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
-      if (location) {
-        // location is the full redirect URL (e.g. https://www.janzenworks.com/api/mcp)
-        // Normalise to ensure no trailing slash issues.
-        const resolved = location.replace(/\/+$/, "");
-        return { resolvedUrl: resolved, redirectedFrom: url };
-      }
+      if (location) return { resolvedUrl: location.replace(/\/+$/, ""), redirectedFrom: url };
     }
-  } catch {
-    // Timeout, network error, or self-referential fetch blocked — use original.
-  }
+  } catch { /* timeout or network error — use original */ }
   return { resolvedUrl: url, redirectedFrom: null };
 }
 
@@ -45,7 +34,20 @@ export default async function AdminPage(
   const detectedUrl = detectSiteUrl() ?? "https://your-site.com";
   const rawMcpUrl = `${detectedUrl}/api/mcp`;
 
-  const { resolvedUrl: mcpUrl, redirectedFrom } = await resolveCanonicalMcpUrl(rawMcpUrl);
+  const [{ resolvedUrl: mcpUrl, redirectedFrom }, lastUsedRow] = await Promise.all([
+    resolveCanonicalMcpUrl(rawMcpUrl),
+    db
+      .select({ prefix: apiKeys.keyPrefix, lastUsedAt: apiKeys.lastUsedAt })
+      .from(apiKeys)
+      .where(isNull(apiKeys.revokedAt))
+      .orderBy(desc(apiKeys.lastUsedAt))
+      .limit(1)
+      .then(rows => rows[0] ?? null),
+  ]);
+
+  const lastUsedKey = lastUsedRow
+    ? { prefix: lastUsedRow.prefix, lastUsedAt: lastUsedRow.lastUsedAt?.toISOString() ?? null }
+    : null;
 
   return (
     <div className="space-y-8">
@@ -80,8 +82,8 @@ export default async function AdminPage(
                   canonical URL automatically.
                 </p>
                 <p className="text-blue-600">
-                  To fix this permanently, update <code className="font-mono bg-blue-100 px-1 rounded">NEXTAUTH_URL</code> in
-                  your environment variables to <code className="font-mono bg-blue-100 px-1 rounded">{mcpUrl.replace("/api/mcp", "")}</code>.
+                  To fix permanently, update <code className="font-mono bg-blue-100 px-1 rounded">NEXTAUTH_URL</code> to{" "}
+                  <code className="font-mono bg-blue-100 px-1 rounded">{mcpUrl.replace("/api/mcp", "")}</code>.
                 </p>
               </div>
             </div>
@@ -97,8 +99,8 @@ export default async function AdminPage(
             </div>
           </div>
 
-          {/* Key generator + config snippet */}
-          <McpKeyGenerator mcpUrl={mcpUrl} />
+          {/* Interactive: test, tabs, key generator */}
+          <McpKeyGenerator mcpUrl={mcpUrl} lastUsedKey={lastUsedKey} />
 
         </div>
       </div>
@@ -133,58 +135,32 @@ export default async function AdminPage(
         </table>
       </div>
 
-      {/* Setup guide */}
+      {/* Troubleshooting */}
       <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-5 space-y-4">
-        <h3 className="text-sm font-semibold text-zinc-700">Setup guide</h3>
-        <ol className="space-y-3 text-xs text-zinc-500 list-decimal list-inside">
+        <h3 className="text-sm font-semibold text-zinc-700">Troubleshooting</h3>
+        <ul className="space-y-2 text-xs text-zinc-500 list-disc list-inside">
           <li>
-            <span className="font-medium text-zinc-600">Generate a key</span> — use the form above.
-            Give it a name like &ldquo;Claude Desktop&rdquo; so you can identify it later.
+            <span className="font-medium text-zinc-600">Getting &ldquo;Redirecting…&rdquo;?</span>{" "}
+            Your domain redirects www ↔ non-www. MCP clients don&apos;t re-POST after a redirect — this page auto-detects and corrects the URL. See the blue notice above if applicable.
           </li>
           <li>
-            <span className="font-medium text-zinc-600">Copy the config snippet</span> — click Copy
-            once the key is filled in.
+            <span className="font-medium text-zinc-600">401 Unauthorized?</span>{" "}
+            The Bearer token is invalid or revoked. Generate a fresh key above.
           </li>
           <li>
-            <span className="font-medium text-zinc-600">Claude Desktop</span> — open{" "}
-            <code className="font-mono bg-zinc-100 px-1 rounded">claude_desktop_config.json</code>{" "}
-            (Settings → Developer → Edit Config) and paste the snippet into the{" "}
-            <code className="font-mono bg-zinc-100 px-1 rounded">mcpServers</code> object, then restart Claude.
+            <span className="font-medium text-zinc-600">404 / not active?</span>{" "}
+            Ensure the MCP Server plugin is toggled on in{" "}
+            <a href="/admin/plugins" className="underline hover:text-zinc-700">Plugins</a>.
           </li>
           <li>
-            <span className="font-medium text-zinc-600">Cursor / other clients</span> — add the URL
-            and Bearer token to your client&apos;s MCP settings. The endpoint accepts any
-            MCP 2025-03-26 compatible client.
+            <span className="font-medium text-zinc-600">Older Claude Desktop (pre-2025)?</span>{" "}
+            HTTP transport is only supported in recent versions. Earlier builds only support stdio (local process) servers — updating Claude Desktop is the only fix.
           </li>
-        </ol>
-
-        <div className="border-t border-zinc-200 pt-4 space-y-2">
-          <p className="text-xs font-medium text-zinc-600">Troubleshooting</p>
-          <ul className="space-y-1.5 text-xs text-zinc-500 list-disc list-inside">
-            <li>
-              <span className="font-medium text-zinc-600">Getting &ldquo;Redirecting…&rdquo; instead of a response?</span>{" "}
-              Your domain likely redirects www ↔ non-www. MCP clients don&apos;t re-POST after a redirect.
-              This page auto-detects and corrects the URL — if you see the blue notice above, copy the corrected URL.
-              Permanently fix it by updating <code className="font-mono bg-zinc-100 px-1 rounded">NEXTAUTH_URL</code> to
-              your canonical domain.
-            </li>
-            <li>
-              <span className="font-medium text-zinc-600">401 Unauthorized?</span>{" "}
-              The Bearer token is invalid or revoked. Generate a new key above.
-            </li>
-            <li>
-              <span className="font-medium text-zinc-600">404 / plugin not active?</span>{" "}
-              Ensure the MCP Server plugin is toggled on in{" "}
-              <a href="/admin/plugins" className="underline hover:text-zinc-700">Plugins</a>.
-            </li>
-          </ul>
-        </div>
-
-        <div className="border-t border-zinc-200 pt-4">
-          <p className="text-xs font-medium text-zinc-600 mb-1">Protocol</p>
-          <p className="text-xs text-zinc-500">
-            Stateless HTTP POST · JSON-RPC 2.0 · MCP 2025-03-26 ·{" "}
-            <code className="font-mono bg-zinc-100 px-1 rounded">Authorization: Bearer pm_...</code>
+        </ul>
+        <div className="border-t border-zinc-200 pt-3">
+          <p className="text-xs text-zinc-400">
+            Protocol: Stateless HTTP POST · JSON-RPC 2.0 · MCP {" "}
+            <code className="font-mono bg-zinc-100 px-1 rounded">2025-03-26</code>
           </p>
         </div>
       </div>
