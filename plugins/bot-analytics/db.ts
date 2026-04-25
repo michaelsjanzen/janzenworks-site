@@ -17,6 +17,22 @@ export async function getBotTotals(days = 30) {
     .orderBy(sql`sum(${pluginBotAnalyticsDaily.count}) desc`);
 }
 
+/** Returns visit totals per bot for the prior N-day window (days N+1 to 2N ago), for trend comparison. */
+export async function getPriorTotals(days = 30) {
+  return db
+    .select({
+      botName: pluginBotAnalyticsDaily.botName,
+      total:   sql<number>`cast(sum(${pluginBotAnalyticsDaily.count}) as int)`,
+    })
+    .from(pluginBotAnalyticsDaily)
+    .where(sql`
+      ${pluginBotAnalyticsDaily.day} >= CURRENT_DATE - (${days * 2} || ' days')::interval
+      AND ${pluginBotAnalyticsDaily.day} < CURRENT_DATE - (${days} || ' days')::interval
+    `)
+    .groupBy(pluginBotAnalyticsDaily.botName)
+    .orderBy(sql`sum(${pluginBotAnalyticsDaily.count}) desc`);
+}
+
 /** Returns the N most recent bot visits (from the ring-buffer table). */
 export async function getRecentVisits(limit = 50) {
   return db
