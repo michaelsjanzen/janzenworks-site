@@ -19,8 +19,13 @@
 export function detectSiteUrl(): string | null {
   const e = process.env;
 
+  // Strip trailing slashes from any detected URL so callers can safely
+  // append paths without producing double-slash URLs (e.g. NEXTAUTH_URL
+  // is sometimes set with a trailing slash).
+  const clean = (url: string) => url.replace(/\/+$/, "");
+
   if (e.NEXTAUTH_URL)
-    return e.NEXTAUTH_URL;
+    return clean(e.NEXTAUTH_URL);
 
   if (e.REPLIT_DEV_DOMAIN)
     return `https://${e.REPLIT_DEV_DOMAIN}`;
@@ -32,7 +37,7 @@ export function detectSiteUrl(): string | null {
     return `https://${e.RAILWAY_PUBLIC_DOMAIN}`;
 
   if (e.RENDER_EXTERNAL_URL)
-    return e.RENDER_EXTERNAL_URL; // already includes https://
+    return clean(e.RENDER_EXTERNAL_URL); // already includes https://
 
   return null;
 }
