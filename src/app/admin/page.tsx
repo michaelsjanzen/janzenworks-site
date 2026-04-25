@@ -9,7 +9,7 @@ import { getConfig } from "@/lib/config";
 import { isDevUrl } from "@/lib/detect-site-url";
 import DashboardCharts from "@/components/admin/DashboardCharts";
 import BotAnalyticsTeaser from "@/components/admin/BotAnalyticsTeaser";
-import { getBotTotals, getTopPaths } from "../../../plugins/bot-analytics/db";
+import { getBotTotals, getTopPaths, getLlmsTxtScore } from "../../../plugins/bot-analytics/db";
 
 function buildMonthlyBuckets(n: number): { key: string; label: string }[] {
   const result: { key: string; label: string }[] = [];
@@ -127,9 +127,14 @@ export default async function AdminDashboard() {
   const isBotAnalyticsActive = config.modules.activePlugins?.includes("bot-analytics") ?? false;
   let botTotals: Awaited<ReturnType<typeof getBotTotals>> = [];
   let botTopPaths: Awaited<ReturnType<typeof getTopPaths>> = [];
+  let botLlmsScore: Awaited<ReturnType<typeof getLlmsTxtScore>> | null = null;
   if (isBotAnalyticsActive) {
     try {
-      [botTotals, botTopPaths] = await Promise.all([getBotTotals(30), getTopPaths(5)]);
+      [botTotals, botTopPaths, botLlmsScore] = await Promise.all([
+        getBotTotals(30),
+        getTopPaths(5),
+        getLlmsTxtScore(),
+      ]);
     } catch {
       // Tables not yet created — teaser will show empty states
     }
@@ -198,7 +203,7 @@ export default async function AdminDashboard() {
       )}
 
       {isBotAnalyticsActive && (
-        <BotAnalyticsTeaser totals={botTotals} topPaths={botTopPaths} />
+        <BotAnalyticsTeaser totals={botTotals} topPaths={botTopPaths} llmsScore={botLlmsScore} />
       )}
 
       <DashboardCharts
