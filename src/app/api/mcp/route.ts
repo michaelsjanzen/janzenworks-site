@@ -25,6 +25,26 @@ const SERVER_INFO = {
 
 const PROTOCOL_VERSION = "2025-03-26";
 
+// ─── GET handler — public health / discovery ─────────────────────────────────
+// Returns basic server metadata. No auth required — it's public info and
+// allows MCP admin pages and external tools to verify the endpoint is live
+// before asking the user to generate a key.
+
+export async function GET(_req: NextRequest) {
+  await loadPlugins();
+  const config = await getConfig();
+  if (!config.modules.activePlugins.includes("mcp-server")) {
+    return NextResponse.json({ error: "MCP server plugin is not active" }, { status: 404 });
+  }
+  return NextResponse.json({
+    status:   "ok",
+    name:     SERVER_INFO.name,
+    version:  SERVER_INFO.version,
+    protocol: PROTOCOL_VERSION,
+    tools:    ALL_TOOLS.length,
+  });
+}
+
 // ─── Request dispatcher ───────────────────────────────────────────────────────
 
 async function dispatch(req: JsonRpcRequest): Promise<Response | null> {
