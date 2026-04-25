@@ -52,22 +52,30 @@ export default function PostImagePanel({
     if (!files?.length) return;
     setUploading(true);
     setUploadError(null);
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("image/")) continue;
-      const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-      const baseName = postTitle ? `${toSeoSlug(postTitle)}${ext}` : file.name;
-      const renamedFile = new File([file], baseName, { type: file.type });
-      const fd = new FormData();
-      fd.append("file", renamedFile);
-      const result = await uploadMedia(fd);
-      if ("error" in result && result.error) {
-        setUploadError(result.error);
-      } else if (result.id && result.url) {
-        onUpload({ id: result.id, url: result.url, fileName: file.name });
+    try {
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith("image/")) {
+          setUploadError(`"${file.name}" is not an image.`);
+          continue;
+        }
+        const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+        const baseName = postTitle ? `${toSeoSlug(postTitle)}${ext}` : file.name;
+        const renamedFile = new File([file], baseName, { type: file.type });
+        const fd = new FormData();
+        fd.append("file", renamedFile);
+        const result = await uploadMedia(fd);
+        if ("error" in result && result.error) {
+          setUploadError(result.error);
+        } else if (result.id && result.url) {
+          onUpload({ id: result.id, url: result.url, fileName: file.name });
+        }
       }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed. Check the file size (max 4 MB).");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
@@ -77,9 +85,9 @@ export default function PostImagePanel({
         className={`shrink-0 border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors select-none ${
           dragOver ? "border-blue-400 bg-blue-50" : "border-zinc-200 hover:border-zinc-300 bg-zinc-50"
         }`}
-        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+        onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
         onClick={() => fileInputRef.current?.click()}
       >
         <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => handleFiles(e.target.files)} />
@@ -90,7 +98,7 @@ export default function PostImagePanel({
             <svg className="w-5 h-5 mx-auto text-zinc-300 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <p className="text-xs text-zinc-400">Drop images or <span className="text-blue-500">browse</span></p>
+            <p className="text-xs text-zinc-400">Drop images or <span className="text-blue-500">browse</span> — max 4 MB</p>
           </>
         )}
       </div>

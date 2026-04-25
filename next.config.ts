@@ -64,7 +64,10 @@ const nextConfig: NextConfig = {
 
   experimental: {
     serverActions: {
-      bodySizeLimit: "52mb",
+      // Vercel caps request bodies at 4.5 MB regardless of this value.
+      // Set to match so the Next.js layer rejects oversized requests with a
+      // clear error before Vercel's infrastructure returns a cryptic 413.
+      bodySizeLimit: "4.5mb",
     },
   },
 

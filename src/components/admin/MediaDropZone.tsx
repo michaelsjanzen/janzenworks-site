@@ -141,7 +141,7 @@ export default function MediaDropZone({ onUploaded, multiple = false, compact = 
             </svg>
             <div className="text-center">
               <p className="text-sm font-medium">{dragging ? "Drop to upload" : "Drop files here"}</p>
-              <p className="text-xs mt-0.5">or click to browse — images &amp; video, max 50 MB</p>
+              <p className="text-xs mt-0.5">or click to browse — images &amp; video, max 4 MB</p>
             </div>
           </>
         )}
