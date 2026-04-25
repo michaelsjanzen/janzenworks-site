@@ -6,8 +6,8 @@
  */
 
 import { db } from "../../src/lib/db";
-import { posts, media } from "../../src/lib/db/schema";
-import { eq, ilike, or, desc, and, sql } from "drizzle-orm";
+import { posts, media, adminUsers } from "../../src/lib/db/schema";
+import { eq, ilike, or, desc, and, sql, asc } from "drizzle-orm";
 import { getConfig } from "../../src/lib/config";
 import type { McpToolDefinition, McpToolResult } from "./protocol";
 import { toolSuccess, toolError } from "./protocol";
@@ -458,10 +458,11 @@ const listMediaTool: McpTool = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const getSiteConfigTool: McpTool = {
+const getSiteContextTool: McpTool = {
   definition: {
-    name: "get_site_config",
-    description: "Return the site configuration including name, URL, description, and tagline.",
+    name: "get_site_context",
+    description:
+      "Return ambient site context an agent should load at the start of a session: site name, URL, description, tagline, and the primary author's voice/style guide. Use this to calibrate tone and style before writing or editing content.",
     inputSchema: {
       type: "object",
       properties: {},
@@ -470,16 +471,32 @@ const getSiteConfigTool: McpTool = {
 
   async handler(_params) {
     try {
-      const config = await getConfig();
+      const [config, primaryAuthor] = await Promise.all([
+        getConfig(),
+        db
+          .select({ name: adminUsers.name, authorVoice: adminUsers.authorVoice })
+          .from(adminUsers)
+          .orderBy(asc(adminUsers.createdAt))
+          .limit(1)
+          .then(rows => rows[0] ?? null),
+      ]);
+
       const result = {
-        name:        config.site.name,
-        url:         config.site.url,
-        description: config.site.description,
-        tagline:     (config.site as Record<string, unknown>).tagline ?? null,
+        site: {
+          name:        config.site.name,
+          url:         config.site.url,
+          description: config.site.description,
+          tagline:     (config.site as Record<string, unknown>).tagline ?? null,
+        },
+        author: {
+          name:        primaryAuthor?.name ?? null,
+          voice:       primaryAuthor?.authorVoice ?? null,
+        },
       };
+
       return toolSuccess(JSON.stringify(result, null, 2));
     } catch (err) {
-      return toolError(err instanceof Error ? err.message : "Failed to get site config");
+      return toolError(err instanceof Error ? err.message : "Failed to get site context");
     }
   },
 };
@@ -559,7 +576,7 @@ export const ALL_TOOLS: McpTool[] = [
   publishPostTool,
   unpublishPostTool,
   listMediaTool,
-  getSiteConfigTool,
+  getSiteContextTool,
   searchPostsTool,
 ];
 
