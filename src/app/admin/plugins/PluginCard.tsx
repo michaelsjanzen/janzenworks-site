@@ -30,7 +30,14 @@ export default function PluginCard({
     const next = !active;
     setActive(next);
     if (next) setUninstallError(null);
-    startTransition(() => updatePluginStatus(id, next));
+    startTransition(async () => {
+      try {
+        await updatePluginStatus(id, next);
+      } catch {
+        // Revert optimistic update if the server action failed
+        setActive(!next);
+      }
+    });
   }
 
   function handleChange(key: string, value: string | boolean) {
