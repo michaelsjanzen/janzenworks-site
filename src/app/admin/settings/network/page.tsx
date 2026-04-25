@@ -3,8 +3,10 @@ import { db } from "@/lib/db";
 import { aeoNetworkSubmissions } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { encryptString } from "@/lib/encrypt";
+import { buildSiteHash } from "@/lib/network-report";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import RegisterButton from "./RegisterButton";
 
 export default async function NetworkSettingsPage({
   searchParams,
@@ -23,6 +25,7 @@ export default async function NetworkSettingsPage({
 
   const saved = sp.toast === "saved";
   const network = config.network ?? { participateInNetwork: false, networkToken: "" };
+  const siteHash = buildSiteHash(config.site.url);
 
   async function saveNetworkSettings(formData: FormData) {
     "use server";
@@ -100,14 +103,26 @@ export default async function NetworkSettingsPage({
             placeholder={
               network.networkToken
                 ? "••••••••••••••••••••••• (leave blank to keep current)"
-                : "Paste your network token from aeopugmill.com"
+                : "Register below to generate a token, or paste one"
             }
             className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-zinc-400"
           />
           <p className="text-xs text-zinc-400 mt-1">
-            Issued by aeopugmill.com when you register your site. Stored encrypted — never exposed to the browser.
+            Stored encrypted at rest — never exposed to the browser.
           </p>
         </div>
+
+        {/* Self-service registration — fills the token field above */}
+        {!network.networkToken && (
+          <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-3 space-y-1">
+            <p className="text-xs font-medium text-zinc-600">No token yet?</p>
+            <p className="text-xs text-zinc-400">
+              Click below to register this site with aeopugmill.com. A token will be generated
+              and filled into the field above — review it, then hit Save.
+            </p>
+            <RegisterButton siteHash={siteHash} />
+          </div>
+        )}
 
         <button
           type="submit"
