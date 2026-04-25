@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { aeoNetworkSubmissions } from "@/lib/db/schema";
 import { desc } from "drizzle-orm";
 import { encryptString } from "@/lib/encrypt";
-import { buildSiteHash } from "@/lib/network-report";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import RegisterButton from "./RegisterButton";
@@ -25,7 +24,6 @@ export default async function NetworkSettingsPage({
 
   const saved = sp.toast === "saved";
   const network = config.network ?? { participateInNetwork: false, networkToken: "" };
-  const siteHash = buildSiteHash(config.site.url);
 
   async function saveNetworkSettings(formData: FormData) {
     "use server";
@@ -120,7 +118,7 @@ export default async function NetworkSettingsPage({
               Click below to register this site with aeopugmill.com. A token will be generated
               and filled into the field above — review it, then hit Save.
             </p>
-            <RegisterButton siteHash={siteHash} />
+            <RegisterButton />
           </div>
         )}
 
