@@ -2,15 +2,11 @@
 
 import { useState } from "react";
 
-interface Props {
-  siteHash: string;
-}
-
 /**
- * Calls POST /api/cms/register on aeopugmill.com with this site's hash,
- * then fills the token input so the admin can review and save it.
+ * Calls POST /api/network/register (server-side proxy) to register this site
+ * with aeopugmill.com, then fills the token input so the admin can review and save.
  */
-export default function RegisterButton({ siteHash }: Props) {
+export default function RegisterButton() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
 
@@ -18,10 +14,9 @@ export default function RegisterButton({ siteHash }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("https://aeopugmill.com/api/cms/register", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ site_hash: siteHash }),
+      // Call our own server-side proxy — avoids cross-origin CORS issues entirely.
+      const res = await fetch("/api/network/register", {
+        method: "POST",
       });
 
       const data = await res.json();
