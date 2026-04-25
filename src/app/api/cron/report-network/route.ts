@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { getConfig } from "@/lib/config";
+import { decryptString } from "@/lib/encrypt";
 import { auditLog } from "@/lib/audit-log";
 import { checkApiRateLimit } from "@/lib/rate-limit";
 import {
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skipped: "participation_disabled" });
   }
 
-  const networkToken = config.network.networkToken?.trim();
+  const networkToken = decryptString(config.network.networkToken?.trim() ?? "");
   if (!networkToken) {
     console.warn("[CronJob] report-network: no network token configured, skipping.");
     return NextResponse.json({ skipped: "no_network_token" });

@@ -5,7 +5,10 @@
  * report to aeopugmill.com. Kept separate from the cron route handler so the
  * logic is independently testable.
  *
- * Payload shape mirrors the WP Pugmill plugin v2 protocol exactly so that
+ * Protocol: identical to the WP Pugmill plugin v2 ingest protocol.
+ * Submissions go to POST /api/ingest, authenticated with an HMAC signature
+ * derived from the site_id, date, and plugin_version using the network_token
+ * as the signing key. This is the same scheme used by the WP plugin so that
  * aeopugmill.com can process reports from both sources identically.
  *
  * V1 LIMITATION — signal attribution:
@@ -16,11 +19,17 @@
  *   refined in a future version if aeopugmill.com requires stricter attribution.
  */
 
-import { createHash } from "crypto";
+import { createHash, createHmac } from "crypto";
 import { db } from "@/lib/db";
 import { posts, aeoNetworkSubmissions } from "@/lib/db/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
 import { parseAeoMetadata } from "@/lib/aeo";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const PLUGIN_VERSION = "pugmill-cms/1.0";
+const SCHEMA_VER     = 2;
+const INGEST_URL     = "https://aeopugmill.com/api/ingest";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,20 +48,21 @@ export interface BotSignals {
   url_depth:         SignalDistribution;
 }
 
+/**
+ * Wire-format payload sent to POST /api/ingest.
+ * Matches the WP plugin schema v2 envelope exactly.
+ */
 export interface NetworkPayload {
-  site_hash:    string;
-  date:         string; // YYYY-MM-DD
-  bots:         Record<string, BotResourceCounts>;
-  signals:      Record<string, BotSignals>;
-  content_coverage: {
-    posts:  number;
-    fields: {
-      summary:         { count: number; pct: number };
-      questions:       { count: number; pct: number };
-      questions_3plus: { count: number; pct: number };
-      entities:        { count: number; pct: number };
-    };
-  };
+  site_id:        string;  // SHA-256 of normalised site URL
+  date:           string;  // YYYY-MM-DD
+  plugin_version: string;  // "pugmill-cms/1.0"
+  schema_ver:     number;  // 2
+  aeo_tier:       number;  // 0 = none, 1 = partial (<10 posts), 2 = substantial
+  bots:           Record<string, BotResourceCounts>;
+  signals:        Record<string, BotSignals>;
+  // Schema v3 site-level metadata fields (forward-compatible — ingest accepts them)
+  posts_total:    number;
+  field_coverage: Record<string, number>;
 }
 
 // ── Resource type mapping ─────────────────────────────────────────────────────
@@ -201,9 +211,14 @@ export async function computeSignals(): Promise<BotSignals | null> {
 
 /**
  * Computes AEO field coverage across all published posts.
- * Mirrors the content_coverage section of the WP plugin payload.
+ * Returns both the structured coverage object (for local use) and the flat
+ * field_coverage map expected by the ingest API.
  */
-export async function computeContentCoverage(): Promise<NetworkPayload["content_coverage"]> {
+export async function computeContentCoverage(): Promise<{
+  posts_total:    number;
+  aeo_tier:       number;
+  field_coverage: Record<string, number>;
+}> {
   const publishedPosts = await db
     .select({ id: posts.id, aeoMetadata: posts.aeoMetadata })
     .from(posts)
@@ -211,7 +226,7 @@ export async function computeContentCoverage(): Promise<NetworkPayload["content_
 
   const total = publishedPosts.length;
   if (total === 0) {
-    return { posts: 0, fields: { summary: { count: 0, pct: 0 }, questions: { count: 0, pct: 0 }, questions_3plus: { count: 0, pct: 0 }, entities: { count: 0, pct: 0 } } };
+    return { posts_total: 0, aeo_tier: 0, field_coverage: {} };
   }
 
   let summary = 0, questions = 0, questions3plus = 0, entities = 0;
@@ -224,21 +239,23 @@ export async function computeContentCoverage(): Promise<NetworkPayload["content_
     if ((aeo?.entities?.length ?? 0) >= 1)      entities++;
   }
 
-  const pct = (n: number) => Math.round((n / total) * 100);
+  // aeo_tier: 0 = no AEO, 1 = partial (1–9 posts), 2 = substantial (10+)
+  const aeo_tier = summary === 0 ? 0 : summary < 10 ? 1 : 2;
 
   return {
-    posts: total,
-    fields: {
-      summary:         { count: summary,       pct: pct(summary)       },
-      questions:       { count: questions,      pct: pct(questions)     },
-      questions_3plus: { count: questions3plus, pct: pct(questions3plus) },
-      entities:        { count: entities,       pct: pct(entities)      },
+    posts_total: total,
+    aeo_tier,
+    field_coverage: {
+      summary,
+      questions,
+      questions_3plus: questions3plus,
+      entities,
     },
   };
 }
 
 /**
- * Assembles the full payload for a given date.
+ * Assembles the full ingest payload for a given date.
  * Returns null with a reason string if the payload cannot be built
  * (e.g. bot-analytics plugin not active, no bot visits that day).
  */
@@ -271,35 +288,50 @@ export async function buildPayload(
 
   return {
     payload: {
-      site_hash:        buildSiteHash(siteUrl),
+      site_id:        buildSiteHash(siteUrl),
       date,
-      bots:             botCounts,
+      plugin_version: PLUGIN_VERSION,
+      schema_ver:     SCHEMA_VER,
+      aeo_tier:       coverage.aeo_tier,
+      bots:           botCounts,
       signals,
-      content_coverage: coverage,
+      posts_total:    coverage.posts_total,
+      field_coverage: coverage.field_coverage,
     },
   };
 }
 
 /**
- * Posts the payload to aeopugmill.com and returns the HTTP status code.
+ * Posts the payload to aeopugmill.com /api/ingest.
+ *
+ * Auth follows the same HMAC scheme as the WP plugin:
+ *   Authorization: Bearer HMAC-SHA256(site_id:date:plugin_version, networkToken)
+ * The raw network_token is also included in the request body so the server
+ * can look up the registered site and verify the HMAC against the stored token.
+ *
  * Uses a 10-second timeout. Throws on network error.
  */
 export async function sendReport(
   payload: NetworkPayload,
   networkToken: string
 ): Promise<number> {
+  // Compute the HMAC signature
+  const signature = createHmac("sha256", networkToken)
+    .update(`${payload.site_id}:${payload.date}:${payload.plugin_version}`)
+    .digest("hex");
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const res = await fetch("https://aeopugmill.com/api/report", {
+    const res = await fetch(INGEST_URL, {
       method:  "POST",
       headers: {
         "Content-Type":  "application/json",
-        "Authorization": `Bearer ${networkToken}`,
+        "Authorization": `Bearer ${signature}`,
         "User-Agent":    "PugmillCMS/1.0",
       },
-      body:   JSON.stringify(payload),
+      body:   JSON.stringify({ ...payload, network_token: networkToken }),
       signal: controller.signal,
     });
     return res.status;
