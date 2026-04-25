@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Media" };
+
 import { db } from "@/lib/db";
 import { media } from "@/lib/db/schema";
 import { desc, sql } from "drizzle-orm";

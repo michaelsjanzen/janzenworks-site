@@ -46,7 +46,7 @@ export async function generateMetadata(
   ]);
 
   const siteName = config.site?.name ?? "Pugmill";
-  if (!page) return { title: `Not found | ${siteName}` };
+  if (!page) return { title: "Not found" };
 
   const siteUrl = resolveSiteUrl(
     process.env.NEXTAUTH_URL ?? "http://localhost:3000",
@@ -68,7 +68,7 @@ export async function generateMetadata(
   if (page.robotsNofollow) robotsDirectives.push("nofollow");
 
   return {
-    title: seoTitle ? seoTitle : `${page.title} | ${siteName}`,
+    title: seoTitle ? { absolute: seoTitle } : page.title,
     description: seoMetaDescription ?? defaultDescription,
     ...(robotsDirectives.length ? { robots: robotsDirectives.join(", ") } : {}),
     alternates: {

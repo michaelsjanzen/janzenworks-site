@@ -23,7 +23,7 @@ export async function generateMetadata({
   const prev = page > 1 ? (page === 2 ? `${siteUrl}/blog` : `${siteUrl}/blog?page=${page - 1}`) : undefined;
   const next = page < postPage.totalPages ? `${siteUrl}/blog?page=${page + 1}` : undefined;
 
-  const title = `Blog · ${siteName}`;
+  const title = "Blog";
   const description = "All posts from this site.";
 
   return {

@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Posts & Pages" };
+
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { posts } from "@/lib/db/schema";

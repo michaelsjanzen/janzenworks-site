@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "New Post" };
+
 import PostForm from "@/components/editor/PostForm";
 import { createPost } from "@/lib/actions/posts";
 import { db } from "@/lib/db";

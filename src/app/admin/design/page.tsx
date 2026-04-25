@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Design" };
+
 import { getConfig } from "@/lib/config";
 import { sanitizeThemeName, getAllThemes } from "@/lib/theme-registry";
 import { getDesignConfig, hasDraftConfig, loadThemeDesignDefs } from "@/lib/design-config";

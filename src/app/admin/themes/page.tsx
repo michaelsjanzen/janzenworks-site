@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Themes" };
+
 import { getConfig } from "@/lib/config";
 import { getAllThemes } from "@/lib/theme-registry";
 import ThemeCard from "./ThemeCard";

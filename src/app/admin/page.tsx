@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Dashboard" };
+
 import { db } from "@/lib/db";
 import { posts, media, adminUsers, sessions } from "@/lib/db/schema";
 import { sql, gte, isNotNull, notInArray } from "drizzle-orm";

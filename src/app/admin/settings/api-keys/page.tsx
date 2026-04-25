@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "API Keys" };
+
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/get-current-user";
 import { listApiKeys } from "@/lib/actions/api-keys";

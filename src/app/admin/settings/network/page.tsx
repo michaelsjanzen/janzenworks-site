@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Network" };
+
 import { getConfig, updateConfig } from "@/lib/config";
 import { db } from "@/lib/db";
 import { aeoNetworkSubmissions } from "@/lib/db/schema";

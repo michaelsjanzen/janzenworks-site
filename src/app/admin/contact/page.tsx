@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Contact" };
+
 import { notFound, redirect } from "next/navigation";
 import { getConfig } from "@/lib/config";
 import { getCurrentUser } from "@/lib/get-current-user";

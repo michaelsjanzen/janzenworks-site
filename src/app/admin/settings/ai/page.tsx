@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "AI" };
+
 import { getConfig } from "@/lib/config";
 import { saveAiSettings } from "@/lib/actions/ai";
 

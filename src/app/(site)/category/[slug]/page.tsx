@@ -31,7 +31,7 @@ export async function generateMetadata({
 
   const siteUrl = resolveSiteUrl(process.env.NEXTAUTH_URL ?? "http://localhost:3000", config.site?.url ?? "");
   const siteName = config.site?.name ?? "Pugmill";
-  const title = `${cat.name} · ${siteName}`;
+  const title = cat.name;
   const description = cat.description || `Posts in ${cat.name}`;
 
   const canonical = page === 1 ? `${siteUrl}/category/${slug}` : `${siteUrl}/category/${slug}?page=${page}`;
