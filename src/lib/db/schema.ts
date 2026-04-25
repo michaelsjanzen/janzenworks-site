@@ -54,6 +54,23 @@ export const media = pgTable("media", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// --- AEO Network Submissions Table ---
+// Idempotency log for the intelligence network cron.
+// One row per reporting date — prevents double-submission if Vercel fires the cron twice.
+// Also gives the admin a visible audit trail (last reported, last error, etc.).
+export const aeoNetworkSubmissions = pgTable("aeo_network_submissions", {
+  id: serial("id").primaryKey(),
+  /** Reporting date this row covers (YYYY-MM-DD, UTC). Unique — one submission per day. */
+  date: varchar("date", { length: 10 }).notNull().unique(),
+  /** "ok" | "error" | "skipped" */
+  status: varchar("status", { length: 20 }).notNull(),
+  /** HTTP status code returned by aeopugmill.com, if a request was made. */
+  responseCode: integer("response_code"),
+  /** Human-readable detail — error message or skip reason. */
+  detail: text("detail"),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+});
+
 // --- Settings Table ---
 export const settings = pgTable("settings", {
   key: varchar("key", { length: 100 }).primaryKey(),
