@@ -108,6 +108,20 @@ export const configSchema = z.object({
     /** GitHub OAuth client secret — stored encrypted. */
     githubClientSecret: z.string().default(""),
   }).default({ googleClientId: "", googleClientSecret: "", githubClientId: "", githubClientSecret: "" }),
+  network: z.object({
+    /** Whether this site participates in the AEO Intelligence Network. Off by default. */
+    participateInNetwork: z.boolean().default(false),
+    /**
+     * Network token issued by aeopugmill.com — required to submit reports.
+     * Stored encrypted at rest using AI_ENCRYPTION_KEY (same as ai.apiKey).
+     */
+    networkToken: z.string().default(""),
+    /** ISO date string of the last successful submission — display only, not used in logic. */
+    lastReportedAt: z.string().optional(),
+  }).default({
+    participateInNetwork: false,
+    networkToken: "",
+  }),
   email: z.object({
     provider: z.enum(["resend", "smtp"]).nullable().default(null),
     /** Display name used in the From header (e.g. "My Blog"). */
@@ -170,6 +184,10 @@ const DEFAULT_CONFIG: Config = {
   storage: {
     provider: "local", bucket: "", region: "auto",
     accessKeyId: "", secretAccessKey: "", endpoint: "", publicUrl: "", publicAcl: false,
+  },
+  network: {
+    participateInNetwork: false,
+    networkToken: "",
   },
   auth: { googleClientId: "", googleClientSecret: "", githubClientId: "", githubClientSecret: "" },
   email: {

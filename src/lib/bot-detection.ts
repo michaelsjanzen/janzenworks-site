@@ -103,5 +103,6 @@ export function classifyPath(path: string): string {
   if (p.endsWith("/llm.txt"))        return "Post Markdown";
   if (p.includes("sitemap"))        return "Sitemap";
   if (p.includes("robots.txt"))     return "Robots.txt";
+  if (p.includes("feed.xml"))       return "RSS Feed";
   return "HTML Page";
 }

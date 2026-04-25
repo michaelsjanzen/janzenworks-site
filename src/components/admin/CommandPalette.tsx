@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { label: "Settings — Navigation", path: "/admin/settings/navigation", group: "Navigate" },
   { label: "Settings — SEO", path: "/admin/settings/seo", group: "Navigate" },
   { label: "Settings — AI", path: "/admin/settings/ai", group: "Navigate" },
+  { label: "Settings — Network", path: "/admin/settings/network", group: "Navigate" },
   { label: "Users", path: "/admin/users", group: "Navigate" },
   { label: "Notifications", path: "/admin/notifications", group: "Navigate" },
   { label: "View Site", path: "/", group: "Navigate" },
