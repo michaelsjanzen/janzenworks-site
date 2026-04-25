@@ -1,12 +1,14 @@
-import { getBotTotals, getRecentVisits, getDailyTotals, getByResourceType, getTopPaths, getUncoveredAeoPosts, getLlmsTxtScore } from "../db";
+import { getBotTotals, getPriorTotals, getRecentVisits, getDailyTotals, getByResourceType, getTopPaths, getUncoveredAeoPosts, getLlmsTxtScore } from "../db";
 import InsightsButton from "./InsightsButton";
 import { isAiConfigured } from "@/lib/ai";
 import { BOT_CONFIG } from "@/lib/bot-detection";
+import { getConfig } from "@/lib/config";
+import Link from "next/link";
 
 const AI_BOTS     = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "ai");
 const SEARCH_BOTS = Object.entries(BOT_CONFIG).filter(([, v]) => v.type === "search");
 
-// ── Resource type config ──────────────────────────────────────────────────────
+const AEO_RESOURCE_TYPES = new Set(["llms.txt", "llms-full.txt", "Post Markdown"]);
 
 type ResourceCategory = "aeo" | "discovery" | "crawl";
 
@@ -24,6 +26,13 @@ const CATEGORY_LABELS: Record<ResourceCategory, string> = {
   discovery: "Discovery",
   crawl:     "Page Crawls",
 };
+
+const FUNNEL_STAGES = [
+  { label: "Discovered",     resourceTypes: ["HTML Page", "llms.txt", "llms-full.txt", "Post Markdown", "Sitemap", "Robots.txt"] },
+  { label: "Infrastructure", resourceTypes: ["Robots.txt", "Sitemap", "llms.txt", "llms-full.txt"] },
+  { label: "HTML content",   resourceTypes: ["HTML Page"] },
+  { label: "AEO markdown",   resourceTypes: ["Post Markdown"] },
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,18 +57,31 @@ function BotDot({ name }: { name: string }) {
 function BotBadge({ name }: { name: string }) {
   const color = BOT_CONFIG[name]?.color ?? "#9ca3af";
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-700">
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-[#21262d] text-zinc-700 dark:text-[#e6edf3]">
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
       {BOT_CONFIG[name]?.label ?? name}
     </span>
   );
 }
 
+// ── Shared style tokens ───────────────────────────────────────────────────────
+
+const card      = "bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl overflow-hidden";
+const cardPad   = "bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl p-4";
+const cardHead  = "px-4 py-3 border-b border-zinc-100 dark:border-[#30363d]";
+const eyebrow   = "text-[10px] font-bold uppercase tracking-widest text-violet-600 dark:text-violet-400";
+const bodyText  = "text-zinc-900 dark:text-[#e6edf3]";
+const mutedText = "text-zinc-500 dark:text-[#8b949e]";
+const tableHead = "bg-zinc-50 dark:bg-[#0d1117] text-xs text-zinc-500 dark:text-[#8b949e]";
+const tableRow  = "hover:bg-zinc-50 dark:hover:bg-[#21262d]";
+const divider   = "divide-y divide-zinc-100 dark:divide-[#30363d]";
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function BotAnalyticsAdminPage() {
-  const [totals, recent, daily, byResource, topPaths, uncoveredAeo, llmsScore, aiEnabled] = await Promise.all([
+  const [totals, priorTotals, recent, daily, byResource, topPaths, uncoveredAeo, llmsScore, aiEnabled, config] = await Promise.all([
     getBotTotals(30),
+    getPriorTotals(30),
     getRecentVisits(50),
     getDailyTotals(30),
     getByResourceType(30),
@@ -67,33 +89,32 @@ export default async function BotAnalyticsAdminPage() {
     getUncoveredAeoPosts(),
     getLlmsTxtScore(),
     isAiConfigured(),
+    getConfig(),
   ]);
 
-  const grandTotal  = totals.reduce((s, r) => s + r.total, 0);
+  const grandTotal = totals.reduce((s, r) => s + r.total, 0);
+  const priorTotal = priorTotals.reduce((s, r) => s + r.total, 0);
+  const trendPct   = priorTotal > 0 ? Math.round(((grandTotal - priorTotal) / priorTotal) * 100) : null;
 
-  // Summary map: botName → total
+  // AEO Appetite — visits to AEO endpoints as % of all visits
+  const aeoTotal        = byResource.filter(r => AEO_RESOURCE_TYPES.has(r.resourceType)).reduce((s, r) => s + r.total, 0);
+  const aeoAppetitePct  = grandTotal > 0 ? Math.round((aeoTotal / grandTotal) * 100) : 0;
+
+  // Network participation
+  const networkActive = config.network?.participateInNetwork ?? false;
+
   const summaryMap = Object.fromEntries(totals.map(r => [r.botName, r.total]));
 
-  // Resource type map: botName → resourceType → count
   const resourceMap: Record<string, Record<string, number>> = {};
   for (const row of byResource) {
     resourceMap[row.botName] ??= {};
     resourceMap[row.botName][row.resourceType] = row.total;
   }
 
-  // Resource types that have any data
   const activeResourceTypes = RESOURCE_TYPES.filter(rt =>
     byResource.some(r => r.resourceType === rt.id),
   );
   const displayResourceTypes = activeResourceTypes.length > 0 ? activeResourceTypes : RESOURCE_TYPES;
-
-  // Funnel stage computation — derived from byResource data
-  const FUNNEL_STAGES = [
-    { label: "Discovered",     resourceTypes: ["HTML Page", "llms.txt", "llms-full.txt", "Post Markdown", "Sitemap", "Robots.txt"] },
-    { label: "Infrastructure", resourceTypes: ["Robots.txt", "Sitemap", "llms.txt", "llms-full.txt"] },
-    { label: "HTML content",   resourceTypes: ["HTML Page"] },
-    { label: "AEO markdown",   resourceTypes: ["Post Markdown"] },
-  ];
 
   function botFunnelStage(botName: string): number {
     const botTypes = resourceMap[botName] ?? {};
@@ -104,15 +125,12 @@ export default async function BotAnalyticsAdminPage() {
     return 0;
   }
 
-  // Bots that have any recorded visits
   const activeBots = totals.map(r => r.botName);
 
-  // llms.txt health score (0-100)
   const llmsHealthPct = llmsScore.total > 0
     ? Math.round(((llmsScore.withSummary + llmsScore.withQa + llmsScore.withEntities) / (llmsScore.total * 3)) * 100)
     : 0;
 
-  // Daily chart data — collect all unique dates and build per-bot series
   const allDates = [...new Set(daily.map(r => r.day))].sort();
   const dailyIndex: Record<string, Record<string, number>> = {};
   for (const row of daily) {
@@ -124,8 +142,6 @@ export default async function BotAnalyticsAdminPage() {
         Object.values(dailyIndex).reduce((s, botDays) => s + (botDays[d] ?? 0), 0)
       ), 1)
     : 1;
-
-  // Per-day stacked totals for simple sparkline
   const dailyTotals = allDates.map(d =>
     Object.values(dailyIndex).reduce((s, botDays) => s + (botDays[d] ?? 0), 0)
   );
@@ -133,109 +149,152 @@ export default async function BotAnalyticsAdminPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-8">
 
-      {/* Header */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-xl font-semibold text-zinc-900">Bot Analytics</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">
+        <h1 className={`text-xl font-semibold ${bodyText}`}>AEO Analytics</h1>
+        <p className={`text-sm ${mutedText} mt-0.5`}>
           AI crawler and search engine bot visits — last 30 days
         </p>
       </div>
 
-      {/* Summary cards */}
+      {/* ── Summary cards ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <p className="text-xs text-zinc-500 mb-1">Total visits</p>
-          <p className="text-2xl font-bold text-zinc-900">
+
+        {/* Total visits + trend */}
+        <div className={cardPad}>
+          <p className={`text-xs ${mutedText} mb-1`}>Total visits</p>
+          <p className={`text-2xl font-bold ${bodyText}`}>
             {grandTotal > 0 ? grandTotal.toLocaleString() : "—"}
           </p>
+          {trendPct !== null && grandTotal > 0 && (
+            <p className={`text-xs mt-1 font-semibold ${trendPct >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}`}>
+              {trendPct >= 0 ? `↑ ${trendPct}%` : `↓ ${Math.abs(trendPct)}%`} vs prior 30d
+            </p>
+          )}
         </div>
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <p className="text-xs text-zinc-500 mb-1">Unique bots</p>
-          <p className="text-2xl font-bold text-zinc-900">
+
+        {/* AEO Appetite */}
+        <div className={cardPad}>
+          <p className={`text-xs ${mutedText} mb-1`}>AEO appetite</p>
+          <p className={`text-2xl font-bold ${aeoAppetitePct > 0 ? "text-violet-600 dark:text-violet-400" : bodyText}`}>
+            {grandTotal > 0 ? `${aeoAppetitePct}%` : "—"}
+          </p>
+          <p className={`text-xs ${mutedText} mt-1`}>visits to AEO endpoints</p>
+        </div>
+
+        {/* Unique bots */}
+        <div className={cardPad}>
+          <p className={`text-xs ${mutedText} mb-1`}>Unique bots</p>
+          <p className={`text-2xl font-bold ${bodyText}`}>
             {totals.length > 0 ? totals.length : "—"}
           </p>
         </div>
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <p className="text-xs text-zinc-500 mb-1">Top bot</p>
-          <p className="text-sm font-semibold text-zinc-800 truncate">
-            {totals[0]?.botName ?? "—"}
-          </p>
-        </div>
-        <div className="bg-white border border-zinc-200 rounded-lg p-4">
-          <p className="text-xs text-zinc-500 mb-1">Last visit</p>
-          <p className="text-sm font-semibold text-zinc-800">
+
+        {/* Last visit */}
+        <div className={cardPad}>
+          <p className={`text-xs ${mutedText} mb-1`}>Last visit</p>
+          <p className={`text-sm font-semibold ${bodyText}`}>
             {recent[0] ? timeAgo(recent[0].visitedAt) : "—"}
           </p>
         </div>
       </div>
 
-      {/* AI Crawlers */}
+      {/* ── AI Crawlers ────────────────────────────────────────────────────── */}
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">
-          AI Crawlers
-        </p>
+        <p className={`${eyebrow} mb-3`}>AI Crawlers</p>
         <div className="flex flex-wrap gap-3">
           {AI_BOTS.map(([key, info]) => {
             const count = summaryMap[key] ?? 0;
             return (
               <div
                 key={key}
-                className="bg-white border border-zinc-200 rounded-lg p-4 min-w-[110px] flex-1 text-center"
+                className={`bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl p-4 min-w-[110px] flex-1 text-center`}
                 style={{ borderTop: `3px solid ${info.color}` }}
               >
                 <div
                   className="text-2xl font-bold leading-tight"
-                  style={{ color: count > 0 ? info.color : "#9ca3af" }}
+                  style={{ color: count > 0 ? info.color : "#6b7280" }}
                 >
                   {count > 0 ? count.toLocaleString() : "0"}
                 </div>
-                <div className="text-xs text-zinc-500 mt-1">{info.label}</div>
+                <div className={`text-xs ${mutedText} mt-1`}>{info.label}</div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Search Spiders */}
+      {/* ── Search Spiders ─────────────────────────────────────────────────── */}
       <div>
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">
-          Search Spiders
-        </p>
+        <p className={`${eyebrow} mb-3`}>Search Spiders</p>
         <div className="flex flex-wrap gap-3">
           {SEARCH_BOTS.map(([key, info]) => {
             const count = summaryMap[key] ?? 0;
             return (
               <div
                 key={key}
-                className="bg-white border border-zinc-200 rounded-lg p-3 min-w-[100px] flex-1 text-center"
+                className={`bg-white dark:bg-[#161b22] border border-zinc-200 dark:border-[#30363d] rounded-xl p-3 min-w-[100px] flex-1 text-center`}
                 style={{ borderTop: `3px solid ${info.color}` }}
               >
                 <div
                   className="text-xl font-bold leading-tight"
-                  style={{ color: count > 0 ? info.color : "#9ca3af" }}
+                  style={{ color: count > 0 ? info.color : "#6b7280" }}
                 >
                   {count > 0 ? count.toLocaleString() : "0"}
                 </div>
-                <div className="text-xs text-zinc-500 mt-1">{info.label}</div>
+                <div className={`text-xs ${mutedText} mt-1`}>{info.label}</div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* AI Insights */}
+      {/* ── AI Insights ────────────────────────────────────────────────────── */}
       {aiEnabled && <InsightsButton />}
 
-      {/* Discovery Funnel */}
+      {/* ── Uncovered AEO — moved up, most actionable ──────────────────────── */}
+      <div className={card}>
+        <div className={cardHead}>
+          <p className={eyebrow}>Uncovered AEO</p>
+          <p className={`text-xs ${mutedText} mt-0.5`}>
+            Posts with AEO metadata that bots have visited as HTML but not yet consumed as optimised markdown — your highest-leverage targets.
+          </p>
+        </div>
+        {uncoveredAeo.length === 0 ? (
+          <div className="px-4 py-6 text-center">
+            <p className={`text-sm ${mutedText}`}>
+              {grandTotal === 0
+                ? "No bot visit data yet — check back after crawlers arrive."
+                : "No uncovered posts — bots are consuming your AEO content."}
+            </p>
+          </div>
+        ) : (
+          <ul className={`${divider}`}>
+            {uncoveredAeo.map(p => (
+              <li key={p.slug} className="px-4 py-3 flex items-center justify-between gap-4">
+                <Link
+                  href={`/admin/posts`}
+                  className={`text-sm ${bodyText} hover:text-violet-600 dark:hover:text-violet-400 transition-colors truncate`}
+                >
+                  {p.title}
+                </Link>
+                <span className={`text-xs font-mono ${mutedText} shrink-0`}>/post/{p.slug}/llm.txt</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* ── Discovery Funnel ───────────────────────────────────────────────── */}
       {activeBots.length > 0 && (
-        <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-100">
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Discovery Funnel</p>
-            <p className="text-xs text-zinc-400 mt-0.5">
+        <div className={card}>
+          <div className={cardHead}>
+            <p className={eyebrow}>Discovery Funnel</p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>
               How far each bot has progressed — from first visit to consuming optimised AEO content.
             </p>
           </div>
-          <div className="divide-y divide-zinc-100">
+          <div className={divider}>
             {activeBots.map(bot => {
               const stage = botFunnelStage(bot);
               return (
@@ -248,87 +307,63 @@ export default async function BotAnalyticsAdminPage() {
                       const reached = stage > i;
                       return (
                         <div key={s.label} className="flex items-center gap-1 flex-1">
-                          <div className={`flex-1 h-1.5 rounded-full ${reached ? "" : "bg-zinc-100"}`}
-                            style={reached ? { background: BOT_CONFIG[bot]?.color ?? "#71717a" } : {}} />
-                          <div className={`w-2.5 h-2.5 rounded-full border-2 shrink-0 ${reached ? "border-transparent" : "border-zinc-200 bg-white"}`}
-                            style={reached ? { background: BOT_CONFIG[bot]?.color ?? "#71717a" } : {}} />
+                          <div
+                            className={`flex-1 h-1.5 rounded-full ${reached ? "" : "bg-zinc-100 dark:bg-[#21262d]"}`}
+                            style={reached ? { background: BOT_CONFIG[bot]?.color ?? "#71717a" } : {}}
+                          />
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full border-2 shrink-0 ${reached ? "border-transparent" : "border-zinc-200 dark:border-[#30363d] bg-white dark:bg-[#161b22]"}`}
+                            style={reached ? { background: BOT_CONFIG[bot]?.color ?? "#71717a" } : {}}
+                          />
                         </div>
                       );
                     })}
                   </div>
                   <div className="w-28 text-right">
-                    <span className="text-xs text-zinc-500">{FUNNEL_STAGES[stage - 1]?.label ?? "No visits"}</span>
+                    <span className={`text-xs ${mutedText}`}>{FUNNEL_STAGES[stage - 1]?.label ?? "No visits"}</span>
                   </div>
                 </div>
               );
             })}
           </div>
-          <div className="px-4 py-2 bg-zinc-50 border-t border-zinc-100 flex gap-6">
+          <div className={`px-4 py-2 bg-zinc-50 dark:bg-[#0d1117] border-t border-zinc-100 dark:border-[#30363d] flex gap-6`}>
             {FUNNEL_STAGES.map((s, i) => (
-              <span key={s.label} className="text-[10px] text-zinc-400">
-                <span className="font-medium text-zinc-600">{i + 1}.</span> {s.label}
+              <span key={s.label} className={`text-[10px] ${mutedText}`}>
+                <span className={`font-medium ${bodyText}`}>{i + 1}.</span> {s.label}
               </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Uncovered AEO */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Uncovered AEO</p>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Posts with AEO metadata and bot traffic that have not yet been consumed as optimised markdown. Highest-leverage optimisation targets.
-          </p>
-        </div>
-        {uncoveredAeo.length === 0 ? (
-          <div className="px-4 py-6 text-center">
-            <p className="text-sm text-zinc-400">
-              {grandTotal === 0
-                ? "No bot visit data yet — check back after crawlers arrive."
-                : "No uncovered posts — bots are consuming your AEO content."}
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-zinc-100">
-            {uncoveredAeo.map(p => (
-              <li key={p.slug} className="px-4 py-3 flex items-center justify-between gap-4">
-                <span className="text-sm text-zinc-700 truncate">{p.title}</span>
-                <span className="text-xs font-mono text-zinc-400 shrink-0">/post/{p.slug}/llm.txt</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* llms.txt Health */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-4">
+      {/* ── llms.txt Health ────────────────────────────────────────────────── */}
+      <div className={cardPad}>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">llms.txt Health</p>
-            <p className="text-xs text-zinc-400 mt-0.5">AEO content coverage across your published posts.</p>
+            <p className={eyebrow}>llms.txt Health</p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>AEO content coverage across your published posts.</p>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-bold text-zinc-900">{llmsHealthPct}%</span>
-            <p className="text-xs text-zinc-400">{llmsScore.total} posts</p>
+            <span className={`text-2xl font-bold ${bodyText}`}>{llmsHealthPct}%</span>
+            <p className={`text-xs ${mutedText}`}>{llmsScore.total} posts</p>
           </div>
         </div>
-        <div className="w-full h-2 bg-zinc-100 rounded-full overflow-hidden mb-3">
+        <div className="w-full h-2 bg-zinc-100 dark:bg-[#21262d] rounded-full overflow-hidden mb-3">
           <div
-            className="h-full rounded-full bg-zinc-800 transition-all"
+            className="h-full rounded-full bg-violet-600 dark:bg-violet-500 transition-all"
             style={{ width: `${llmsHealthPct}%` }}
           />
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           {[
-            { label: "Summary", count: llmsScore.withSummary },
+            { label: "Summary",   count: llmsScore.withSummary },
             { label: "Q&A pairs", count: llmsScore.withQa },
-            { label: "Entities", count: llmsScore.withEntities },
+            { label: "Entities",  count: llmsScore.withEntities },
           ].map(({ label, count }) => (
-            <div key={label} className="bg-zinc-50 rounded-lg p-2">
-              <p className="text-lg font-bold text-zinc-800">{count}</p>
-              <p className="text-xs text-zinc-500">{label}</p>
-              <p className="text-[10px] text-zinc-400">
+            <div key={label} className="bg-zinc-50 dark:bg-[#0d1117] rounded-lg p-2">
+              <p className={`text-lg font-bold ${bodyText}`}>{count}</p>
+              <p className={`text-xs ${mutedText}`}>{label}</p>
+              <p className={`text-[10px] ${mutedText}`}>
                 {llmsScore.total > 0 ? `${Math.round((count / llmsScore.total) * 100)}%` : "—"}
               </p>
             </div>
@@ -336,14 +371,12 @@ export default async function BotAnalyticsAdminPage() {
         </div>
       </div>
 
-      {/* Daily sparkline */}
-      <div className="bg-white border border-zinc-200 rounded-lg p-4">
-        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest mb-3">
-          Daily visits (30 days)
-        </p>
+      {/* ── Daily sparkline ────────────────────────────────────────────────── */}
+      <div className={cardPad}>
+        <p className={`${eyebrow} mb-3`}>Daily visits (30 days)</p>
         {grandTotal === 0 ? (
           <div className="h-16 flex items-center justify-center">
-            <p className="text-xs text-zinc-400">No visits recorded yet — chart will appear once bots arrive.</p>
+            <p className={`text-xs ${mutedText}`}>No visits recorded yet — chart will appear once bots arrive.</p>
           </div>
         ) : (
           <>
@@ -351,13 +384,13 @@ export default async function BotAnalyticsAdminPage() {
               {dailyTotals.map((total, i) => (
                 <div
                   key={allDates[i]}
-                  className="flex-1 bg-zinc-800 rounded-sm min-w-0"
+                  className="flex-1 rounded-sm min-w-0 bg-violet-500 dark:bg-violet-600 opacity-80"
                   style={{ height: `${Math.max(2, Math.round((total / maxDailyTotal) * 100))}%` }}
                   title={`${allDates[i]}: ${total} visits`}
                 />
               ))}
             </div>
-            <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
+            <div className={`flex justify-between text-[10px] ${mutedText} mt-1`}>
               <span>{allDates[0] ?? ""}</span>
               <span>{allDates[allDates.length - 1] ?? ""}</span>
             </div>
@@ -365,50 +398,43 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* Content Reach — resource type breakdown */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            Content Reach
-          </p>
-          <p className="text-xs text-zinc-400 mt-0.5">
+      {/* ── Content Reach ──────────────────────────────────────────────────── */}
+      <div className={card}>
+        <div className={cardHead}>
+          <p className={eyebrow}>Content Reach</p>
+          <p className={`text-xs ${mutedText} mt-0.5`}>
             Which content types each bot is consuming — last 30 days. AEO endpoints show bots reading your optimised content directly.
           </p>
         </div>
         {grandTotal === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm text-zinc-400">No visits recorded yet.</p>
-            <p className="text-xs text-zinc-400 mt-1">
-              AEO endpoint hits will appear here once AI crawlers discover your content.
-            </p>
+            <p className={`text-sm ${mutedText}`}>No visits recorded yet.</p>
+            <p className={`text-xs ${mutedText} mt-1`}>AEO endpoint hits will appear here once AI crawlers discover your content.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-xs text-zinc-500">
+              <thead className={tableHead}>
                 <tr>
                   <th className="text-left px-4 py-2 font-medium">Resource Type</th>
-                  <th className="text-left px-4 py-2 font-medium text-zinc-400">Category</th>
+                  <th className="text-left px-4 py-2 font-medium">Category</th>
                   {Object.keys(BOT_CONFIG).map(bot => (
                     <th key={bot} className="text-center px-3 py-2 font-medium">
                       <div className="flex flex-col items-center gap-1">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: BOT_CONFIG[bot].color }}
-                        />
+                        <span className="w-2 h-2 rounded-full" style={{ background: BOT_CONFIG[bot].color }} />
                         <span className="whitespace-nowrap">{BOT_CONFIG[bot].label}</span>
                       </div>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
+              <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
                 {(["aeo", "discovery", "crawl"] as ResourceCategory[]).map(category => {
                   const typeRows = displayResourceTypes.filter(rt => rt.category === category);
                   return typeRows.map((rt, i) => (
-                    <tr key={rt.id} className="hover:bg-zinc-50">
-                      <td className="px-4 py-2 font-mono text-xs text-zinc-700">{rt.label}</td>
-                      <td className="px-4 py-2 text-xs text-zinc-400">
+                    <tr key={rt.id} className={tableRow}>
+                      <td className={`px-4 py-2 font-mono text-xs ${bodyText}`}>{rt.label}</td>
+                      <td className={`px-4 py-2 text-xs ${mutedText}`}>
                         {i === 0 ? CATEGORY_LABELS[category] : ""}
                       </td>
                       {Object.keys(BOT_CONFIG).map(bot => {
@@ -416,14 +442,11 @@ export default async function BotAnalyticsAdminPage() {
                         return (
                           <td key={bot} className="px-3 py-2 text-center text-xs">
                             {cnt > 0 ? (
-                              <span
-                                className="font-semibold"
-                                style={{ color: BOT_CONFIG[bot].color }}
-                              >
+                              <span className="font-semibold" style={{ color: BOT_CONFIG[bot].color }}>
                                 {cnt.toLocaleString()}
                               </span>
                             ) : (
-                              <span className="text-zinc-300">—</span>
+                              <span className="text-zinc-300 dark:text-[#484f58]">—</span>
                             )}
                           </td>
                         );
@@ -437,37 +460,33 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* Top Paths */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            Top Paths
-          </p>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Most-visited content pages — last 7 days.
-          </p>
+      {/* ── Top Paths ──────────────────────────────────────────────────────── */}
+      <div className={card}>
+        <div className={cardHead}>
+          <p className={eyebrow}>Top Paths</p>
+          <p className={`text-xs ${mutedText} mt-0.5`}>Most-visited content pages — last 7 days.</p>
         </div>
         {topPaths.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm text-zinc-400">No page visits recorded yet.</p>
-            <p className="text-xs text-zinc-400 mt-1">Top pages will appear here once bots start crawling your content.</p>
+            <p className={`text-sm ${mutedText}`}>No page visits recorded yet.</p>
+            <p className={`text-xs ${mutedText} mt-1`}>Top pages will appear here once bots start crawling your content.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs text-zinc-500">
+            <thead className={tableHead}>
               <tr>
                 <th className="text-left px-4 py-2 font-medium">Path</th>
                 <th className="text-right px-4 py-2 font-medium">Total</th>
                 <th className="text-left px-4 py-2 font-medium">By Bot</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
               {topPaths.map(row => (
-                <tr key={row.path} className="hover:bg-zinc-50">
-                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-600 truncate max-w-xs">
+                <tr key={row.path} className={tableRow}>
+                  <td className={`px-4 py-2.5 font-mono text-xs ${mutedText} truncate max-w-xs`}>
                     {row.path}
                   </td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-zinc-800">
+                  <td className={`px-4 py-2.5 text-right font-semibold ${bodyText}`}>
                     {row.total.toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5">
@@ -477,10 +496,10 @@ export default async function BotAnalyticsAdminPage() {
                         return (
                           <span
                             key={bot}
-                            className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-zinc-50 border border-zinc-200"
+                            className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-zinc-50 dark:bg-[#21262d] border border-zinc-200 dark:border-[#30363d]`}
                           >
                             <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                            <span className="text-zinc-600">{BOT_CONFIG[bot]?.label ?? bot}</span>
+                            <span className={mutedText}>{BOT_CONFIG[bot]?.label ?? bot}</span>
                             <span className="font-medium" style={{ color }}>{cnt}</span>
                           </span>
                         );
@@ -494,23 +513,19 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* Per-bot breakdown table */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            By Bot (30 days)
-          </p>
+      {/* ── By Bot ─────────────────────────────────────────────────────────── */}
+      <div className={card}>
+        <div className={cardHead}>
+          <p className={eyebrow}>By Bot (30 days)</p>
         </div>
         {grandTotal === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm text-zinc-400">No bot visits recorded yet.</p>
-            <p className="text-xs text-zinc-400 mt-1">
-              Visits will appear here once crawlers index your content.
-            </p>
+            <p className={`text-sm ${mutedText}`}>No bot visits recorded yet.</p>
+            <p className={`text-xs ${mutedText} mt-1`}>Visits will appear here once crawlers index your content.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs text-zinc-500">
+            <thead className={tableHead}>
               <tr>
                 <th className="text-left px-4 py-2 font-medium">Bot</th>
                 <th className="text-right px-4 py-2 font-medium">Visits</th>
@@ -518,18 +533,18 @@ export default async function BotAnalyticsAdminPage() {
                 <th className="text-right px-4 py-2 font-medium">Last seen</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
               {totals.map(row => (
-                <tr key={row.botName} className="hover:bg-zinc-50">
+                <tr key={row.botName} className={tableRow}>
                   <td className="px-4 py-2.5">
                     <BotBadge name={row.botName} />
                   </td>
-                  <td className="px-4 py-2.5 text-right font-medium text-zinc-900">
+                  <td className={`px-4 py-2.5 text-right font-medium ${bodyText}`}>
                     {row.total.toLocaleString()}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-zinc-500">
+                  <td className="px-4 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <div className="w-16 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                      <div className="w-16 h-1.5 bg-zinc-100 dark:bg-[#21262d] rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
                           style={{
@@ -538,12 +553,12 @@ export default async function BotAnalyticsAdminPage() {
                           }}
                         />
                       </div>
-                      <span className="text-xs w-8 text-right">
+                      <span className={`text-xs w-8 text-right ${mutedText}`}>
                         {Math.round((row.total / grandTotal) * 100)}%
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-right text-xs text-zinc-400">
+                  <td className={`px-4 py-2.5 text-right text-xs ${mutedText}`}>
                     {timeAgo(row.lastDay)}
                   </td>
                 </tr>
@@ -553,20 +568,18 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* Recent visits log */}
-      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-            Recent Visits
-          </p>
+      {/* ── Recent Visits ──────────────────────────────────────────────────── */}
+      <div className={card}>
+        <div className={cardHead}>
+          <p className={eyebrow}>Recent Visits</p>
         </div>
         {recent.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm text-zinc-400">No visits recorded yet.</p>
+            <p className={`text-sm ${mutedText}`}>No visits recorded yet.</p>
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs text-zinc-500">
+            <thead className={tableHead}>
               <tr>
                 <th className="text-left px-4 py-2 font-medium">Time</th>
                 <th className="text-left px-4 py-2 font-medium">Bot</th>
@@ -574,24 +587,24 @@ export default async function BotAnalyticsAdminPage() {
                 <th className="text-left px-4 py-2 font-medium">Path</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className={`divide-y divide-zinc-100 dark:divide-[#30363d]`}>
               {recent.map(row => (
-                <tr key={row.id} className="hover:bg-zinc-50">
-                  <td className="px-4 py-2 text-xs text-zinc-400 whitespace-nowrap">
+                <tr key={row.id} className={tableRow}>
+                  <td className={`px-4 py-2 text-xs ${mutedText} whitespace-nowrap`}>
                     {timeAgo(row.visitedAt)}
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-1.5">
                       <BotDot name={row.botName} />
-                      <span className="text-xs text-zinc-700">
+                      <span className={`text-xs ${bodyText}`}>
                         {BOT_CONFIG[row.botName]?.label ?? row.botName}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-xs text-zinc-400 whitespace-nowrap">
+                  <td className={`px-4 py-2 text-xs ${mutedText} whitespace-nowrap`}>
                     {row.resourceType}
                   </td>
-                  <td className="px-4 py-2 text-xs text-zinc-500 font-mono truncate max-w-xs">
+                  <td className={`px-4 py-2 text-xs ${mutedText} font-mono truncate max-w-xs`}>
                     {row.path}
                   </td>
                 </tr>
@@ -601,8 +614,30 @@ export default async function BotAnalyticsAdminPage() {
         )}
       </div>
 
-      {/* Footer note */}
-      <p className="text-xs text-zinc-400 pb-4">
+      {/* ── Network participation callout ──────────────────────────────────── */}
+      {networkActive && (
+        <div className="border border-violet-200 dark:border-[#1d1535] bg-violet-50 dark:bg-[#1d1535] rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold text-violet-700 dark:text-violet-300">
+              Contributing to the AEO Intelligence Network
+            </p>
+            <p className={`text-xs ${mutedText} mt-0.5`}>
+              Your anonymised bot data is included in the network. See how the web compares.
+            </p>
+          </div>
+          <a
+            href="https://aeopugmill.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline whitespace-nowrap"
+          >
+            aeopugmill.com →
+          </a>
+        </div>
+      )}
+
+      {/* ── Footer note ────────────────────────────────────────────────────── */}
+      <p className={`text-xs ${mutedText} pb-4`}>
         AI crawlers: ChatGPT (GPTBot, ChatGPT-User, OAI-SearchBot), Claude (ClaudeBot, anthropic-ai),
         Perplexity (PerplexityBot), Gemini (Google-Extended), Amazonbot, Meta (meta-externalagent),
         Cohere (cohere-ai), CCBot.{" "}
