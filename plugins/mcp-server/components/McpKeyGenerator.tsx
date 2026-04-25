@@ -117,11 +117,13 @@ function Snippet({ text, token, lang = "json" }: { text: string; token: string; 
     );
   };
   return (
-    <pre className={`rounded-lg p-4 font-mono text-xs overflow-x-auto border transition-colors ${
-      isPlaceholder
-        ? "bg-zinc-900 border-zinc-700"
-        : "bg-zinc-900 border-amber-600"
-    }`} data-lang={lang}>
+    <pre
+      className={`rounded-lg p-4 font-mono text-xs overflow-x-auto border transition-colors ${
+        isPlaceholder ? "bg-zinc-900 border-zinc-700" : "bg-zinc-900 border-amber-600"
+      }`}
+      style={{ color: "#e4e4e7", backgroundColor: "#18181b" }}
+      data-lang={lang}
+    >
       {highlight(text)}
     </pre>
   );
