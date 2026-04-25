@@ -20,7 +20,9 @@ const ALLOWED_EXTENSIONS = new Set([
   ".mp4", ".webm", ".ogv",
 ]);
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+// Vercel caps request bodies at 4.5 MB — keep this below that ceiling so
+// the Next.js layer returns a clear error instead of a silent 413 from infra.
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB (leaves headroom for FormData envelope)
 
 async function requireAdmin() {
   const user = await getCurrentUser();
@@ -37,7 +39,7 @@ export async function uploadMedia(formData: FormData) {
 
   // Validate file size
   if (file.size > MAX_FILE_SIZE) {
-    return { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` };
+    return { error: `File too large. Maximum size is 4 MB (Vercel hosting limit).` };
   }
 
   // Validate MIME type
