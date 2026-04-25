@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Profile" };
+
 import { getCurrentUser } from "@/lib/get-current-user";
 import { db } from "@/lib/db";
 import { adminUsers } from "@/lib/db/schema";

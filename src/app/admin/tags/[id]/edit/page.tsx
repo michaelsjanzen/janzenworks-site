@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Edit Tag" };
+
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

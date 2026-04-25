@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Comments" };
+
 import { notFound } from "next/navigation";
 import { getConfig } from "@/lib/config";
 import CommentsAdminPage from "../../../../plugins/comments/components/AdminPage";

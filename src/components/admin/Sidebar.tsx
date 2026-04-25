@@ -1,4 +1,5 @@
 "use client";
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -81,10 +82,13 @@ export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], ba
 
   const totalBadgeCount = Object.values(badges).reduce((sum, n) => sum + n, 0);
 
-  const notificationPlugins = plugins.filter(p => p.actionHref);
+  const notificationPlugins = plugins.filter(p => p.actionHref && p.id !== "bot-analytics");
   const inNotificationsSection =
     pathname.startsWith("/admin/notifications") ||
     notificationPlugins.some(p => p.actionHref && pathname.startsWith(p.actionHref));
+
+  const hasBotAnalytics = plugins.some(p => p.id === "bot-analytics");
+  const inAeoSection = pathname.startsWith("/admin/bot-analytics");
 
   return (
     <aside
@@ -120,7 +124,8 @@ export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], ba
               (item.path === "/admin/notifications" && inNotificationsSection);
 
           return (
-            <div key={item.path}>
+            <Fragment key={item.path}>
+            <div>
               <Link
                 href={item.path}
                 onClick={onClose}
@@ -249,6 +254,20 @@ export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], ba
                 <SubNav items={settingsSubItems} />
               )}
             </div>
+            {item.path === "/admin/notifications" && hasBotAnalytics && (
+              <Link
+                href="/admin/bot-analytics"
+                onClick={onClose}
+                className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                  inAeoSection
+                    ? "bg-violet-50 text-violet-700 font-medium dark:bg-violet-950 dark:text-violet-300"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                }`}
+              >
+                AEO Analytics
+              </Link>
+            )}
+            </Fragment>
           );
         })}
       </nav>

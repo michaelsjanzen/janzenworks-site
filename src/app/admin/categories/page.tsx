@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Categories" };
+
 import { db } from "@/lib/db";
 import { categories, postCategories } from "@/lib/db/schema";
 import { eq, count, asc, desc } from "drizzle-orm";

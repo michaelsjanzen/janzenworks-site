@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Widgets" };
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getAllWidgets } from "@/lib/widget-registry";

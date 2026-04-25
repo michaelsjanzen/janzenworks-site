@@ -90,7 +90,7 @@ export async function generateMetadata(
   if (post.robotsNofollow) robotsDirectives.push("nofollow");
 
   return {
-    title: seoTitle ? seoTitle : `${post.title} | ${siteName}`,
+    title: seoTitle ? { absolute: seoTitle } : post.title,
     description: seoMetaDescription ?? metaDescription,
     ...(robotsDirectives.length ? { robots: robotsDirectives.join(", ") } : {}),
     keywords: aeoMeta?.keywords?.length ? aeoMeta.keywords : undefined,

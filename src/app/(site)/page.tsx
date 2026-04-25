@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImage = toAbsoluteUrl(config.site?.seoDefaults?.ogImage, siteUrl) ?? undefined;
 
   return {
-    title: siteName,
+    title: { absolute: siteName },
     description,
     alternates: {
       canonical: siteUrl,

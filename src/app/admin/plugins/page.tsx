@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Plugins" };
+
 import { getConfig } from "@/lib/config";
 import { getAllPlugins } from "@/lib/plugin-registry";
 import PluginCard from "./PluginCard";

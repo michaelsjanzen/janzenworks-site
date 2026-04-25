@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "New User" };
+
 import { createUser } from "@/lib/actions/users";
 import Link from "next/link";
 

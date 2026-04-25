@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Navigation" };
+
 import { getConfig, updateConfig } from "@/lib/config";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";

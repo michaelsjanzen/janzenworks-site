@@ -1,3 +1,7 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Storage" };
+
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/get-current-user";
 import { getConfig } from "@/lib/config";
