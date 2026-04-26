@@ -17,7 +17,7 @@ const topNavItems = [
   { label: "Notifications", path: "/admin/notifications" },
   { label: "Content", path: "/admin/posts" },
   { label: "Design", path: "/admin/design" },
-  { label: "Plugins", path: "/admin/plugins" },
+  { label: "Plugin Settings", path: "/admin/plugins" },
   { label: "Settings", path: "/admin/settings" },
 ];
 
@@ -42,7 +42,6 @@ const settingsSubItems = [
   { label: "OAuth Sign-in", path: "/admin/settings/auth" },
   { label: "Email", path: "/admin/settings/email" },
   { label: "API Keys", path: "/admin/settings/api-keys" },
-  { label: "Network", path: "/admin/settings/network" },
 ];
 
 const contentSection = ["/admin/posts", "/admin/categories", "/admin/tags", "/admin/media"];

@@ -3,7 +3,7 @@ import { db } from "../../src/lib/db";
 import { sql } from "drizzle-orm";
 import { detectBot, classifyPath } from "../../src/lib/bot-detection";
 import { pluginBotAnalyticsDaily, pluginBotAnalyticsRecent, pluginBotAnalyticsPostAeo } from "./schema";
-import BotAnalyticsAdminPage from "./components/AdminPage";
+import NetworkPage from "./components/NetworkPage";
 
 /**
  * Log one bot visit to the two-table model.
@@ -120,7 +120,7 @@ export const botAnalyticsPlugin: PugmillPlugin = {
     },
   },
 
-  adminPage: BotAnalyticsAdminPage,
+  adminPage: NetworkPage,
 
   async initialize(hooks) {
     // Prune daily aggregates older than 90 days on startup. Non-blocking, non-fatal.
