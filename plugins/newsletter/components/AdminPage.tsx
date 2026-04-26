@@ -1,5 +1,7 @@
-import { getAllSubscribers, getRecentSends } from "../db";
+import { getAllSubscribers, getRecentSends, getRecentPublishedPosts } from "../db";
+import { getConfig } from "../../../src/lib/config";
 import { DeleteSubscriberButton } from "./SubscriberActions";
+import ManualSendForm from "./ManualSendForm";
 
 function formatDate(d: Date | null) {
   if (!d) return "—";
@@ -9,24 +11,54 @@ function formatDate(d: Date | null) {
 export default async function AdminPage(
   _props: { searchParams: Record<string, string | string[] | undefined> }
 ) {
-  const [subscribers, sends] = await Promise.all([
+  const [subscribers, sends, recentPosts, config] = await Promise.all([
     getAllSubscribers(),
     getRecentSends(20),
+    getRecentPublishedPosts(30),
+    getConfig(),
   ]);
 
-  const active      = subscribers.filter((s) => !s.unsubscribedAt);
+  const active       = subscribers.filter((s) => !s.unsubscribedAt);
   const unsubscribed = subscribers.filter((s) =>  s.unsubscribedAt);
+
+  // Email provider status
+  const emailProvider  = config.email?.provider;
+  const fromAddress    = config.email?.fromAddress;
+  const emailReady     = !!emailProvider && !!fromAddress;
+  const defaultReplyTo = config.email?.toAddress ?? "";
 
   return (
     <div className="space-y-8">
+
+      {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Newsletter</h1>
         <p className="text-sm text-zinc-500 mt-1">
-          Manage subscribers and view send history. Emails are sent via{" "}
-          <a href="/admin/settings/email" className="underline text-zinc-600">Settings → Email</a>{" "}
-          when a post is published.
+          Manage subscribers and send campaigns.
         </p>
       </div>
+
+      {/* Email provider status */}
+      {emailReady ? (
+        <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+          <span>
+            <strong className="font-medium capitalize">{emailProvider}</strong> connected — emails will
+            send from <span className="font-mono">{fromAddress}</span>.
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+          <span>
+            No email provider configured. Newsletter sends will fail.{" "}
+            <a href="/admin/settings/email" className="underline font-medium">
+              Configure in Settings → Email
+            </a>
+            .
+          </span>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -40,6 +72,21 @@ export default async function AdminPage(
             <p className="text-xs text-zinc-500 mt-0.5">{label}</p>
           </div>
         ))}
+      </div>
+
+      {/* Manual send */}
+      <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100">
+          <h3 className="text-sm font-semibold text-zinc-700">Send newsletter</h3>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Choose a post, edit the subject, and send to all active subscribers.
+          </p>
+        </div>
+        <ManualSendForm
+          posts={recentPosts}
+          defaultReplyTo={defaultReplyTo}
+          subscriberCount={active.length}
+        />
       </div>
 
       {/* Subscriber list */}

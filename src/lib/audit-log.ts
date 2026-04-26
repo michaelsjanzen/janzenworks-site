@@ -30,6 +30,7 @@ export type AuditAction =
   | "design.draft_save" | "design.publish" | "design.draft_discard" | "design.structural_save"
   | "comment.approve" | "comment.delete"
   | "contact.submission_delete"
+  | "newsletter.manual_send"
   | "api_key.create" | "api_key.revoke"
   | "network.report_sent" | "network.report_skipped" | "network.report_error";
 
