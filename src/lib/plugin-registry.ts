@@ -140,6 +140,15 @@ export interface PugmillPlugin {
   initialize: (hooks: PluginHookManager, settings: PluginSettings) => void | Promise<void>;
 
   /**
+   * Called once, immediately after the plugin is activated by an admin.
+   * Runs in the same request as the toggle — use it for one-time setup work
+   * that should happen right away (e.g. seeding a default page, creating
+   * initial records). Not called on subsequent startups.
+   * Safe to omit for plugins that need no first-activation setup.
+   */
+  onActivate?: (settings: PluginSettings) => void | Promise<void>;
+
+  /**
    * Tear down any resources (timers, connections) created in initialize().
    * Called on clean server shutdown (SIGTERM/SIGINT). NOT called on plugin
    * deactivation — deactivation takes effect on the next cold start, at which
