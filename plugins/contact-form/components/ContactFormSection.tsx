@@ -25,23 +25,9 @@ export default async function ContactFormSection({ postSlug }: PostFooterSlotPro
 
   return (
     <section
-      className="mt-12 space-y-6 border-t pt-10"
+      className="mt-8 space-y-6 border-t pt-8"
       style={{ borderColor: "var(--color-border)" }}
     >
-      <div>
-        <h2
-          className="text-xl font-semibold"
-          style={{ color: "var(--color-foreground)" }}
-        >
-          Get in touch
-        </h2>
-        <p
-          className="text-sm mt-1"
-          style={{ color: "var(--color-muted)" }}
-        >
-          Fill in the form below and we'll get back to you.
-        </p>
-      </div>
       <ContactFormUI
         showPhone={showPhone}
         requirePhone={requirePhone}
