@@ -132,7 +132,7 @@ export const contactFormPlugin: PugmillPlugin = {
   },
 
   slots: {
-    postFooter: ContactFormSection,
+    articleFooter: ContactFormSection,
   },
 
   adminPage: ContactFormSettingsPage,

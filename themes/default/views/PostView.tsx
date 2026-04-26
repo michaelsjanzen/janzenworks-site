@@ -56,6 +56,10 @@ export interface PostViewProps {
   sidebarContent?: React.ReactNode;
   /** Rendered widget area for the post-footer slot — shown below the article body. */
   footerWidgets?: React.ReactNode;
+  /** Plugin slot: rendered inside the article, above the body content. */
+  articleHeaderContent?: React.ReactNode;
+  /** Plugin slot: rendered inside the article, after the body content and before metadata/tags. */
+  articleFooterContent?: React.ReactNode;
 }
 
 function formatDate(date: Date | null): string | null {
@@ -91,6 +95,8 @@ export default function PostView({
   siteName,
   sidebarContent,
   footerWidgets,
+  articleHeaderContent,
+  articleFooterContent,
 }: PostViewProps) {
   const questions = aeoMetadata?.questions?.filter(q => q.q && q.a) ?? [];
 
@@ -308,6 +314,9 @@ export default function PostView({
         </div>
       )}
 
+      {/* articleHeader slot — plugin content above the body */}
+      {articleHeaderContent}
+
       {/* Article body */}
       <div className="prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-[var(--color-foreground)] prose-a:text-[var(--color-link)] prose-a:no-underline hover:prose-a:underline prose-code:text-[var(--color-foreground)] prose-code:bg-[var(--color-surface)] prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-p:text-[var(--color-foreground)] prose-li:text-[var(--color-foreground)]">
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeSlug]}>
@@ -347,6 +356,9 @@ export default function PostView({
           </div>
         </aside>
       )}
+
+      {/* articleFooter slot — plugin content after body, before metadata/tags */}
+      {articleFooterContent}
 
       {/* Post footer widgets */}
       {footerWidgets && (
