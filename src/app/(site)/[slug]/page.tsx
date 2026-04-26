@@ -16,6 +16,7 @@ import { getWidgetAreaAssignment } from "@/lib/actions/widgets";
 import type { WidgetContext } from "@/types/widget";
 import type { Breadcrumb } from "../../../../themes/default/views/PageView";
 import { resolveSiteUrl, toAbsoluteUrl } from "@/lib/site-url";
+import { getActiveSlots } from "@/lib/plugin-registry";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -170,18 +171,24 @@ export default async function GenericPage(
   }
 
   const PageView = getThemePageView(activeTheme);
+  const pageFooterSlots = getActiveSlots("postFooter", config.modules.activePlugins, config.modules.pluginSettings);
 
   return (
-    <PageView
-      title={page.title}
-      content={filteredContent}
-      breadcrumbs={breadcrumbs}
-      layoutConfig={layoutConfig}
-      siblingPages={siblingPages}
-      sidebarContent={sidebarContent}
-      categories={pageCategories}
-      tags={pageTags}
-      publishedAt={page.publishedAt}
-    />
+    <>
+      <PageView
+        title={page.title}
+        content={filteredContent}
+        breadcrumbs={breadcrumbs}
+        layoutConfig={layoutConfig}
+        siblingPages={siblingPages}
+        sidebarContent={sidebarContent}
+        categories={pageCategories}
+        tags={pageTags}
+        publishedAt={page.publishedAt}
+      />
+      {pageFooterSlots.map(({ pluginId, Component }) => (
+        <Component key={pluginId} postId={page.id} postSlug={page.slug} postType="page" />
+      ))}
+    </>
   );
 }
