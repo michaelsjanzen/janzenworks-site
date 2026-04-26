@@ -38,35 +38,55 @@ export default async function Footer() {
   const config = await getConfig();
   const social = config.site.socialLinks ?? {};
   const socialEntries = Object.entries(social).filter(([, url]) => !!url) as [string, string][];
+  const footerNav = (config.appearance.footerNavigation ?? []) as { label: string; path: string }[];
 
   return (
     <footer className="border-t border-[var(--color-border)] mt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-sm text-[var(--color-muted)]">
-          &copy; {new Date().getFullYear()} {config.site.name}.
-          {config.site.showPoweredBy !== false && (
-            <> · <a href="https://pugmillcms.com" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--color-foreground)] transition-colors">Made with Pugmill &lt;/&gt;&gt;&gt;</a></>
-          )}
-        </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-        {socialEntries.length > 0 && (
-          <div className="flex items-center gap-4">
-            {socialEntries.map(([platform, url]) => (
+        {/* Footer nav links */}
+        {footerNav.length > 0 && (
+          <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            {footerNav.map(item => (
               <Link
-                key={platform}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={platform}
-                className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition"
+                key={item.path}
+                href={item.path}
+                className="text-sm text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition-colors"
               >
-                {SOCIAL_ICONS[platform] ?? (
-                  <span className="text-xs capitalize">{platform}</span>
-                )}
+                {item.label}
               </Link>
             ))}
-          </div>
+          </nav>
         )}
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-[var(--color-muted)]">
+            &copy; {new Date().getFullYear()} {config.site.name}.
+            {config.site.showPoweredBy !== false && (
+              <> · <a href="https://pugmillcms.com" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--color-foreground)] transition-colors">Made with Pugmill</a></>
+            )}
+          </p>
+
+          {socialEntries.length > 0 && (
+            <div className="flex items-center gap-4">
+              {socialEntries.map(([platform, url]) => (
+                <Link
+                  key={platform}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={platform}
+                  className="text-[var(--color-muted)] hover:text-[var(--color-foreground)] transition"
+                >
+                  {SOCIAL_ICONS[platform] ?? (
+                    <span className="text-xs capitalize">{platform}</span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </footer>
   );

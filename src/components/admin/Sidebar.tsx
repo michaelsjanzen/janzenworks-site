@@ -32,11 +32,9 @@ const contentSubItems = [
 
 const settingsSubItems = [
   { label: "Site Identity", path: "/admin/settings", exact: true },
-  { label: "Navigation", path: "/admin/settings/navigation" },
-  { label: "Social Links", path: "/admin/settings/social" },
   { label: "Search & Discovery", path: "/admin/settings/seo" },
   { label: "Users", path: "/admin/users" },
-  { label: "AI", path: "/admin/settings/ai" },
+  { label: "AI Provider", path: "/admin/settings/ai" },
   { label: "Storage", path: "/admin/settings/storage" },
   { label: "OAuth Sign-in", path: "/admin/settings/auth" },
   { label: "Email", path: "/admin/settings/email" },
@@ -44,7 +42,7 @@ const settingsSubItems = [
 ];
 
 const contentSection = ["/admin/posts", "/admin/categories", "/admin/tags", "/admin/media"];
-const designSection = ["/admin/themes", "/admin/design", "/admin/design/widgets"];
+const designSection = ["/admin/themes", "/admin/design", "/admin/design/widgets", "/admin/design/navigation", "/admin/design/social"];
 const settingsSection = ["/admin/settings", "/admin/users"];
 
 function SubNav({ items }: { items: { label: string; path: string; exact?: boolean }[] }) {
@@ -215,6 +213,26 @@ export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], ba
                     }`}
                   >
                     Customize
+                  </Link>
+                  <Link
+                    href="/admin/design/navigation"
+                    className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
+                      pathname.startsWith("/admin/design/navigation")
+                        ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
+                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                    }`}
+                  >
+                    Navigation
+                  </Link>
+                  <Link
+                    href="/admin/design/social"
+                    className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
+                      pathname.startsWith("/admin/design/social")
+                        ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
+                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                    }`}
+                  >
+                    Social Links
                   </Link>
                   <Link
                     href="/admin/design/widgets"
