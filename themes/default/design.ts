@@ -126,6 +126,12 @@ export const WIDGET_AREAS: WidgetAreaDef[] = [
     configKey: "postFooterWidgets",
     defaultWidgets: [],
   },
+  {
+    id: "page-footer",
+    label: "Page Footer",
+    configKey: "pageFooterWidgets",
+    defaultWidgets: [],
+  },
 ];
 
 // ─── Token definitions ────────────────────────────────────────────────────────
