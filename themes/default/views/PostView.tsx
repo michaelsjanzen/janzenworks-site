@@ -473,13 +473,13 @@ export default function PostView({
   }
 
   return (
-    <div className="flex gap-10 items-start">
+    <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start">
       {sidebar === "left" && (
-        <aside className="w-56 shrink-0 space-y-6 sticky top-24">{resolvedSidebarContent}</aside>
+        <aside className="w-full lg:w-56 shrink-0 space-y-6 lg:sticky lg:top-24 order-last lg:order-first">{resolvedSidebarContent}</aside>
       )}
-      <div className="flex-1 min-w-0">{articleBody}</div>
+      <div className="flex-1 min-w-0 w-full">{articleBody}</div>
       {sidebar === "right" && (
-        <aside className="w-56 shrink-0 space-y-6 sticky top-24">{resolvedSidebarContent}</aside>
+        <aside className="w-full lg:w-56 shrink-0 space-y-6 lg:sticky lg:top-24 order-last">{resolvedSidebarContent}</aside>
       )}
     </div>
   );
