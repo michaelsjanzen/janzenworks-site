@@ -193,7 +193,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
                     <div className="flex items-center justify-end gap-3">
                       <Link href={`/admin/posts/${post.id}/edit`} className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">Edit</Link>
                       {post.published && (
-                        <Link href={`/post/${post.slug}`} target="_blank" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">View</Link>
+                        <Link href={post.type === "page" ? `/${post.slug}` : `/post/${post.slug}`} target="_blank" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">View</Link>
                       )}
                       <DeletePostButton id={post.id} title={post.title} />
                     </div>
