@@ -1,9 +1,8 @@
 "use client";
 import { useState } from "react";
 import { subscribeNewsletter } from "../actions";
-import type { PostFooterSlotProps } from "../../../src/lib/plugin-registry";
 
-interface Props extends PostFooterSlotProps {
+interface Props {
   label: string;
   description: string;
 }

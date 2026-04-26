@@ -5,11 +5,12 @@ import { pluginNewsletterSends } from "./schema";
 import { getActiveSubscribers } from "./db";
 import type { PostPayload } from "../../src/lib/hook-catalogue";
 import AdminPage from "./components/AdminPage";
-import SubscribeFormWrapper from "./components/SubscribeFormWrapper";
+import { subscribeWidget } from "./widgets/subscribe";
 
 /**
  * Send the newsletter to all active subscribers for a given post.
- * Fire-and-forget — never throws, never blocks the publish action.
+ * Awaited inside the hook — ensures delivery completes before the
+ * serverless function returns. Never throws; errors are logged only.
  */
 async function sendNewsletter(post: PostPayload, settings: PluginSettings): Promise<void> {
   try {
@@ -18,7 +19,6 @@ async function sendNewsletter(post: PostPayload, settings: PluginSettings): Prom
 
     const config     = await getConfig();
     const siteUrl    = config.site.url.replace(/\/$/, "");
-    const toAddress  = config.email?.toAddress; // not used for newsletter — per-subscriber sends
     const replyTo    = (settings.replyTo as string) || config.email?.toAddress || undefined;
 
     // Build the post URL — posts live at /post/[slug], pages at /[slug]
@@ -26,7 +26,7 @@ async function sendNewsletter(post: PostPayload, settings: PluginSettings): Prom
       ? `${siteUrl}/${post.slug}`
       : `${siteUrl}/post/${post.slug}`;
 
-    const subject  = post.title;
+    const subject     = post.title;
     const subscribers = await getActiveSubscribers();
     if (subscribers.length === 0) return;
 
@@ -44,7 +44,7 @@ async function sendNewsletter(post: PostPayload, settings: PluginSettings): Prom
           text: [
             post.title,
             "",
-            `Read the full post: ${postUrl}`,
+            `Read: ${postUrl}`,
             "",
             "---",
             `Unsubscribe: ${unsubscribeUrl}`,
@@ -72,8 +72,8 @@ async function sendNewsletter(post: PostPayload, settings: PluginSettings): Prom
       failCount,
     } as typeof pluginNewsletterSends.$inferInsert);
 
-  } catch {
-    // Never surface newsletter errors to the user or admin
+  } catch (err) {
+    console.error("[newsletter] Auto-send failed:", err);
   }
 }
 
@@ -90,24 +90,6 @@ export const newsletterPlugin: PugmillPlugin = {
       type:        "boolean",
       default:     true,
       description: "Automatically email subscribers when a post is published. Requires an email provider in Settings → Email.",
-    },
-    {
-      key:         "showInPostFooter",
-      label:       "Show subscribe form below posts",
-      type:        "boolean",
-      default:     true,
-    },
-    {
-      key:         "footerLabel",
-      label:       "Subscribe form heading",
-      type:        "text",
-      default:     "Subscribe",
-    },
-    {
-      key:         "footerDescription",
-      label:       "Subscribe form description",
-      type:        "text",
-      default:     "Get new posts delivered to your inbox.",
     },
     {
       key:         "replyTo",
@@ -154,16 +136,14 @@ export const newsletterPlugin: PugmillPlugin = {
 
   adminPage: AdminPage,
 
-  slots: {
-    postFooter: SubscribeFormWrapper,
-  },
+  widgets: [subscribeWidget],
 
   async initialize(hooks, settings) {
     hooks.addAction("post:after-publish", async ({ post }) => {
       const sendOnPublish = settings.sendOnPublish !== false; // default true
       if (!sendOnPublish) return;
-      // Fire-and-forget — publish action completes immediately
-      void sendNewsletter(post, settings);
+      // Awaited — ensures delivery completes before the serverless function exits.
+      await sendNewsletter(post, settings);
     });
   },
 };

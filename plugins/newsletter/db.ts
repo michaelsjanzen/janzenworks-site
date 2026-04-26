@@ -1,6 +1,7 @@
 import { db } from "../../src/lib/db";
 import { desc, isNull, eq } from "drizzle-orm";
 import { pluginNewsletterSubscribers, pluginNewsletterSends } from "./schema";
+import { posts } from "../../src/lib/db/schema";
 
 /** Active (non-unsubscribed) subscribers. */
 export function getActiveSubscribers() {
@@ -35,5 +36,20 @@ export function getRecentSends(limit = 20) {
     .select()
     .from(pluginNewsletterSends)
     .orderBy(desc(pluginNewsletterSends.sentAt))
+    .limit(limit);
+}
+
+/** Recent published posts for the manual send picker, newest first. */
+export function getRecentPublishedPosts(limit = 30) {
+  return db
+    .select({
+      id:    posts.id,
+      title: posts.title,
+      slug:  posts.slug,
+      type:  posts.type,
+    })
+    .from(posts)
+    .where(eq(posts.published, true))
+    .orderBy(desc(posts.publishedAt))
     .limit(limit);
 }
