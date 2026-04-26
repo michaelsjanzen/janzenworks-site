@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition, useCallback, useRef } from "react";
+import { useState, useTransition, useCallback, useRef, lazy, Suspense } from "react";
+const SectionHeroCanvas = lazy(() => import("./SectionHeroCanvas"));
 import type {
   HomepageSection,
   HeroSection,
@@ -118,160 +119,6 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 
 // ─── Per-section forms ─────────────────────────────────────────────────────────
 
-function HeroForm({
-  section, onChange, allMedia,
-}: { section: HeroSection; onChange: (s: HeroSection) => void; allMedia: MediaItem[] }) {
-  const u = <K extends keyof HeroSection>(key: K, val: HeroSection[K]) =>
-    onChange({ ...section, [key]: val });
-
-  return (
-    <div className="space-y-5">
-      {/* Image */}
-      <FieldGroup label="Background image" hint="Pick from media library or paste a URL.">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={section.imageUrl}
-            onChange={e => u("imageUrl", e.target.value)}
-            placeholder="https://..."
-            className="flex-1 text-sm border border-zinc-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
-          />
-          {allMedia.length > 0 && (
-            <select
-              onChange={e => { if (e.target.value) u("imageUrl", e.target.value); }}
-              defaultValue=""
-              className="text-sm border border-zinc-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-zinc-900/20"
-            >
-              <option value="">Library…</option>
-              {allMedia.map(m => (
-                <option key={m.id} value={m.url}>{m.fileName}</option>
-              ))}
-            </select>
-          )}
-        </div>
-      </FieldGroup>
-
-      {/* Height */}
-      <Row>
-        <div><Label>Height</Label><Hint>Minimum height of the hero section.</Hint></div>
-        <div className="flex gap-1 shrink-0">
-          {(["short", "medium", "tall", "full"] as const).map(h => (
-            <PillButton key={h} active={section.height === h} onClick={() => u("height", h)}>
-              {h.charAt(0).toUpperCase() + h.slice(1)}
-            </PillButton>
-          ))}
-        </div>
-      </Row>
-
-      {/* Overlay style */}
-      <Row>
-        <div><Label>Overlay style</Label><Hint>Color wash over the image.</Hint></div>
-        <div className="flex gap-1 shrink-0">
-          {(["flat", "gradient-up", "gradient-down"] as const).map(s => (
-            <PillButton key={s} active={section.overlayStyle === s} onClick={() => u("overlayStyle", s)}>
-              {s === "flat" ? "Flat" : s === "gradient-up" ? "Fade up" : "Fade down"}
-            </PillButton>
-          ))}
-        </div>
-      </Row>
-
-      {/* Overlay color + opacity */}
-      <div className="flex gap-4 items-end">
-        <FieldGroup label="Overlay color">
-          <input
-            type="color"
-            value={section.overlayColor}
-            onChange={e => u("overlayColor", e.target.value)}
-            className="h-9 w-16 rounded border border-zinc-200 cursor-pointer p-0.5"
-          />
-        </FieldGroup>
-        <FieldGroup label={`Opacity ${section.overlayOpacity}%`}>
-          <input
-            type="range" min={0} max={100}
-            value={section.overlayOpacity}
-            onChange={e => u("overlayOpacity", Number(e.target.value))}
-            className="w-32"
-          />
-        </FieldGroup>
-      </div>
-
-      {/* Content position + align */}
-      <Row>
-        <div><Label>Content position</Label><Hint>Vertical placement of text.</Hint></div>
-        <div className="flex gap-1 shrink-0">
-          {(["top", "center", "bottom"] as const).map(p => (
-            <PillButton key={p} active={section.contentPosition === p} onClick={() => u("contentPosition", p)}>
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </PillButton>
-          ))}
-        </div>
-      </Row>
-
-      <Row>
-        <div><Label>Alignment</Label></div>
-        <div className="flex gap-1 shrink-0">
-          {(["left", "center"] as const).map(a => (
-            <PillButton key={a} active={section.contentAlign === a} onClick={() => u("contentAlign", a)}>
-              {a.charAt(0).toUpperCase() + a.slice(1)}
-            </PillButton>
-          ))}
-        </div>
-      </Row>
-
-      {/* Headline */}
-      <div className="space-y-2">
-        <Toggle checked={section.showHeadline} onChange={v => u("showHeadline", v)} label="Show headline" />
-        {section.showHeadline && (
-          <TextInput value={section.headline} onChange={v => u("headline", v)} placeholder="Welcome" />
-        )}
-      </div>
-
-      {/* Subheadline */}
-      <div className="space-y-2">
-        <Toggle checked={section.showSubheadline} onChange={v => u("showSubheadline", v)} label="Show subheadline" />
-        {section.showSubheadline && (
-          <TextInput value={section.subheadline} onChange={v => u("subheadline", v)} placeholder="A short tagline…" />
-        )}
-      </div>
-
-      {/* CTA 1 */}
-      <div className="space-y-2">
-        <Toggle checked={section.cta1Enabled} onChange={v => u("cta1Enabled", v)} label="Primary button" />
-        {section.cta1Enabled && (
-          <div className="grid grid-cols-2 gap-2">
-            <TextInput value={section.cta1Text} onChange={v => u("cta1Text", v)} placeholder="Button label" />
-            <TextInput value={section.cta1Url} onChange={v => u("cta1Url", v)} placeholder="/page" />
-            <div className="flex gap-1">
-              {(["filled", "outline"] as const).map(s => (
-                <PillButton key={s} active={section.cta1Style === s} onClick={() => u("cta1Style", s)}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </PillButton>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* CTA 2 */}
-      <div className="space-y-2">
-        <Toggle checked={section.cta2Enabled} onChange={v => u("cta2Enabled", v)} label="Secondary button" />
-        {section.cta2Enabled && (
-          <div className="grid grid-cols-2 gap-2">
-            <TextInput value={section.cta2Text} onChange={v => u("cta2Text", v)} placeholder="Button label" />
-            <TextInput value={section.cta2Url} onChange={v => u("cta2Url", v)} placeholder="/page" />
-            <div className="flex gap-1">
-              {(["filled", "outline"] as const).map(s => (
-                <PillButton key={s} active={section.cta2Style === s} onClick={() => u("cta2Style", s)}>
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </PillButton>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function PostFeedForm({
   section, onChange, categories,
@@ -621,11 +468,13 @@ function SectionCard({
       {open && (
         <div className="border-t border-zinc-100 px-5 py-5">
           {section.type === "hero" && (
-            <HeroForm
-              section={section as HeroSection}
-              onChange={s => onUpdate(index, s)}
-              allMedia={allMedia}
-            />
+            <Suspense fallback={<div className="h-48 animate-pulse bg-zinc-100 rounded-xl" />}>
+              <SectionHeroCanvas
+                section={section as HeroSection}
+                onChange={s => onUpdate(index, s)}
+                allMedia={allMedia}
+              />
+            </Suspense>
           )}
           {section.type === "post-feed" && (
             <PostFeedForm
