@@ -74,6 +74,8 @@ export interface PostFooterSlotProps {
   postId: number;
   /** The slug of the current post (for linking). */
   postSlug: string;
+  /** Whether the current content is a blog post or a static page. */
+  postType: "post" | "page";
 }
 
 export interface SiteBannerSlotProps {

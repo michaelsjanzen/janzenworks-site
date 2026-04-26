@@ -221,7 +221,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           canonicalUrl={canonicalUrl}
         />
         {pageFooterSlots.map(({ pluginId, Component }) => (
-          <Component key={pluginId} postId={post.id} postSlug={post.slug} />
+          <Component key={pluginId} postId={post.id} postSlug={post.slug} postType="page" />
         ))}
       </>
     );
@@ -286,7 +286,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         footerWidgets={postFooterWidgets}
       />
       {postFooterSlots.map(({ pluginId, Component }) => (
-        <Component key={pluginId} postId={post.id} postSlug={post.slug} />
+        <Component key={pluginId} postId={post.id} postSlug={post.slug} postType="post" />
       ))}
     </>
   );
