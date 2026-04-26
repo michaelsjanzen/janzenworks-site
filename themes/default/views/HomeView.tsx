@@ -31,7 +31,7 @@ function hexToRgb(hex: string): string {
   return `${r} ${g} ${b}`;
 }
 
-function HeroSection({ config }: { config: HeroConfig }) {
+export function HeroSection({ config }: { config: HeroConfig }) {
   const heightClass = {
     short: "min-h-[40vh]",
     medium: "min-h-[60vh]",
@@ -179,7 +179,7 @@ function ReadMore() {
 
 // ─── Featured card — hero treatment above the feed ────────────────────────────
 
-function FeaturedCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
+export function FeaturedCard({ post, showExcerpt = true }: { post: PostSummary; showExcerpt?: boolean }) {
   return (
     <article className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden hover:border-[var(--color-muted)] hover:shadow-md transition-all">
       {post.featuredImageUrl && (

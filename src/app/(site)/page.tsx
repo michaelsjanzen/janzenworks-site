@@ -1,13 +1,19 @@
 import { getConfig } from "@/lib/config";
 import { sanitizeThemeName } from "@/lib/theme-registry";
 import { getDesignConfig } from "@/lib/design-config";
-import { getThemeHomeView } from "@/lib/theme-modules";
-import { fetchPostPage, fetchFeaturedPost } from "@/lib/queries/posts";
+import { parseHomepageSections } from "@/lib/homepage-sections";
 import { cookies } from "next/headers";
 import type { Metadata } from "next";
-import type { HomeLayoutConfig } from "../../../themes/default/design";
-import { extractHeroConfig } from "../../../themes/default/design";
 import { resolveSiteUrl, toAbsoluteUrl } from "@/lib/site-url";
+
+// Section renderers (server components)
+import { HeroSection } from "../../../themes/default/views/HomeView";
+import type { HeroConfig } from "../../../themes/default/design";
+import { PostFeedRenderer } from "../../../themes/default/views/sections/PostFeedRenderer";
+import { FeaturedPostRenderer } from "../../../themes/default/views/sections/FeaturedPostRenderer";
+import { TextBlockRenderer } from "../../../themes/default/views/sections/TextBlockRenderer";
+import { CtaRenderer } from "../../../themes/default/views/sections/CtaRenderer";
+import type { HomepageSection } from "@/types/homepage-sections";
 
 // ─── Dynamic metadata ─────────────────────────────────────────────────────────
 
@@ -47,6 +53,62 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+// ─── Section renderer ─────────────────────────────────────────────────────────
+
+async function RenderSection({
+  section,
+  page,
+}: {
+  section: HomepageSection;
+  page: number;
+}) {
+  if (!section.enabled) return null;
+
+  switch (section.type) {
+    case "hero": {
+      // Map HeroSection fields to HeroConfig shape (same fields, minus id/type/enabled)
+      const config: HeroConfig = {
+        enabled: true,
+        height: section.height,
+        imageUrl: section.imageUrl,
+        overlayColor: section.overlayColor,
+        overlayStyle: section.overlayStyle,
+        overlayOpacity: section.overlayOpacity,
+        showHeadline: section.showHeadline,
+        headline: section.headline,
+        showSubheadline: section.showSubheadline,
+        subheadline: section.subheadline,
+        contentAlign: section.contentAlign,
+        contentPosition: section.contentPosition,
+        cta1Enabled: section.cta1Enabled,
+        cta1Text: section.cta1Text,
+        cta1Url: section.cta1Url,
+        cta1Style: section.cta1Style,
+        cta2Enabled: section.cta2Enabled,
+        cta2Text: section.cta2Text,
+        cta2Url: section.cta2Url,
+        cta2Style: section.cta2Style,
+      };
+      return <HeroSection config={config} />;
+    }
+
+    case "post-feed":
+      return <PostFeedRenderer section={section} page={page} basePath="/" />;
+
+    case "featured-post":
+      return <FeaturedPostRenderer section={section} />;
+
+    case "text-block":
+      return <TextBlockRenderer section={section} />;
+
+    case "cta":
+      return <CtaRenderer section={section} />;
+
+    default:
+      return null;
+  }
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage({
@@ -66,30 +128,16 @@ export default async function HomePage({
   const isPreview = cookieStore.get("__pugmill_design_preview")?.value === "1";
   const designConfig = await getDesignConfig(activeTheme, isPreview ? "draft" : "published");
 
-  const layoutConfig: HomeLayoutConfig = {
-    feedStyle: (designConfig.homeFeedStyle as "list" | "grid") ?? "list",
-    listStyle: (designConfig.homeListStyle as "compact" | "editorial" | "feature" | "text-only") ?? "compact",
-    columns: (Number(designConfig.homeColumns) as 1 | 2 | 3) ?? 1,
-    gap: (designConfig.homeGap as "sm" | "md" | "lg") ?? "md",
-    contentDisplay: (designConfig.homeContentDisplay as "excerpt" | "none") ?? "excerpt",
-  };
-
-  const heroConfig = extractHeroConfig(designConfig);
-
-  // Fetch featured post and feed page in parallel.
-  // Exclude the featured post from the feed so it doesn't appear twice.
-  const featuredPost = await fetchFeaturedPost();
-  const postPage = await fetchPostPage({ page, excludeId: featuredPost?.id });
-
-  const HomeView = getThemeHomeView(activeTheme);
+  const sections = parseHomepageSections(designConfig);
 
   return (
-    <HomeView
-      posts={postPage.posts}
-      layoutConfig={layoutConfig}
-      heroConfig={heroConfig}
-      pagination={{ page: postPage.page, totalPages: postPage.totalPages }}
-      featuredPost={featuredPost ?? undefined}
-    />
+    <div className="space-y-16">
+      {sections.map(section => (
+        <RenderSection key={section.id} section={section} page={page} />
+      ))}
+      {sections.every(s => !s.enabled) && (
+        <p className="text-[var(--color-muted)]">No sections are enabled on the homepage.</p>
+      )}
+    </div>
   );
 }
