@@ -27,6 +27,10 @@ export interface PageViewProps {
   /** Rendered widget area for the sidebar slot — replaces the default sibling/parent sidebar. */
   sidebarContent?: React.ReactNode;
   canonicalUrl?: string;
+  /** Plugin slot: rendered inside the article, above the body content. */
+  articleHeaderContent?: React.ReactNode;
+  /** Plugin slot: rendered inside the article, after the body content and before the back link. */
+  articleFooterContent?: React.ReactNode;
   /** Optional taxonomy/date. If any are present they render at the bottom of the page,
       in the same order as single posts: categories → date → tags. */
   categories?: { name: string; slug: string }[];
@@ -64,6 +68,8 @@ export default function PageView({
   siblingPages,
   sidebarContent,
   canonicalUrl,
+  articleHeaderContent,
+  articleFooterContent,
   categories = [],
   tags = [],
   publishedAt = null,
@@ -138,12 +144,18 @@ export default function PageView({
         </h1>
       </header>
 
+      {/* articleHeader slot — plugin content above the body */}
+      {articleHeaderContent}
+
       {/* Page body */}
       <div className="prose max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-[var(--color-foreground)] prose-a:text-[var(--color-link)] prose-a:no-underline hover:prose-a:underline prose-code:text-[var(--color-foreground)] prose-code:bg-[var(--color-surface)] prose-code:px-1 prose-code:rounded prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-p:text-[var(--color-foreground)] prose-li:text-[var(--color-foreground)]">
         <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSanitize, rehypeSlug]}>
           {stripLeadingTitleHeading(content, title)}
         </ReactMarkdown>
       </div>
+
+      {/* articleFooter slot — plugin content after body, before back link */}
+      {articleFooterContent}
 
       {/* Page metadata — bottom of page, same order as single posts:
           1. Categories  2. Date  3. Tags. Only rendered when any are present

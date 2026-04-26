@@ -69,14 +69,21 @@ export interface PluginSettingDef {
 // at the appropriate place in the page without the theme needing to know about
 // specific plugins.
 
-export interface PostFooterSlotProps {
-  /** The integer ID of the current post. */
+/**
+ * Props shared by all content-scoped slot components.
+ * Passed to articleHeader, articleFooter, and postFooter slots.
+ */
+export interface ContentSlotProps {
+  /** The integer ID of the current post or page. */
   postId: number;
-  /** The slug of the current post (for linking). */
+  /** The slug of the current post or page. */
   postSlug: string;
   /** Whether the current content is a blog post or a static page. */
   postType: "post" | "page";
 }
+
+/** @deprecated Use ContentSlotProps — identical shape, kept for backward compatibility. */
+export type PostFooterSlotProps = ContentSlotProps;
 
 export interface SiteBannerSlotProps {
   /**
@@ -89,11 +96,36 @@ export interface SiteBannerSlotProps {
 
 export interface PluginSlots {
   /**
-   * Rendered below post content on blog-post-type pages.
-   * Receives the post ID and slug.
-   * May be a server component (do not add "use client" unless interactivity is needed).
+   * Rendered inside the article, immediately after the title and before the body content.
+   * Use for callouts, warnings, or supplemental context that should appear above the prose.
+   * Receives postId, postSlug, and postType.
+   * May be a server component.
+   *
+   * @example Use case: "This post is part of a series" banner above the content.
    */
-  postFooter?: React.ComponentType<PostFooterSlotProps>;
+  articleHeader?: React.ComponentType<ContentSlotProps>;
+
+  /**
+   * Rendered inside the article, after the body content and before the back/navigation footer.
+   * Use for forms, calls-to-action, or supplemental content that is part of the article flow.
+   * Receives postId, postSlug, and postType.
+   * May be a server component.
+   *
+   * @example Use case: contact form embedded at the bottom of the /contact page.
+   * @example Use case: newsletter sign-up block at the end of a blog post.
+   */
+  articleFooter?: React.ComponentType<ContentSlotProps>;
+
+  /**
+   * Rendered outside and below the article element, after the full PageView/PostView output.
+   * Use for content that is intentionally separate from the article — e.g. comment threads,
+   * which are a response to the article rather than part of it.
+   * Receives postId, postSlug, and postType.
+   * May be a server component.
+   *
+   * @example Use case: threaded comments below a blog post.
+   */
+  postFooter?: React.ComponentType<ContentSlotProps>;
 
   /**
    * Rendered on every page, appended after the theme layout.

@@ -171,7 +171,10 @@ export default async function GenericPage(
   }
 
   const PageView = getThemePageView(activeTheme);
-  const pageFooterSlots = getActiveSlots("postFooter", config.modules.activePlugins, config.modules.pluginSettings);
+  const slotProps = { postId: page.id, postSlug: page.slug, postType: "page" as const };
+  const articleHeaderSlots = getActiveSlots("articleHeader", config.modules.activePlugins, config.modules.pluginSettings);
+  const articleFooterSlots = getActiveSlots("articleFooter", config.modules.activePlugins, config.modules.pluginSettings);
+  const postFooterSlots    = getActiveSlots("postFooter",    config.modules.activePlugins, config.modules.pluginSettings);
 
   return (
     <>
@@ -185,9 +188,15 @@ export default async function GenericPage(
         categories={pageCategories}
         tags={pageTags}
         publishedAt={page.publishedAt}
+        articleHeaderContent={articleHeaderSlots.map(({ pluginId, Component }) => (
+          <Component key={pluginId} {...slotProps} />
+        ))}
+        articleFooterContent={articleFooterSlots.map(({ pluginId, Component }) => (
+          <Component key={pluginId} {...slotProps} />
+        ))}
       />
-      {pageFooterSlots.map(({ pluginId, Component }) => (
-        <Component key={pluginId} postId={page.id} postSlug={page.slug} postType="page" />
+      {postFooterSlots.map(({ pluginId, Component }) => (
+        <Component key={pluginId} {...slotProps} />
       ))}
     </>
   );

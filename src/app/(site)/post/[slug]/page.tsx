@@ -177,6 +177,12 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   // Run content through registered plugin filters before handing to the theme view
   const filteredContent = await hooks.applyFilters("content:render", { input: post.content, post: postPayload });
 
+  // Slot props and active slot components — resolved once, used in both page and post branches.
+  const slotProps = { postId: post.id, postSlug: post.slug, postType: post.type as "post" | "page" };
+  const articleHeaderSlots = getActiveSlots("articleHeader", config.modules.activePlugins, config.modules.pluginSettings);
+  const articleFooterSlots = getActiveSlots("articleFooter", config.modules.activePlugins, config.modules.pluginSettings);
+  const postFooterSlots    = getActiveSlots("postFooter",    config.modules.activePlugins, config.modules.pluginSettings);
+
   if (post.type === "page") {
     // Hierarchical page — use PageView with breadcrumbs
     const breadcrumbs = await resolveBreadcrumbs(post.parentId);
@@ -207,8 +213,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       ? await widgetArea("sidebar-page", pageWidgetCtx)
       : undefined;
 
-    const pageFooterSlots = getActiveSlots("postFooter", config.modules.activePlugins, config.modules.pluginSettings);
-
     return (
       <>
         <PageView
@@ -219,9 +223,15 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           siblingPages={siblingPages}
           sidebarContent={pageSidebar}
           canonicalUrl={canonicalUrl}
+          articleHeaderContent={articleHeaderSlots.map(({ pluginId, Component }) => (
+            <Component key={pluginId} {...slotProps} />
+          ))}
+          articleFooterContent={articleFooterSlots.map(({ pluginId, Component }) => (
+            <Component key={pluginId} {...slotProps} />
+          ))}
         />
-        {pageFooterSlots.map(({ pluginId, Component }) => (
-          <Component key={pluginId} postId={post.id} postSlug={post.slug} postType="page" />
+        {postFooterSlots.map(({ pluginId, Component }) => (
+          <Component key={pluginId} {...slotProps} />
         ))}
       </>
     );
@@ -247,7 +257,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     ? await hooks.applyFilters("content:excerpt", { input: post.excerpt, post: postPayload })
     : post.excerpt;
   const PostView = getThemePostView(activeTheme);
-  const postFooterSlots = getActiveSlots("postFooter", config.modules.activePlugins, config.modules.pluginSettings);
 
   const postWidgetCtx: WidgetContext = {
     type: "post",
@@ -284,9 +293,15 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         siteName={config.site?.name ?? "Pugmill"}
         sidebarContent={postSidebar}
         footerWidgets={postFooterWidgets}
+        articleHeaderContent={articleHeaderSlots.map(({ pluginId, Component }) => (
+          <Component key={pluginId} {...slotProps} />
+        ))}
+        articleFooterContent={articleFooterSlots.map(({ pluginId, Component }) => (
+          <Component key={pluginId} {...slotProps} />
+        ))}
       />
       {postFooterSlots.map(({ pluginId, Component }) => (
-        <Component key={pluginId} postId={post.id} postSlug={post.slug} postType="post" />
+        <Component key={pluginId} {...slotProps} />
       ))}
     </>
   );
