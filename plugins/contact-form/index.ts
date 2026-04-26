@@ -32,11 +32,32 @@ export const contactFormPlugin: PugmillPlugin = {
       description: "The slug of the page where the contact form appears. A page is created automatically when the plugin is activated.",
     },
     {
+      key: "showPhone",
+      label: "Show Phone Field",
+      type: "boolean",
+      default: true,
+      description: "Display a phone number field on the form.",
+    },
+    {
       key: "requirePhone",
       label: "Require Phone Number",
       type: "boolean",
       default: false,
-      description: "Add a required phone number field to the form.",
+      description: "Make the phone number field required.",
+    },
+    {
+      key: "showSocialUrl",
+      label: "Show Social Profile URL Field",
+      type: "boolean",
+      default: true,
+      description: "Display a social profile URL field on the form (e.g. LinkedIn, GitHub).",
+    },
+    {
+      key: "requireSocialUrl",
+      label: "Require Social Profile URL",
+      type: "boolean",
+      default: false,
+      description: "Make the social profile URL field required.",
     },
     {
       key: "successMessage",
@@ -96,6 +117,11 @@ export const contactFormPlugin: PugmillPlugin = {
           read       BOOLEAN NOT NULL DEFAULT FALSE,
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
+      `);
+      // Idempotent column additions for schema upgrades on existing tables.
+      await db.execute(sql`
+        ALTER TABLE plugin_contact_form_submissions
+          ADD COLUMN IF NOT EXISTS social_url VARCHAR(500)
       `);
     },
     async teardown() {

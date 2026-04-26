@@ -18,7 +18,10 @@ export default async function ContactFormSection({ postSlug }: PostFooterSlotPro
   // Only render on the designated contact page
   if (postSlug !== pageSlug) return null;
 
+  const showPhone = settings.showPhone !== false;
   const requirePhone = settings.requirePhone === true;
+  const showSocialUrl = settings.showSocialUrl !== false;
+  const requireSocialUrl = settings.requireSocialUrl === true;
 
   return (
     <section
@@ -39,7 +42,12 @@ export default async function ContactFormSection({ postSlug }: PostFooterSlotPro
           Fill in the form below and we'll get back to you.
         </p>
       </div>
-      <ContactFormUI requirePhone={requirePhone} />
+      <ContactFormUI
+        showPhone={showPhone}
+        requirePhone={requirePhone}
+        showSocialUrl={showSocialUrl}
+        requireSocialUrl={requireSocialUrl}
+      />
     </section>
   );
 }
