@@ -5,28 +5,35 @@ export const dynamic = "force-dynamic";
 
 import { savePartialDesignDraft } from "@/lib/actions/design";
 import { db } from "@/lib/db";
-import { media } from "@/lib/db/schema";
-import { desc } from "drizzle-orm";
-import { extractHeroConfig } from "../../../../themes/default/design";
+import { media, categories, posts } from "@/lib/db/schema";
+import { desc, eq, and } from "drizzle-orm";
 import { DraftBanner, PublishActions } from "./DraftControls";
-import HomepageLayoutCard from "./HomepageLayoutCard";
 import { DesignSaveProvider } from "./DesignSaveContext";
 import { loadDesignData } from "./_loadDesignData";
+import { parseHomepageSections } from "@/lib/homepage-sections";
+import SectionStack from "./SectionStack";
 
 export default async function DesignHomepage() {
-  const { draftConfig, hasDraft, DESIGN_DEFAULTS } = await loadDesignData();
+  const { draftConfig, hasDraft } = await loadDesignData();
 
-  const allMedia = await db
-    .select({ id: media.id, url: media.url, fileName: media.fileName })
-    .from(media)
-    .orderBy(desc(media.createdAt));
+  const [allMedia, allCategories, recentPosts] = await Promise.all([
+    db
+      .select({ id: media.id, url: media.url, fileName: media.fileName })
+      .from(media)
+      .orderBy(desc(media.createdAt)),
+    db
+      .select({ slug: categories.slug, name: categories.name })
+      .from(categories)
+      .orderBy(categories.name),
+    db
+      .select({ id: posts.id, title: posts.title })
+      .from(posts)
+      .where(and(eq(posts.published, true), eq(posts.type, "post")))
+      .orderBy(desc(posts.publishedAt))
+      .limit(50),
+  ]);
 
-  const heroConfig      = extractHeroConfig(draftConfig);
-  const initialFeedStyle      = ((draftConfig.homeFeedStyle      ?? DESIGN_DEFAULTS.homeFeedStyle      ?? "list")    as "list" | "grid");
-  const initialListStyle      = ((draftConfig.homeListStyle      ?? DESIGN_DEFAULTS.homeListStyle      ?? "compact") as "compact" | "editorial" | "feature" | "text-only");
-  const initialColumns        = ((draftConfig.homeColumns        ?? DESIGN_DEFAULTS.homeColumns        ?? "1")       as "1" | "2" | "3");
-  const initialGap            = ((draftConfig.homeGap            ?? DESIGN_DEFAULTS.homeGap            ?? "md")      as "sm" | "md" | "lg");
-  const initialContentDisplay = ((draftConfig.homeContentDisplay ?? DESIGN_DEFAULTS.homeContentDisplay ?? "excerpt") as "excerpt" | "none");
+  const sections = parseHomepageSections(draftConfig);
 
   return (
     <DesignSaveProvider>
@@ -35,23 +42,19 @@ export default async function DesignHomepage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold">Homepage</h2>
-            <p className="text-sm text-zinc-500 mt-1">Feed layout and hero section.</p>
+            <p className="text-sm text-zinc-500 mt-1">Build your homepage by stacking sections.</p>
           </div>
           <PublishActions hasDraft={hasDraft} />
         </div>
 
         <DraftBanner hasDraft={hasDraft} />
 
-        <HomepageLayoutCard
-          initialFeedStyle={initialFeedStyle}
-          initialListStyle={initialListStyle}
-          initialColumns={initialColumns}
-          initialGap={initialGap}
-          initialContentDisplay={initialContentDisplay}
-          heroConfig={heroConfig}
-          allMedia={allMedia}
-          hasDraft={hasDraft}
+        <SectionStack
+          initialSections={sections}
           saveAction={savePartialDesignDraft}
+          allMedia={allMedia}
+          categories={allCategories}
+          recentPosts={recentPosts}
         />
 
         <div className="flex justify-start">

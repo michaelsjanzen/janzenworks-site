@@ -19,6 +19,8 @@ interface FetchOptions {
   tagSlug?: string;
   /** Exclude this post id (used to remove the featured post from the feed) */
   excludeId?: number;
+  /** Override the default page size. 0 or undefined = use PAGE_SIZE. */
+  limit?: number;
 }
 
 export interface PostPage {
@@ -39,8 +41,10 @@ export async function fetchPostPage({
   categorySlug,
   tagSlug,
   excludeId,
+  limit,
 }: FetchOptions = {}): Promise<PostPage> {
-  const offset = (page - 1) * PAGE_SIZE;
+  const pageSize = (limit && limit > 0) ? limit : PAGE_SIZE;
+  const offset = (page - 1) * pageSize;
 
   // Build the base where clause
   const baseWhere = and(
@@ -67,11 +71,11 @@ export async function fetchPostPage({
     );
 
     const [rows, countRows] = await Promise.all([
-      db.select().from(posts).where(catFilter).orderBy(desc(posts.publishedAt)).limit(PAGE_SIZE).offset(offset),
+      db.select().from(posts).where(catFilter).orderBy(desc(posts.publishedAt)).limit(pageSize).offset(offset),
       db.select({ n: count() }).from(posts).where(catFilter),
     ]);
 
-    return buildPage(rows, countRows[0]?.n ?? 0, page);
+    return buildPage(rows, countRows[0]?.n ?? 0, page, pageSize);
   }
 
   // ── Tag-filtered query ─────────────────────────────────────────────────────
@@ -93,11 +97,11 @@ export async function fetchPostPage({
     );
 
     const [rows, countRows] = await Promise.all([
-      db.select().from(posts).where(tagFilter).orderBy(desc(posts.publishedAt)).limit(PAGE_SIZE).offset(offset),
+      db.select().from(posts).where(tagFilter).orderBy(desc(posts.publishedAt)).limit(pageSize).offset(offset),
       db.select({ n: count() }).from(posts).where(tagFilter),
     ]);
 
-    return buildPage(rows, countRows[0]?.n ?? 0, page);
+    return buildPage(rows, countRows[0]?.n ?? 0, page, pageSize);
   }
 
   // ── Unfiltered (homepage) ──────────────────────────────────────────────────
@@ -107,11 +111,11 @@ export async function fetchPostPage({
   );
 
   const [rows, countRows] = await Promise.all([
-    db.select().from(posts).where(where).orderBy(desc(posts.publishedAt)).limit(PAGE_SIZE).offset(offset),
+    db.select().from(posts).where(where).orderBy(desc(posts.publishedAt)).limit(pageSize).offset(offset),
     db.select({ n: count() }).from(posts).where(where),
   ]);
 
-  return buildPage(rows, countRows[0]?.n ?? 0, page);
+  return buildPage(rows, countRows[0]?.n ?? 0, page, pageSize);
 }
 
 /**
@@ -132,20 +136,37 @@ export async function fetchFeaturedPost(): Promise<PostSummary | null> {
   return enriched ?? null;
 }
 
-// ─── Internal helpers ──────────────────────────────────────────────────────────
+// ─── Internal helpers (private) ───────────────────────────────────────────────
 
 async function buildPage(
   rows: (typeof posts.$inferSelect)[],
   totalCount: number,
   page: number,
+  pageSize: number = PAGE_SIZE,
 ): Promise<PostPage> {
   const enriched = await enrichPosts(rows);
   return {
     posts: enriched,
     page,
-    totalPages: Math.ceil(totalCount / PAGE_SIZE),
+    totalPages: Math.ceil(totalCount / pageSize),
     totalCount,
   };
+}
+
+/**
+ * Fetch a single published post by ID, enriched with categories, tags, and image.
+ * Returns null if not found or not published.
+ */
+export async function fetchPostById(id: number): Promise<PostSummary | null> {
+  const rows = await db
+    .select()
+    .from(posts)
+    .where(and(eq(posts.id, id), eq(posts.published, true), eq(posts.type, "post")))
+    .limit(1);
+
+  if (rows.length === 0) return null;
+  const [enriched] = await enrichPosts(rows);
+  return enriched ?? null;
 }
 
 async function enrichPosts(rows: (typeof posts.$inferSelect)[]): Promise<PostSummary[]> {
