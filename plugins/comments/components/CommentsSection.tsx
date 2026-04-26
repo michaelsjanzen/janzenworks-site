@@ -30,10 +30,11 @@ function CommentItem({ comment }: { comment: { id: number; authorName: string; c
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
-export default async function CommentsSection({ postId }: PostFooterSlotProps) {
+export default async function CommentsSection({ postId, postType }: PostFooterSlotProps) {
   const config = await getConfig();
 
   if (!config.modules.activePlugins.includes("comments")) return null;
+  if (postType === "page") return null;
 
   const settings = config.modules.pluginSettings?.["comments"] ?? {};
   const requireEmail = settings.requireEmail !== false;
