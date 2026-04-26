@@ -164,7 +164,7 @@ const DEFAULT_CONFIG: Config = {
     name: "My Pugmill Site",
     description: "A rebuildable CMS",
     url: "http://localhost:3000",
-    socialLinks: {},
+    socialLinks: [],
     seoDefaults: {},
     aeoDefaults: {},
   },
