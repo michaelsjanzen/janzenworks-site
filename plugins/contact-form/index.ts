@@ -16,7 +16,6 @@ import { posts } from "../../src/lib/db/schema";
 import { deletePluginNotifications, createNotification } from "../../src/lib/notifications";
 import { getUnreadCount } from "./db";
 import ContactFormSection from "./components/ContactFormSection";
-import ContactFormAdminPage from "./components/AdminPage";
 
 export const contactFormPlugin: PugmillPlugin = {
   id: "contact-form",
@@ -108,6 +107,4 @@ export const contactFormPlugin: PugmillPlugin = {
   slots: {
     postFooter: ContactFormSection,
   },
-
-  adminPage: ContactFormAdminPage,
 };

@@ -207,16 +207,23 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       ? await widgetArea("sidebar-page", pageWidgetCtx)
       : undefined;
 
+    const pageFooterSlots = getActiveSlots("postFooter", config.modules.activePlugins, config.modules.pluginSettings);
+
     return (
-      <PageView
-        title={post.title}
-        content={filteredContent}
-        breadcrumbs={breadcrumbs}
-        layoutConfig={pageLayoutConfig}
-        siblingPages={siblingPages}
-        sidebarContent={pageSidebar}
-        canonicalUrl={canonicalUrl}
-      />
+      <>
+        <PageView
+          title={post.title}
+          content={filteredContent}
+          breadcrumbs={breadcrumbs}
+          layoutConfig={pageLayoutConfig}
+          siblingPages={siblingPages}
+          sidebarContent={pageSidebar}
+          canonicalUrl={canonicalUrl}
+        />
+        {pageFooterSlots.map(({ pluginId, Component }) => (
+          <Component key={pluginId} postId={post.id} postSlug={post.slug} />
+        ))}
+      </>
     );
   }
 
