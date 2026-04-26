@@ -43,7 +43,10 @@ export async function submitContactForm(
   }
 
   const settings = config.modules.pluginSettings?.["contact-form"] ?? {};
+  const showPhone = settings.showPhone !== false;
   const requirePhone = settings.requirePhone === true;
+  const showSocialUrl = settings.showSocialUrl !== false;
+  const requireSocialUrl = settings.requireSocialUrl === true;
   const successMessage =
     (settings.successMessage as string) || "Thank you for your message. We'll be in touch soon.";
 
@@ -65,7 +68,8 @@ export async function submitContactForm(
 
   const name = (formData.get("name") as string)?.trim() ?? "";
   const email = (formData.get("email") as string)?.trim() ?? "";
-  const phone = (formData.get("phone") as string)?.trim() || null;
+  const phone = showPhone ? ((formData.get("phone") as string)?.trim() || null) : null;
+  const socialUrl = showSocialUrl ? ((formData.get("socialUrl") as string)?.trim() || null) : null;
   const message = (formData.get("message") as string)?.trim() ?? "";
 
   if (!name) return { status: "error", message: "Name is required." };
@@ -73,7 +77,11 @@ export async function submitContactForm(
   if (!z.string().email().safeParse(email).success) {
     return { status: "error", message: "Please enter a valid email address." };
   }
-  if (requirePhone && !phone) return { status: "error", message: "Phone number is required." };
+  if (showPhone && requirePhone && !phone) return { status: "error", message: "Phone number is required." };
+  if (showSocialUrl && requireSocialUrl && !socialUrl) return { status: "error", message: "Social profile URL is required." };
+  if (socialUrl && !z.string().url().safeParse(socialUrl).success) {
+    return { status: "error", message: "Please enter a valid URL for your social profile." };
+  }
   if (!message) return { status: "error", message: "Message is required." };
   if (message.length > 5000) {
     return { status: "error", message: "Message is too long (max 5000 characters)." };
@@ -84,6 +92,7 @@ export async function submitContactForm(
       name,
       email,
       phone,
+      socialUrl,
       message,
     } as typeof pluginContactFormSubmissions.$inferInsert);
   } catch (err) {
@@ -98,10 +107,11 @@ export async function submitContactForm(
       const to = cfg.email?.toAddress;
       if (!to) return;
       const phoneStr = phone ? `\nPhone: ${phone}` : "";
+      const socialStr = socialUrl ? `\nSocial: ${socialUrl}` : "";
       sendEmail({
         to,
         subject: `New contact form submission from ${name}`,
-        text: `Name: ${name}\nEmail: ${email}${phoneStr}\n\nMessage:\n${message}`,
+        text: `Name: ${name}\nEmail: ${email}${phoneStr}${socialStr}\n\nMessage:\n${message}`,
         replyTo: email,
       }).catch(() => { /* non-critical */ });
     })

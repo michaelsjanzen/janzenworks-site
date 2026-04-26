@@ -4,12 +4,52 @@ import { useActionState } from "react";
 import { submitContactForm, type ContactFormState } from "../actions";
 
 interface Props {
+  showPhone: boolean;
   requirePhone: boolean;
+  showSocialUrl: boolean;
+  requireSocialUrl: boolean;
 }
 
 const initial: ContactFormState = { status: "idle", message: "" };
 
-export default function ContactFormUI({ requirePhone }: Props) {
+const fieldStyle = {
+  borderColor: "var(--color-border)",
+  backgroundColor: "var(--color-background)",
+  color: "var(--color-foreground)",
+};
+
+function Label({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+  return (
+    <label htmlFor={htmlFor} className="block text-xs font-medium mb-1" style={{ color: "var(--color-muted)" }}>
+      {children}
+    </label>
+  );
+}
+
+function Required() {
+  return <span style={{ color: "var(--color-foreground)" }}> *</span>;
+}
+
+function TextInput({ id, name, type = "text", required, maxLength, autoComplete, placeholder }: {
+  id: string; name: string; type?: string; required?: boolean;
+  maxLength?: number; autoComplete?: string; placeholder?: string;
+}) {
+  return (
+    <input
+      id={id}
+      name={name}
+      type={type}
+      required={required}
+      maxLength={maxLength}
+      autoComplete={autoComplete}
+      placeholder={placeholder}
+      className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
+      style={fieldStyle}
+    />
+  );
+}
+
+export default function ContactFormUI({ showPhone, requirePhone, showSocialUrl, requireSocialUrl }: Props) {
   const [state, action, isPending] = useActionState(submitContactForm, initial);
 
   if (state.status === "success") {
@@ -34,90 +74,38 @@ export default function ContactFormUI({ requirePhone }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label
-            htmlFor="cf-name"
-            className="block text-xs font-medium mb-1"
-            style={{ color: "var(--color-muted)" }}
-          >
-            Name <span style={{ color: "var(--color-foreground)" }}>*</span>
-          </label>
-          <input
-            id="cf-name"
-            name="name"
-            type="text"
-            required
-            maxLength={100}
-            autoComplete="name"
-            placeholder="Your name"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-            style={{
-              borderColor: "var(--color-border)",
-              backgroundColor: "var(--color-background)",
-              color: "var(--color-foreground)",
-            }}
-          />
+          <Label htmlFor="cf-name">Name<Required /></Label>
+          <TextInput id="cf-name" name="name" required maxLength={100} autoComplete="name" placeholder="Your name" />
         </div>
         <div>
-          <label
-            htmlFor="cf-email"
-            className="block text-xs font-medium mb-1"
-            style={{ color: "var(--color-muted)" }}
-          >
-            Email <span style={{ color: "var(--color-foreground)" }}>*</span>
-          </label>
-          <input
-            id="cf-email"
-            name="email"
-            type="email"
-            required
-            maxLength={255}
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-            style={{
-              borderColor: "var(--color-border)",
-              backgroundColor: "var(--color-background)",
-              color: "var(--color-foreground)",
-            }}
-          />
+          <Label htmlFor="cf-email">Email<Required /></Label>
+          <TextInput id="cf-email" name="email" type="email" required maxLength={255} autoComplete="email" placeholder="you@example.com" />
         </div>
       </div>
 
-      {requirePhone && (
+      {showPhone && (
         <div>
-          <label
-            htmlFor="cf-phone"
-            className="block text-xs font-medium mb-1"
-            style={{ color: "var(--color-muted)" }}
-          >
-            Phone <span style={{ color: "var(--color-foreground)" }}>*</span>
-          </label>
-          <input
-            id="cf-phone"
-            name="phone"
-            type="tel"
-            required
-            maxLength={50}
-            autoComplete="tel"
-            placeholder="+1 (555) 000-0000"
-            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2"
-            style={{
-              borderColor: "var(--color-border)",
-              backgroundColor: "var(--color-background)",
-              color: "var(--color-foreground)",
-            }}
+          <Label htmlFor="cf-phone">Phone{requirePhone && <Required />}</Label>
+          <TextInput id="cf-phone" name="phone" type="tel" required={requirePhone} maxLength={50} autoComplete="tel" placeholder="+1 (555) 000-0000" />
+        </div>
+      )}
+
+      {showSocialUrl && (
+        <div>
+          <Label htmlFor="cf-social-url">Social Profile URL{requireSocialUrl && <Required />}</Label>
+          <TextInput
+            id="cf-social-url"
+            name="socialUrl"
+            type="url"
+            required={requireSocialUrl}
+            maxLength={500}
+            placeholder="https://linkedin.com/in/yourprofile"
           />
         </div>
       )}
 
       <div>
-        <label
-          htmlFor="cf-message"
-          className="block text-xs font-medium mb-1"
-          style={{ color: "var(--color-muted)" }}
-        >
-          Message <span style={{ color: "var(--color-foreground)" }}>*</span>
-        </label>
+        <Label htmlFor="cf-message">Message<Required /></Label>
         <textarea
           id="cf-message"
           name="message"
@@ -126,11 +114,7 @@ export default function ContactFormUI({ requirePhone }: Props) {
           maxLength={5000}
           placeholder="How can we help?"
           className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 resize-y"
-          style={{
-            borderColor: "var(--color-border)",
-            backgroundColor: "var(--color-background)",
-            color: "var(--color-foreground)",
-          }}
+          style={fieldStyle}
         />
       </div>
 

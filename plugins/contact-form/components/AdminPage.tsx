@@ -90,6 +90,16 @@ export default async function ContactFormAdminPage({ searchParams }: Props) {
                     {sub.phone && (
                       <span className="text-xs text-zinc-400">{sub.phone}</span>
                     )}
+                    {sub.socialUrl && (
+                      <a
+                        href={sub.socialUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors truncate max-w-xs"
+                      >
+                        {sub.socialUrl.replace(/^https?:\/\/(www\.)?/, "")}
+                      </a>
+                    )}
                     {!sub.read && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                         Unread
