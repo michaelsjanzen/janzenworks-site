@@ -104,26 +104,22 @@ function Snippet({ text, token, lang = "json" }: { text: string; token: string; 
   const isPlaceholder = token === PLACEHOLDER;
   // Highlight just the token value in the snippet
   const highlight = (content: string) => {
-    if (isPlaceholder) return <span style={{ color: "#71717a" }}>{content}</span>;
+    if (isPlaceholder) return <span className="text-zinc-500">{content}</span>;
     const needle = token;
     const idx = content.indexOf(needle);
-    if (idx === -1) return <span style={{ color: "#e4e4e7" }}>{content}</span>;
+    if (idx === -1) return <span className="text-zinc-200">{content}</span>;
     return (
       <>
-        <span style={{ color: "#e4e4e7" }}>{content.slice(0, idx)}</span>
+        <span className="text-zinc-200">{content.slice(0, idx)}</span>
         <span className="bg-amber-300 text-amber-900 rounded px-0.5">{needle}</span>
-        <span style={{ color: "#e4e4e7" }}>{content.slice(idx + needle.length)}</span>
+        <span className="text-zinc-200">{content.slice(idx + needle.length)}</span>
       </>
     );
   };
   return (
-    <pre
-      className={`rounded-lg p-4 font-mono text-xs overflow-x-auto border transition-colors ${
-        isPlaceholder ? "bg-zinc-900 border-zinc-700" : "bg-zinc-900 border-amber-600"
-      }`}
-      style={{ color: "#e4e4e7", backgroundColor: "#18181b" }}
-      data-lang={lang}
-    >
+    <pre className={`rounded-lg p-4 font-mono text-xs overflow-x-auto border transition-colors text-zinc-200 bg-zinc-900 ${
+      isPlaceholder ? "border-zinc-700" : "border-amber-600"
+    }`} data-lang={lang}>
       {highlight(text)}
     </pre>
   );
