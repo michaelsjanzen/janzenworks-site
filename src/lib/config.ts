@@ -30,14 +30,18 @@ export const configSchema = z.object({
     logo: urlOrPathSchema,
     favicon: urlOrPathSchema,
     headerIdentity: z.enum(["logo-only", "name-only", "logo-and-name"]).default("logo-only"),
-    socialLinks: z.object({
-      twitter: urlOrPathSchema,
-      github: urlOrPathSchema,
-      linkedin: urlOrPathSchema,
-      instagram: urlOrPathSchema,
-      youtube: urlOrPathSchema,
-      facebook: urlOrPathSchema,
-    }).default({}),
+    socialLinks: z.preprocess(
+      (val) => {
+        // Coerce legacy flat-object format → new array format on first read
+        if (val && typeof val === "object" && !Array.isArray(val)) {
+          return Object.entries(val as Record<string, string>)
+            .filter(([, url]) => !!url)
+            .map(([platform, url]) => ({ platform, url }));
+        }
+        return val;
+      },
+      z.array(z.object({ platform: z.string(), url: z.string() })).default([])
+    ),
     seoDefaults: z.object({
       ogImage: urlOrPathSchema,
       metaDescription: z.string().optional(), // Fallback meta description
