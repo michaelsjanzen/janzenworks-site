@@ -6,6 +6,9 @@ import { auditLog } from "@/lib/audit-log";
 import { getPlugin } from "@/lib/plugin-registry";
 import { deletePluginNotifications } from "@/lib/notifications";
 import type { PluginSettings } from "@/lib/plugin-registry";
+import { db } from "@/lib/db";
+import { widgetSettings, themeDesignConfigs } from "@/lib/db/schema";
+import { like, eq } from "drizzle-orm";
 
 async function requireAdmin() {
   const user = await getCurrentUser();
@@ -51,6 +54,14 @@ export async function updatePluginStatus(pluginId: string, activate: boolean) {
     }
   } else if (!activate) {
     config.modules.activePlugins = active.filter((p: string) => p !== pluginId);
+
+    // Strip the plugin's widget IDs from all persisted widget area assignments
+    // so deactivated widgets don't appear as broken entries in the UI or front-end.
+    const plugin = getPlugin(pluginId);
+    const pluginWidgetIds = plugin?.widgets?.map(w => w.id) ?? [];
+    if (pluginWidgetIds.length > 0) {
+      await removeWidgetIdsFromAreas(pluginWidgetIds);
+    }
   }
 
   await updateConfig(config);
@@ -134,4 +145,62 @@ export async function updatePluginSettings(pluginId: string, settings: PluginSet
   await updateConfig(config);
   auditLog({ action: "plugin.settings_update", userId: user.id, detail: pluginId });
   revalidatePath("/admin/plugins");
+}
+
+// ─── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Remove a set of widget IDs from every persisted widget area assignment.
+ * Cleans up both the live widget_settings rows and any draft/published
+ * theme_design_configs rows so deactivated widgets leave no orphan references.
+ */
+async function removeWidgetIdsFromAreas(widgetIds: string[]): Promise<void> {
+  if (widgetIds.length === 0) return;
+
+  // ── 1. widget_settings table (live published assignments) ────────────────
+  // Each area row has widgetId = "area:<areaId>" and key = "widgets".
+  const areaRows = await db
+    .select({ widgetId: widgetSettings.widgetId, value: widgetSettings.value })
+    .from(widgetSettings)
+    .where(like(widgetSettings.widgetId, "area:%"));
+
+  await Promise.all(
+    areaRows.map(async (row) => {
+      const current = row.value.split(",").map(s => s.trim()).filter(Boolean);
+      const updated = current.filter(id => !widgetIds.includes(id));
+      if (updated.length === current.length) return; // nothing changed
+      await db
+        .update(widgetSettings)
+        .set({ value: updated.join(",") } as Partial<typeof widgetSettings.$inferInsert>)
+        .where(eq(widgetSettings.widgetId, row.widgetId));
+    })
+  );
+
+  // ── 2. theme_design_configs (draft + published JSONB) ────────────────────
+  // Widget area assignments are stored as "widgetArea:<areaId>" keys in the config object.
+  const designRows = await db
+    .select({ id: themeDesignConfigs.id, config: themeDesignConfigs.config })
+    .from(themeDesignConfigs);
+
+  await Promise.all(
+    designRows.map(async (row) => {
+      const config = (row.config ?? {}) as Record<string, string>;
+      let changed = false;
+      const updated: Record<string, string> = { ...config };
+      for (const [key, val] of Object.entries(config)) {
+        if (!key.startsWith("widgetArea:")) continue;
+        const current = val.split(",").map(s => s.trim()).filter(Boolean);
+        const filtered = current.filter(id => !widgetIds.includes(id));
+        if (filtered.length !== current.length) {
+          updated[key] = filtered.join(",");
+          changed = true;
+        }
+      }
+      if (!changed) return;
+      await db
+        .update(themeDesignConfigs)
+        .set({ config: updated } as Partial<typeof themeDesignConfigs.$inferInsert>)
+        .where(eq(themeDesignConfigs.id, row.id));
+    })
+  );
 }
