@@ -100,22 +100,29 @@ export async function submitContactForm(
     return { status: "error", message: "Could not send your message. Please try again." };
   }
 
-  // Send email notification — fire-and-forget, never blocks the response.
-  // Silently skipped when no email provider is configured (built-in mode).
-  import("../../src/lib/email").then(({ sendEmail }) =>
-    getConfig().then((cfg) => {
-      const to = cfg.email?.toAddress;
-      if (!to) return;
+  // Send email notification — awaited so it completes before the serverless
+  // function returns. Failures are logged but never surfaced to the visitor
+  // (the submission is already saved to the database at this point).
+  try {
+    const { sendEmail } = await import("../../src/lib/email");
+    const cfg = await getConfig();
+    const to = cfg.email?.toAddress;
+    if (to) {
       const phoneStr = phone ? `\nPhone: ${phone}` : "";
       const socialStr = socialUrl ? `\nSocial: ${socialUrl}` : "";
-      sendEmail({
+      const result = await sendEmail({
         to,
         subject: `New contact form submission from ${name}`,
         text: `Name: ${name}\nEmail: ${email}${phoneStr}${socialStr}\n\nMessage:\n${message}`,
         replyTo: email,
-      }).catch(() => { /* non-critical */ });
-    })
-  ).catch(() => { /* non-critical */ });
+      });
+      if (!result.ok) {
+        console.error("[contact-form] Email notification failed:", result.error);
+      }
+    }
+  } catch (err) {
+    console.error("[contact-form] Email notification error:", err);
+  }
 
   // Keep the unread notification badge current.
   const unread = await getUnreadCount();
