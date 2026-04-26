@@ -6,7 +6,7 @@ interface NavItem {
   path: string;
 }
 
-export default function NavEditor({ initialItems }: { initialItems: NavItem[] }) {
+export default function NavEditor({ initialItems, name = "navigation" }: { initialItems: NavItem[]; name?: string }) {
   const [items, setItems] = useState<NavItem[]>(initialItems);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
@@ -46,7 +46,7 @@ export default function NavEditor({ initialItems }: { initialItems: NavItem[] })
   return (
     <div className="space-y-2">
       {/* Serialized value submitted with the form */}
-      <input type="hidden" name="navigation" value={JSON.stringify(items)} />
+      <input type="hidden" name={name} value={JSON.stringify(items)} />
 
       {items.length === 0 && (
         <p className="text-sm text-zinc-400 py-2">No navigation items. Add one below.</p>

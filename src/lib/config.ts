@@ -60,6 +60,7 @@ export const configSchema = z.object({
   appearance: z.object({
     activeTheme: z.string().regex(/^[a-z0-9-]+$/, "Theme name must be alphanumeric").default("default"),
     navigation: z.array(navItemSchema).default([]),
+    footerNavigation: z.array(navItemSchema).default([]),
   }),
   modules: z.object({
     activePlugins: z.array(z.string()).default([]),

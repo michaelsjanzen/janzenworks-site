@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "AI" };
+export const metadata: Metadata = { title: "AI Provider" };
 
 import { getConfig } from "@/lib/config";
 import { saveAiSettings } from "@/lib/actions/ai";
@@ -26,7 +26,7 @@ export default async function AiSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">AI Settings</h2>
+        <h2 className="text-2xl font-bold">AI Provider</h2>
         <p className="text-sm text-zinc-500 mt-1">
           Connect an AI provider to unlock writing assistance in the post editor. Leave disabled to use the CMS in manual mode.
         </p>
