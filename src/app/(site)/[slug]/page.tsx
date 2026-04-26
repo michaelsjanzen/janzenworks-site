@@ -170,6 +170,12 @@ export default async function GenericPage(
     }
   }
 
+  let pageFooterWidgets: React.ReactNode = undefined;
+  const pageFooterIds = await getWidgetAreaAssignment("page-footer");
+  if (pageFooterIds.length > 0) {
+    pageFooterWidgets = await WidgetArea({ widgetIds: pageFooterIds, context: widgetCtx }) ?? undefined;
+  }
+
   const PageView = getThemePageView(activeTheme);
   const slotProps = { postId: page.id, postSlug: page.slug, postType: "page" as const };
   const articleHeaderSlots = getActiveSlots("articleHeader", config.modules.activePlugins, config.modules.pluginSettings);
@@ -194,6 +200,7 @@ export default async function GenericPage(
         articleFooterContent={articleFooterSlots.map(({ pluginId, Component }) => (
           <Component key={pluginId} {...slotProps} />
         ))}
+        footerWidgets={pageFooterWidgets}
       />
       {postFooterSlots.map(({ pluginId, Component }) => (
         <Component key={pluginId} {...slotProps} />

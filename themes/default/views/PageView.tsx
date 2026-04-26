@@ -31,6 +31,8 @@ export interface PageViewProps {
   articleHeaderContent?: React.ReactNode;
   /** Plugin slot: rendered inside the article, after the body content and before the back link. */
   articleFooterContent?: React.ReactNode;
+  /** Widget area rendered below the article, outside the content width constraint. */
+  footerWidgets?: React.ReactNode;
   /** Optional taxonomy/date. If any are present they render at the bottom of the page,
       in the same order as single posts: categories → date → tags. */
   categories?: { name: string; slug: string }[];
@@ -70,6 +72,7 @@ export default function PageView({
   canonicalUrl,
   articleHeaderContent,
   articleFooterContent,
+  footerWidgets,
   categories = [],
   tags = [],
   publishedAt = null,
@@ -267,11 +270,9 @@ export default function PageView({
 
   const resolvedSidebarContent = sidebarContent ?? defaultSidebar;
 
-  if (sidebar === "none" || !resolvedSidebarContent) {
-    return <div className={widthClass}>{pageBody}</div>;
-  }
-
-  return (
+  const layoutNode = (sidebar === "none" || !resolvedSidebarContent) ? (
+    <div className={widthClass}>{pageBody}</div>
+  ) : (
     <div className="flex gap-10 items-start">
       {sidebar === "left" && (
         <aside className="w-56 shrink-0 space-y-6 sticky top-24">{resolvedSidebarContent}</aside>
@@ -281,5 +282,14 @@ export default function PageView({
         <aside className="w-56 shrink-0 space-y-6 sticky top-24">{resolvedSidebarContent}</aside>
       )}
     </div>
+  );
+
+  if (!footerWidgets) return layoutNode;
+
+  return (
+    <>
+      {layoutNode}
+      {footerWidgets}
+    </>
   );
 }

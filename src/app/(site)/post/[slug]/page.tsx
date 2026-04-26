@@ -209,9 +209,12 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       parentId: post.parentId,
       designConfig,
     };
-    const pageSidebar = pageLayoutConfig.sidebar !== "none"
-      ? await widgetArea("sidebar-page", pageWidgetCtx)
-      : undefined;
+    const [pageSidebar, pageFooterWidgets] = await Promise.all([
+      pageLayoutConfig.sidebar !== "none"
+        ? widgetArea("sidebar-page", pageWidgetCtx)
+        : Promise.resolve(undefined),
+      widgetArea("page-footer", pageWidgetCtx),
+    ]);
 
     return (
       <>
@@ -229,6 +232,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           articleFooterContent={articleFooterSlots.map(({ pluginId, Component }) => (
             <Component key={pluginId} {...slotProps} />
           ))}
+          footerWidgets={pageFooterWidgets}
         />
         {postFooterSlots.map(({ pluginId, Component }) => (
           <Component key={pluginId} {...slotProps} />

@@ -42,7 +42,7 @@ const settingsSubItems = [
 ];
 
 const contentSection = ["/admin/posts", "/admin/categories", "/admin/tags", "/admin/media"];
-const designSection = ["/admin/themes", "/admin/design", "/admin/design/widgets", "/admin/design/navigation", "/admin/design/social"];
+const designSection = ["/admin/themes", "/admin/design", "/admin/design/layout", "/admin/design/colors", "/admin/design/typography", "/admin/design/widget-areas", "/admin/design/widgets", "/admin/design/navigation", "/admin/design/social"];
 const settingsSection = ["/admin/settings", "/admin/users"];
 
 function SubNav({ items }: { items: { label: string; path: string; exact?: boolean }[] }) {
@@ -191,59 +191,31 @@ export default function Sidebar({ isOpen, onClose, plugins = [], themes = [], ba
                   >
                     Themes
                   </Link>
-                  {themes.length > 1 && themes.map(t => (
-                    <Link
-                      key={t.id}
-                      href="/admin/themes"
-                      className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
-                        pathname === "/admin/themes"
-                          ? "bg-violet-50 text-violet-700 font-medium dark:bg-violet-950 dark:text-violet-300"
-                          : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                      }`}
-                    >
-                      {t.name}{t.isActive ? " (active)" : ""}
-                    </Link>
-                  ))}
-                  <Link
-                    href="/admin/design"
-                    className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
-                      pathname === "/admin/design"
-                        ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
-                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                    }`}
-                  >
-                    Customize
-                  </Link>
-                  <Link
-                    href="/admin/design/navigation"
-                    className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
-                      pathname.startsWith("/admin/design/navigation")
-                        ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
-                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                    }`}
-                  >
-                    Navigation
-                  </Link>
-                  <Link
-                    href="/admin/design/social"
-                    className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
-                      pathname.startsWith("/admin/design/social")
-                        ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
-                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                    }`}
-                  >
-                    Social Links
-                  </Link>
-                  <Link
-                    href="/admin/design/widgets"
-                    className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
-                      pathname.startsWith("/admin/design/widgets")
-                        ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
-                        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
-                    }`}
-                  >
-                    Widgets
-                  </Link>
+                  {[
+                    { label: "Homepage",     href: "/admin/design",              exact: true },
+                    { label: "Layout",       href: "/admin/design/layout" },
+                    { label: "Colors",       href: "/admin/design/colors" },
+                    { label: "Typography",   href: "/admin/design/typography" },
+                    { label: "Widget Areas", href: "/admin/design/widget-areas" },
+                    { label: "Navigation",   href: "/admin/design/navigation" },
+                    { label: "Social Links", href: "/admin/design/social" },
+                    { label: "Widget Settings", href: "/admin/design/widgets" },
+                  ].map(({ label, href, exact }) => {
+                    const isActive = exact ? pathname === href : pathname.startsWith(href);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={`block px-2 py-1.5 rounded-md text-xs transition-colors ${
+                          isActive
+                            ? "bg-zinc-100 text-zinc-900 font-medium dark:bg-zinc-800 dark:text-zinc-100"
+                            : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+                        }`}
+                      >
+                        {label}
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
               {item.path === "/admin/plugins" && inPluginsSection && (
