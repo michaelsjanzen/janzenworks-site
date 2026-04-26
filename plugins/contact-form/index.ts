@@ -11,7 +11,8 @@
 
 import type { PugmillPlugin } from "../../src/lib/plugin-registry";
 import { db } from "../../src/lib/db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
+import { posts } from "../../src/lib/db/schema";
 import { deletePluginNotifications, createNotification } from "../../src/lib/notifications";
 import { getUnreadCount } from "./db";
 import ContactFormSection from "./components/ContactFormSection";
@@ -21,7 +22,7 @@ export const contactFormPlugin: PugmillPlugin = {
   id: "contact-form",
   name: "Contact Form",
   version: "1.0.0",
-  description: "Adds a contact form to a designated page. Submissions are stored in the database and visible in the admin inbox.",
+  description: "Adds a contact form to a page created automatically on activation. Submissions are reviewed under Notifications → Contact Form.",
 
   settingsDefs: [
     {
@@ -29,7 +30,7 @@ export const contactFormPlugin: PugmillPlugin = {
       label: "Page Slug",
       type: "text",
       default: "contact",
-      description: "The slug of the page where the contact form appears. Create a page with this slug in the editor.",
+      description: "The slug of the page where the contact form appears. A page is created automatically when the plugin is activated.",
     },
     {
       key: "requirePhone",
@@ -48,6 +49,27 @@ export const contactFormPlugin: PugmillPlugin = {
   ],
 
   actionHref: "/admin/contact",
+
+  async onActivate(settings) {
+    // Create the contact page if it doesn't already exist.
+    // Uses onConflictDoNothing so repeated activations or pre-existing pages are safe.
+    const pageSlug = (settings.pageSlug as string) || "contact";
+    const existing = await db.select({ id: posts.id }).from(posts).where(eq(posts.slug, pageSlug)).limit(1);
+    if (existing.length === 0) {
+      await db.insert(posts).values({
+        type: "page",
+        title: "Contact",
+        slug: pageSlug,
+        content: "Have a question or want to work together? Fill in the form below.",
+        published: true,
+        publishedAt: new Date(),
+        featured: false,
+        robotsNoindex: false,
+        robotsNofollow: false,
+      } as typeof posts.$inferInsert).onConflictDoNothing();
+      console.log(`[contact-form] Created /${pageSlug} page.`);
+    }
+  },
 
   async initialize(_hooks, _settings) {
     // Sync the unread notification badge on startup.

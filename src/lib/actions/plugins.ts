@@ -44,6 +44,11 @@ export async function updatePluginStatus(pluginId: string, activate: boolean) {
         registerWidget(widget);
       }
     }
+    // Run one-time activation setup (e.g. seeding a default page).
+    if (plugin?.onActivate) {
+      const currentSettings = config.modules.pluginSettings?.[pluginId] ?? {};
+      await plugin.onActivate(currentSettings);
+    }
   } else if (!activate) {
     config.modules.activePlugins = active.filter((p: string) => p !== pluginId);
   }
