@@ -2,7 +2,7 @@
 
 **Version:** 0.2 Public Beta
 **Status:** Public beta — suitable for production with active development ongoing
-**Last updated:** 2026-03-31
+**Last updated:** 2026-04-27
 
 ---
 
@@ -531,7 +531,19 @@ Each marketplace plugin ships two distribution formats: a code package (npm) and
 
 The admin UI exposes colors, fonts, and layout toggles within the surface area the theme author has chosen to expose via design tokens. Structural changes require editing theme source files.
 
-### 13.2 Theme file structure
+### 13.2 Bundled themes
+
+Three themes ship with core:
+
+| Theme | Personality | Key defaults |
+|---|---|---|
+| `default` | Clean, modern, Geist-inspired | System sans, blue accent, card chrome |
+| `editorial` | Warm publication, long-form journalism | Playfair Display headings, DM Sans body, 18px, ink blue, no card chrome |
+| `mono` | Stripped-back terminal/developer | JetBrains Mono throughout, near-black, amber accent, no rounded corners |
+
+Each bundled theme ships with four color presets and a full `design.ts` token vocabulary. Themes serve a dual purpose: production-ready visual options for site owners, and reference implementations for theme authors learning the architecture.
+
+### 13.3 Theme file structure
 
 ```
 themes/<id>/
@@ -546,9 +558,28 @@ themes/<id>/
     HomeView.tsx         -- receives PostSummary[] and HomeLayoutConfig
     PostView.tsx         -- receives full post data and ArticleLayoutConfig
     PageView.tsx         -- receives page data, breadcrumbs, ArticleLayoutConfig
+    Sections.tsx         -- homepage section renderer (receives HomepageSection[], page)
 ```
 
-### 13.3 Design token contract
+`Sections.tsx` is the homepage section renderer entry point. Core's `page.tsx` calls `getThemeSections(themeId)` and renders `<ThemeSections sections={sections} page={page} />` without knowing which theme is active.
+
+### 13.4 Homepage section builder
+
+The homepage is composed from a stack of typed sections, stored as JSON in the `theme_design_configs` table under the `homepageSections` key. Sections are ordered, individually toggleable, and edited via Admin > Design > Homepage.
+
+**Section types:**
+
+| Type | Description |
+|---|---|
+| `hero` | Full-bleed image/color banner with headline, subheadline, up to two CTA buttons |
+| `post-feed` | Paginated post listing, optionally filtered by category |
+| `featured-post` | Single highlighted post with large card treatment |
+| `text-block` | Rich-text HTML content block |
+| `cta` | Full-width call-to-action banner with three style variants (filled, subtle, outline) |
+
+Each section carries an `id` (UUID), `type`, `enabled` flag, and type-specific config fields. The admin renders a drag-reorderable section stack; changes save as a draft alongside design token changes. Sections are parsed by `parseHomepageSections()` in `src/lib/homepage-sections.ts`, which falls back to legacy flat design keys for backward compatibility.
+
+### 13.5 Design token contract
 
 Every theme exports from `themes/<id>/design.ts`:
 
@@ -556,30 +587,36 @@ Every theme exports from `themes/<id>/design.ts`:
 DESIGN_TOKEN_DEFS: DesignTokenDef[]   // all token definitions
 DESIGN_DEFAULTS: Record<string,string> // default value for each key
 SANS_FONTS: string[]                   // curated sans-serif Google Fonts
+SERIF_FONTS: string[]                  // curated serif/display Google Fonts (may be empty)
 MONO_FONTS: string[]                   // curated monospace Google Fonts
+COLOR_PRESETS?: ColorPreset[]          // optional color palette presets
+HEADER_LAYOUTS?: HeaderLayoutDef[]     // optional header layout presets
+HEADER_MODIFIERS?: HeaderModifiers     // optional header capability flags
 buildGoogleFontsUrl(config): string | null
-buildCssString(config, defs): string   // returns :root { ... } CSS block
+buildCssString(config, defs): string   // returns :root { ... } CSS block + prose overrides
 ```
 
-Token types: `"color"` (color picker + hex input), `"google-font"` (select from allowlist with live preview), `"select"` (dropdown), `"toggle"` (on/off switch), `"range"` (slider with unit display), `"text"` / `"url"` / `"image-url"` (text inputs), `"media-url"` (media library picker).
+Token types: `"color"` (color picker + hex input), `"google-font"` (select from allowlist with live preview), `"select"` (dropdown).
 
-Token groups: `colors`, `typography`, `layout-home`, `layout-post`, `layout-page`, `hero` (built-in), plus any custom groups rendered under "Theme Options".
+The `google-font` token type accepts a `fontList` field: `"sans"` | `"serif"` | `"mono"` | `"all"`. The admin font picker renders the appropriate list. Themes that define a `fontList: "serif"` token (e.g. `fontHeading` in the Editorial theme) must also populate `SERIF_FONTS`.
 
-Tokens with `isGate: true` act as section visibility gates -- when off, the other tokens in that group are hidden with an explanatory message.
+Token groups: `colors`, `typography`, `layout-home`, `layout-post`, `layout-page`, `layout-header` (built-in), plus any custom groups rendered under "Theme Options".
 
-**Color presets:** Themes may export a `COLOR_PRESETS: ColorPreset[]` array. Presets appear as clickable pill buttons above the color token list, each showing three color swatches (background, accent, foreground). Selecting a preset populates all 8 color token fields instantly; the user can then adjust individual values before publishing. All preset muted values must achieve ≥ 8:1 contrast against their background token.
+**Color presets:** Themes may export a `COLOR_PRESETS: ColorPreset[]` array. Presets appear as clickable pill buttons above the color token list, each showing three color swatches (background, accent, foreground). Selecting a preset populates all 8 color token fields instantly; the user can then adjust individual values before publishing.
 
-Tokens with `editable: false` inject into CSS but are hidden from the admin UI -- used for tokens structural to the theme's identity. Tokens with `cssVariable` are injected into `:root { }`. Layout tokens (no `cssVariable`) are passed as props to view components.
+Tokens with `editable: false` inject into CSS but are hidden from the admin UI -- used for tokens structural to the theme's identity.
 
-### 13.4 CSS variable injection
+### 13.6 CSS variable injection
 
 `Layout.tsx` calls `buildCssString()` on every render and injects the result as a `<style>` tag. Standard variables all themes should define:
 
 `--color-background`, `--color-surface`, `--color-foreground`, `--color-muted`, `--color-border`, `--color-accent`, `--color-accent-fg`, `--color-link`, `--font-sans`, `--font-mono`
 
-Theme components must use these CSS variables -- no hardcoded color values. The header background in particular must use `var(--color-background)` (with optional opacity) rather than a static white/black value, so all color presets render correctly.
+The Editorial theme additionally defines `--font-heading` for the display serif font. Themes targeting a heading-font distinction should follow the same pattern: declare a `fontHeading` token with `cssVariable: "--font-heading"` and `fontList: "serif"`, then apply `var(--font-heading)` in `buildCssString()` prose overrides and article heading selectors.
 
-### 13.5 Design draft / publish workflow
+Theme components must use these CSS variables -- no hardcoded color values.
+
+### 13.7 Design draft / publish workflow
 
 Design changes follow a draft to publish flow stored in `theme_design_configs`:
 
@@ -596,13 +633,13 @@ Design changes follow a draft to publish flow stored in `theme_design_configs`:
 
 The `theme_design_configs` table has a partial unique index on `(theme_id, status) WHERE status IN ('draft', 'published')` -- enforcing the one-draft / one-published constraint while allowing unlimited archived rows.
 
-### 13.6 Registry and security
+### 13.8 Registry and security
 
 - Active theme set via `config.appearance.activeTheme` in the database.
 - Theme name validated against `THEME_ALLOWLIST` in `src/lib/theme-registry.ts` before dynamic import -- prevents path traversal attacks.
 - New themes must be added to `THEME_ALLOWLIST` and `ALL_THEMES` in the registry file.
 
-### 13.7 Distribution model
+### 13.9 Distribution model
 
 Same npm + private registry model as plugins (see §12.5). Themes ship two formats:
 

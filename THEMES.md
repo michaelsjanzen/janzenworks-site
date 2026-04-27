@@ -55,6 +55,7 @@ Standard variable names all themes should define where applicable:
 | `--color-link` | Hyperlink color |
 | `--font-sans` | Body and UI text font stack |
 | `--font-mono` | Code block font stack |
+| `--font-heading` | Display/heading font stack (optional — themes that distinguish heading from body type) |
 
 Themes may define additional custom variables. Custom variables should be namespaced with the theme ID, e.g. `--mytheme-hero-height`.
 
@@ -152,10 +153,23 @@ Every `themes/<id>/design.ts` must export:
 export const DESIGN_TOKEN_DEFS: DesignTokenDef[]
 export const DESIGN_DEFAULTS: Record<string, string>
 export const SANS_FONTS: string[]
+export const SERIF_FONTS: string[]        // may be [] if theme has no serif fonts
 export const MONO_FONTS: string[]
 export function buildGoogleFontsUrl(config: Record<string, string>): string | null
 export function buildCssString(config: Record<string, string>, defs: DesignTokenDef[]): string
 ```
+
+Optional but recommended:
+
+```ts
+export const COLOR_PRESETS: ColorPreset[]
+export const HEADER_LAYOUTS: HeaderLayoutDef[]   // header layout presets (see src/types/theme.ts)
+export const HEADER_MODIFIERS: HeaderModifiers   // capability flags for the header
+```
+
+`SERIF_FONTS` must be populated when any token uses `fontList: "serif"`. Leave it as `[]` for themes that use only sans/mono.
+
+The `fontList` field on `google-font` tokens controls which font list the admin picker renders: `"sans"` | `"serif"` | `"mono"` | `"all"`. The Editorial theme uses `fontList: "serif"` for its `fontHeading` token to expose display serif choices separately from body fonts.
 
 Copying `themes/_template/design.ts` as a starting point is recommended -- it contains full documentation for every export.
 
@@ -212,7 +226,10 @@ themes/<id>/
     HomeView.tsx          -- receives PostSummary[] and HomeLayoutConfig
     PostView.tsx          -- receives full post data and ArticleLayoutConfig
     PageView.tsx          -- receives page data, breadcrumbs, ArticleLayoutConfig
+    Sections.tsx          -- homepage section renderer (receives HomepageSection[], page)
 ```
+
+`Sections.tsx` is the theme's homepage section entry point. It receives an ordered array of `HomepageSection` objects and renders each enabled section with the theme's own visual language. Themes may delegate section types to the default theme's renderers and override only the sections they want to style differently.
 
 Additional components, views, and utilities may be added freely.
 

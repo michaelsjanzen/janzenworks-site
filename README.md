@@ -34,7 +34,7 @@ The full decision framework is in [`PHILOSOPHY.md`](./PHILOSOPHY.md), the canoni
 | **Markdown-First** | Tiptap editor with Visual/Raw Markdown toggle; content stored as Markdown |
 | **Hierarchical Content** | Pages nest under parent pages with automatically generated breadcrumb navigation |
 | **Plugin System** | Plugins register lifecycle hooks (`content:render`, `post:after-save`, etc.) via `HookManager` |
-| **Theme System** | Design token system with draft/publish workflow; colors, fonts, and layout controls editable in Admin > Design |
+| **Theme System** | Three bundled themes (Default, Editorial, Mono) with a draft/publish design token workflow; colors, fonts, layout, and homepage sections editable in Admin > Design |
 | **Storage Abstraction** | `LocalStorageProvider` (default) or `S3StorageProvider` (AWS S3, R2, DO Spaces, MinIO) |
 | **SEO & Discovery** | `generateMetadata()`, XML sitemap, `/feed.xml` (RSS 2.0), Open Graph, Twitter Cards, per-post canonical URL and OG image overrides |
 | **Bot Analytics** | Tracks AI crawler and search spider visits to AEO endpoints (llms.txt, sitemap, robots.txt). Dashboard teaser with top bots, top spiders, and top content; full report at `/admin/bot-analytics`; AI-generated insights |
@@ -217,7 +217,9 @@ pugmill/
 │   ├── contact-form/
 │   └── cookie-consent/
 ├── themes/                       # Visual theme packages
-│   ├── default/                  # Built-in default theme
+│   ├── default/                  # Built-in default theme (clean, Geist-inspired)
+│   ├── editorial/                # Built-in editorial theme (warm serif, publication-grade)
+│   ├── mono/                     # Built-in mono theme (terminal aesthetic, monospace)
 │   └── _template/                # Starter template for new themes
 ├── scripts/
 │   ├── create-schema.ts          # Creates all tables (IF NOT EXISTS); pre-marks migrations on fresh installs
@@ -380,7 +382,11 @@ Enabling and configuring plugins happens via Admin > Settings > Plugins. The ful
 
 ## Theme Development
 
-Themes live in `/themes/<name>/` and export a `Layout.tsx`, page-level views (`HomeView`, `PostView`, `PageView`), and a `design.ts` contract. Themes are activated via Admin > Themes.
+Three themes ship with core: **Default** (clean, modern), **Editorial** (warm serif, publication-grade), and **Mono** (terminal aesthetic, monospace throughout). Themes live in `/themes/<name>/` and export a `Layout.tsx`, page-level views (`HomeView`, `PostView`, `PageView`, `Sections`), and a `design.ts` contract. Themes are activated via Admin > Themes.
+
+### Homepage sections
+
+The homepage is composed from an ordered stack of typed sections — hero, post feed, featured post, text block, and CTA — edited visually in Admin > Design > Homepage. Sections are stored as JSON in the design config and rendered through each theme's `Sections.tsx`, so the visual treatment is fully theme-controlled.
 
 ### Design token contract
 

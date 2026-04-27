@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] — 2026-04-27
+
+### Added
+
+- **Editorial theme** — warm, publication-grade theme inspired by long-form journalism. Playfair Display display serif headings (`--font-heading` CSS variable), DM Sans body, 18px base, line-height 1.8. No card chrome — separator lines and whitespace do the structural work. Four color presets: Warm Ink, Parchment, Slate & Cream, Night Edition.
+- **Mono theme** — stripped-back developer/terminal theme. JetBrains Mono throughout, near-black `#0d0d0d` background, amber `#f59e0b` accent. No rounded corners, no shadows. ISO dates, `[bracket]` category tags, `$ ` prompt in the footer. Four color presets: Amber, Green, Cyan, Light.
+- **Homepage section builder** — Admin > Design > Homepage renders an ordered, reorderable stack of typed sections. Five types: `hero` (full-bleed banner with headline, subheadline, two CTA buttons, overlay controls), `post-feed` (paginated listing with optional category filter), `featured-post` (single highlighted post), `text-block` (rich HTML), `cta` (full-width banner with filled/subtle/outline styles). Sections save as draft alongside design token changes.
+- **`Sections.tsx` per-theme section renderer** — each theme ships its own async server component as the homepage section entry point. `page.tsx` calls `getThemeSections(activeTheme)` — fully theme-agnostic, no default-theme imports in core.
+- **`src/types/theme.ts`** — `HeaderLayoutDef` and `HeaderModifiers` types for theme-declared header presets.
+- **`SERIF_FONTS` export** — required on all themes. Themes with `fontList: "serif"` tokens populate this list; others export `[]`.
+- **`HEADER_LAYOUTS` and `HEADER_MODIFIERS`** — optional `design.ts` exports declaring header layout presets and capability flags. All three bundled themes include these, laying groundwork for Admin > Design > Header.
+- **`fontList: "serif"` on `DesignTokenDef`** — enables a dedicated serif font picker. Editorial's `fontHeading` token uses this to separate display serif choices from body font choices.
+- **`getThemeSections()` accessor** in `src/lib/theme-modules.ts`.
+
+### Changed
+
+- **`src/app/(site)/page.tsx`** is now fully theme-agnostic — section rendering delegated to `getThemeSections()`.
+- **`src/lib/theme-modules.ts`** rewritten: full static import registry for all three themes; `ThemeModuleSet` extended with `Sections`; `ThemeDesignModule` extended with `SERIF_FONTS`, `HEADER_LAYOUTS`, `HEADER_MODIFIERS`.
+- **`src/lib/theme-registry.ts`** — `THEME_ALLOWLIST` expanded to `["default", "editorial", "mono"]`.
+- **`themes/default/design.ts`** — added `SERIF_FONTS: []`, `HEADER_LAYOUTS` (5 presets), `HEADER_MODIFIERS`.
+
+### Fixed
+
+- **postcss** bumped from `^8.4.49` to `^8.5.10` — resolves CVE for XSS via unescaped `</style>` in CSS stringify (installed version was already patched; declared range tightened to make it explicit).
+
+---
+
 ## [0.2.0] — 2026-03-31 — Public Beta
 
 ### Added
