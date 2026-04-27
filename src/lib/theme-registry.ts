@@ -47,7 +47,7 @@
  * Add new theme directory names here when creating a new theme.
  * This prevents path traversal attacks in dynamic theme imports.
  */
-export const THEME_ALLOWLIST = ["default"] as const;
+export const THEME_ALLOWLIST = ["default", "editorial", "mono"] as const;
 
 export type ThemeName = (typeof THEME_ALLOWLIST)[number];
 
@@ -72,10 +72,13 @@ export interface ThemeManifest {
 }
 
 import defaultManifest from "../../themes/default/manifest.json";
+import editorialManifest from "../../themes/editorial/manifest.json";
+import monoManifest from "../../themes/mono/manifest.json";
 
 const ALL_THEMES: ThemeManifest[] = [
   defaultManifest,
-  // ADD NEW THEMES HERE
+  editorialManifest,
+  monoManifest,
 ];
 
 /**
