@@ -15,6 +15,7 @@
 
 import type { DesignTokenDef, ColorPreset } from "../../src/types/design";
 import type { WidgetAreaDef } from "../../src/types/widget";
+import type { HeaderLayoutDef, HeaderModifiers } from "../../src/types/theme";
 
 // ─── Layout config types ──────────────────────────────────────────────────────
 
@@ -84,6 +85,27 @@ export interface ArticleLayoutConfig {
 // Only fonts in these lists will be fetched from Google Fonts.
 // Fonts NOT in either list are assumed to be system fonts.
 
+// ─── Header layout registry ───────────────────────────────────────────────────
+// Declares which header layout presets this theme implements.
+// The admin reads this and renders one tile per entry.
+
+export const HEADER_LAYOUTS: HeaderLayoutDef[] = [
+  { id: "standard",  label: "Standard",  description: "Logo left, nav right" },
+  { id: "centered",  label: "Centered",  description: "Logo centered, nav below" },
+  { id: "split",     label: "Split",     description: "Logo left, nav center" },
+  { id: "cta",       label: "With CTA",  description: "Logo left, nav right, CTA button" },
+  { id: "minimal",   label: "Minimal",   description: "Logo only, hamburger always" },
+];
+
+export const HEADER_MODIFIERS: HeaderModifiers = {
+  supportsSticky: true,
+  supportsBackgroundStyles: ["solid", "glass", "transparent-on-hero"],
+  supportsCompactHeight: true,
+  supportsLogo: true,
+};
+
+export const SERIF_FONTS: string[] = [];  // Default theme uses sans-serif only
+
 export const SANS_FONTS: string[] = [
   "Inter",
   "DM Sans",
@@ -100,7 +122,7 @@ export const MONO_FONTS: string[] = [
   "IBM Plex Mono",
 ];
 
-// Fonts that are system fonts — no Google Fonts link needed.
+// System fonts — no Google Fonts request needed for these.
 const SYSTEM_FONTS = ["system-ui", "serif", "monospace"];
 
 // ─── Widget areas ─────────────────────────────────────────────────────────────

@@ -1,0 +1,11 @@
+{
+  "id": "mono",
+  "name": "Mono",
+  "version": "0.1.0",
+  "description": "Stripped-back developer theme. Monospace throughout, near-black background, amber accent. No card chrome, no rounded corners — every pixel earns its place.",
+  "author": "Pugmill",
+  "authorUrl": "https://pugmill.dev",
+  "previewUrl": "",
+  "tags": ["developer", "minimal", "dark", "monospace", "terminal"],
+  "compatibleWith": ">=0.1.0"
+}

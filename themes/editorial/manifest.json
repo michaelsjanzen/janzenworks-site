@@ -1,0 +1,11 @@
+{
+  "id": "editorial",
+  "name": "Editorial",
+  "version": "0.1.0",
+  "description": "Warm, publication-grade theme inspired by long-form journalism. Serif display headings, generous line height, and content-forward layouts with no card chrome.",
+  "author": "Pugmill",
+  "authorUrl": "https://pugmill.dev",
+  "previewUrl": "",
+  "tags": ["editorial", "publication", "serif", "warm", "blog"],
+  "compatibleWith": ">=0.1.0"
+}

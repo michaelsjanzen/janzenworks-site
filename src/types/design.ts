@@ -15,7 +15,7 @@ export interface DesignTokenDef {
    *   "mono" — uses the theme's MONO_FONTS list
    *   "all"  — merges both lists (default when omitted)
    */
-  fontList?: "sans" | "mono" | "all";
+  fontList?: "sans" | "serif" | "mono" | "all";
   /**
    * Token group. Built-in groups: "colors" | "typography" | "layout-home" |
    * "layout-post" | "layout-page". Themes may declare additional custom groups
@@ -72,6 +72,7 @@ export interface DesignTokenDef {
  * Tokens in any other group are collected under "Theme Options".
  */
 export const BUILT_IN_GROUPS = [
+  "layout-header",
   "layout-home",
   "layout-post",
   "layout-page",
