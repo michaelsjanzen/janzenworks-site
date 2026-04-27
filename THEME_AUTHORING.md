@@ -16,10 +16,13 @@ themes/
       HomeView.tsx          # Blog post feed.
       PostView.tsx          # Single blog post.
       PageView.tsx          # Static page (about, contact, etc.).
+      Sections.tsx          # Required. Homepage section renderer.
     components/             # Optional. Shared UI components (Header, Footer, etc.).
       Header.tsx
       Footer.tsx
 ```
+
+`Sections.tsx` receives an ordered `HomepageSection[]` and renders each enabled section with the theme's visual language. Themes that don't need custom section styling can delegate to the default renderers and override specific section types as needed.
 
 ### `manifest.json`
 
@@ -54,11 +57,16 @@ import MyLayout from "../../themes/my-theme/Layout";
 import MyHomeView from "../../themes/my-theme/views/HomeView";
 import MyPostView from "../../themes/my-theme/views/PostView";
 import MyPageView from "../../themes/my-theme/views/PageView";
+import MySections from "../../themes/my-theme/views/Sections";
 import {
   DESIGN_DEFAULTS as MyDesignDefaults,
   DESIGN_TOKEN_DEFS as MyDesignTokenDefs,
   SANS_FONTS as MySansFonts,
+  SERIF_FONTS as MySerifFonts,
   MONO_FONTS as MyMonoFonts,
+  COLOR_PRESETS as MyColorPresets,
+  HEADER_LAYOUTS as MyHeaderLayouts,
+  HEADER_MODIFIERS as MyHeaderModifiers,
   buildCssString as myBuildCssString,
   buildGoogleFontsUrl as myBuildGoogleFontsUrl,
 } from "../../themes/my-theme/design";
@@ -71,11 +79,16 @@ Then add an entry to `THEME_MODULES`:
   HomeView: MyHomeView,
   PostView: MyPostView,
   PageView: MyPageView,
+  Sections: MySections,
   design: {
     DESIGN_DEFAULTS: MyDesignDefaults,
     DESIGN_TOKEN_DEFS: MyDesignTokenDefs,
     SANS_FONTS: MySansFonts,
+    SERIF_FONTS: MySerifFonts,
     MONO_FONTS: MyMonoFonts,
+    COLOR_PRESETS: MyColorPresets,
+    HEADER_LAYOUTS: MyHeaderLayouts,
+    HEADER_MODIFIERS: MyHeaderModifiers,
     buildCssString: myBuildCssString,
     buildGoogleFontsUrl: myBuildGoogleFontsUrl,
   },
@@ -201,12 +214,18 @@ Every theme must export these symbols from `themes/<theme-id>/design.ts`:
 
 | Export | Type | Purpose |
 |---|---|---|
-| `DESIGN_TOKEN_DEFS` | `DesignTokenDef[]` | Token definitions -- drives the Design admin UI |
+| `DESIGN_TOKEN_DEFS` | `DesignTokenDef[]` | Token definitions — drives the Design admin UI |
 | `DESIGN_DEFAULTS` | `Record<string, string>` | Default values for every token key |
 | `SANS_FONTS` | `string[]` | Allowlist of sans-serif Google Fonts |
+| `SERIF_FONTS` | `string[]` | Allowlist of serif/display Google Fonts (empty array if unused) |
 | `MONO_FONTS` | `string[]` | Allowlist of monospace Google Fonts |
-| `buildCssString` | function | Converts token values to `:root { --var: value; }` CSS |
+| `COLOR_PRESETS` | `ColorPreset[]` | Optional. Color palette presets shown in the Design admin |
+| `HEADER_LAYOUTS` | `HeaderLayoutDef[]` | Optional. Header layout presets (standard, centered, minimal, etc.) |
+| `HEADER_MODIFIERS` | `HeaderModifiers` | Optional. Capability flags: sticky, background styles, compact height, logo |
+| `buildCssString` | function | Converts token values to `:root { --var: value; }` CSS plus prose overrides |
 | `buildGoogleFontsUrl` | function | Builds Google Fonts stylesheet URL from active fonts |
+
+`SERIF_FONTS` must be non-empty when any token uses `fontList: "serif"`. The `fontList` field on `google-font` tokens controls which font list the admin picker shows: `"sans"` | `"serif"` | `"mono"` | `"all"`.
 
 The fully documented interface contract is in `/themes/_template/design.ts`. A complete working example is in `/themes/default/design.ts`.
 
