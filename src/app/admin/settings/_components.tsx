@@ -1,7 +1,7 @@
 "use client";
 // Shared UI primitives for settings sub-pages.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function ToggleField({
   label,
@@ -105,10 +105,21 @@ export function PageShell({
   children: React.ReactNode;
 }) {
   const [isDirty, setIsDirty] = useState(false);
+  // Ignore change events that fire during the initial paint / hydration window.
+  // Password managers auto-fill type="password" fields on mount, which bubbles
+  // a DOM change event to this container and falsely marks the form as dirty.
+  const mounted = useRef(false);
+  useEffect(() => {
+    // Small delay gives password managers time to auto-fill before we start
+    // watching for genuine user-initiated changes.
+    const t = setTimeout(() => { mounted.current = true; }, 300);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div
       className={`-mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 sm:pt-6 pb-8 space-y-6 transition-colors duration-500 ${isDirty ? "bg-amber-50" : "bg-zinc-50"}`}
-      onChange={() => { if (!isDirty) setIsDirty(true); }}
+      onChange={() => { if (mounted.current && !isDirty) setIsDirty(true); }}
     >
       <div className="flex items-center justify-between">
         <div>
